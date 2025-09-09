@@ -4,7 +4,7 @@
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { ArrowRight, ShoppingCart } from 'lucide-react';
+import { ArrowRight, MessageSquare, ShoppingCart, Info } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { products } from '@/lib/placeholder-data';
@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import ProductCard from '@/components/product-card';
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -128,6 +129,49 @@ export default function ProductDetailPage() {
                   Add to Cart
                 </Button>
               </motion.div>
+
+              <motion.div className="mt-10" variants={itemVariants}>
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="specifications">
+                    <AccordionTrigger>
+                      <div className="flex items-center gap-2 font-headline text-lg">
+                        <Info className="h-5 w-5" /> Product Specifications
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <ul className="space-y-2 text-muted-foreground mt-2">
+                        {Object.entries(product.specifications).map(([key, value]) => (
+                          <li key={key} className="flex justify-between">
+                            <span className="font-medium text-foreground">{key}:</span>
+                            <span>{value}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="reviews">
+                    <AccordionTrigger>
+                      <div className="flex items-center gap-2 font-headline text-lg">
+                        <MessageSquare className="h-5 w-5" /> Customer Reviews
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-6 mt-2">
+                        {product.reviewsData.map((review, index) => (
+                          <div key={index}>
+                            <div className="flex items-center gap-2">
+                              <ProductRating rating={review.rating} />
+                              <p className="font-semibold">{review.author}</p>
+                              <p className="text-xs text-muted-foreground">{new Date(review.date).toLocaleDateString()}</p>
+                            </div>
+                            <p className="text-muted-foreground mt-2">{review.comment}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </motion.div>
             </div>
           </div>
 
@@ -151,4 +195,3 @@ export default function ProductDetailPage() {
     </div>
   );
 }
-
