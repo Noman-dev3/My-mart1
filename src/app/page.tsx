@@ -9,7 +9,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import ProductCard from '@/components/product-card';
-import { products } from '@/lib/placeholder-data';
+import { getProducts, type Product } from '@/lib/placeholder-data';
 import { useMemo, useRef, useState, useEffect } from 'react';
 
 const heroContent = [
@@ -35,6 +35,16 @@ const heroContent = [
 
 export default function LandingPage() {
   const [heroIndex, setHeroIndex] = useState(0);
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    async function loadProducts() {
+        const fetchedProducts = await getProducts();
+        setProducts(fetchedProducts);
+    }
+    loadProducts();
+  }, []);
+
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -49,7 +59,7 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, []);
   
-  const featuredProducts = useMemo(() => products.slice(0, 3), []);
+  const featuredProducts = useMemo(() => products.slice(0, 3), [products]);
 
   const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress: heroScrollYProgress } = useScroll({

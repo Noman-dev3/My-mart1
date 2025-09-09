@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2 } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { products, type Product } from '@/lib/placeholder-data';
+import { getProducts, type Product } from '@/lib/placeholder-data';
 import ProductRating from '@/components/product-rating';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -22,7 +22,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
-  const product = products.find((p) => p.id === id);
+  const [product, setProduct] = useState<Product | undefined>(undefined);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+
   const { addToCart } = useContext(CartContext);
   const { toast } = useToast();
 
@@ -30,17 +32,28 @@ export default function ProductDetailPage() {
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
 
   useEffect(() => {
+    const fetchProducts = async () => {
+        const products = await getProducts();
+        setAllProducts(products);
+        const currentProduct = products.find((p) => p.id === id);
+        setProduct(currentProduct);
+    };
+    fetchProducts();
+  }, [id]);
+
+
+  useEffect(() => {
     const fetchRecommendations = async () => {
-      if (!product) return;
+      if (!product || allProducts.length === 0) return;
       setIsLoadingRecommendations(true);
       try {
         const { recommendedProductIds } = await getProductRecommendations({ productId: product.id });
-        const recommendations = products.filter(p => recommendedProductIds.includes(p.id) && p.id !== product.id);
+        const recommendations = allProducts.filter(p => recommendedProductIds.includes(p.id) && p.id !== product.id);
         setRecommendedProducts(recommendations.slice(0,3));
       } catch (error) {
         console.error("Failed to get AI recommendations:", error);
         // Fallback to category-based recommendations on error
-        const categoryProducts = products
+        const categoryProducts = allProducts
             .filter((p) => p.category === product.category && p.id !== product.id)
             .slice(0, 3);
         setRecommendedProducts(categoryProducts);
@@ -50,7 +63,7 @@ export default function ProductDetailPage() {
     };
 
     fetchRecommendations();
-  }, [product]);
+  }, [product, allProducts]);
 
   const containerVariants = {
     hidden: { opacity: 0 },

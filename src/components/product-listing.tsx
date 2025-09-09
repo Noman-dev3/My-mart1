@@ -1,8 +1,9 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Product } from '@/lib/placeholder-data';
-import { categories, brands } from '@/lib/placeholder-data';
+import { getCategories, getBrands } from '@/lib/placeholder-data';
 import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { ListFilter, X } from 'lucide-react';
+import { ListFilter } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from './ui/separator';
 
@@ -21,6 +22,21 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedRating, setSelectedRating] = useState(0);
   const [inStockOnly, setInStockOnly] = useState(false);
+
+  const [categories, setCategories] = useState<string[]>([]);
+  const [brands, setBrands] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchFilters = async () => {
+        const [fetchedCategories, fetchedBrands] = await Promise.all([
+            getCategories(),
+            getBrands()
+        ]);
+        setCategories(fetchedCategories);
+        setBrands(fetchedBrands);
+    };
+    fetchFilters();
+  }, []);
 
   const filteredAndSortedProducts = useMemo(() => {
     const lowercasedQuery = searchQuery.toLowerCase();
