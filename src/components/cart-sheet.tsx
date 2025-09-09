@@ -46,9 +46,11 @@ export function CartSheet() {
                   <span>Subtotal</span>
                   <span>${cartTotal.toFixed(2)}</span>
                 </div>
-                <Button size="lg" className="w-full font-bold">
-                  Proceed to Checkout
-                </Button>
+                <SheetClose asChild>
+                  <Button asChild size="lg" className="w-full font-bold">
+                    <Link href="/checkout">Proceed to Checkout</Link>
+                  </Button>
+                </SheetClose>
                 <SheetClose asChild>
                    <Button variant="outline" className="w-full">Continue Shopping</Button>
                 </SheetClose>

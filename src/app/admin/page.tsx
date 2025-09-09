@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,6 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Area, AreaChart, Pie, PieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
+import { useEffect, useState } from 'react';
+import { getRecentOrders } from '@/lib/order-actions';
+import type { CartItem } from '@/context/cart-context';
 
 const salesData = [
   { date: '2023-01', sales: 4000 }, { date: '2023-02', sales: 3000 },
@@ -30,12 +32,18 @@ const categoryData = [
     { name: 'Home Goods', value: 10, color: 'hsl(var(--chart-4))' },
 ];
 
-const recentOrders = [
-    { id: 'ORD001', customer: 'Olivia Martin', status: 'Delivered', total: '$49.99' },
-    { id: 'ORD002', customer: 'Jackson Lee', status: 'Processing', total: '$129.50' },
-    { id: 'ORD003', customer: 'Isabella Nguyen', status: 'Shipped', total: '$32.00' },
-    { id: 'ORD004', customer: 'William Kim', status: 'Delivered', total: '$250.00' },
-];
+type Order = {
+    id: string;
+    customer: {
+        name: string;
+        email: string;
+    };
+    items: CartItem[];
+    total: number;
+    status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered';
+    date: string;
+};
+
 
 const activityLog = [
     { user: 'Admin User', action: 'Updated product "Wireless Headphones"', time: '2h ago' },
@@ -44,6 +52,17 @@ const activityLog = [
 ];
 
 export default function AdminDashboard() {
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    async function fetchOrders() {
+        const orders = await getRecentOrders();
+        setRecentOrders(orders);
+    }
+    fetchOrders();
+  }, [])
+
+
   return (
     <div className="space-y-6">
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -178,7 +197,7 @@ export default function AdminDashboard() {
                     {recentOrders.map((order) => (
                         <TableRow key={order.id} className="hover:bg-muted/50 cursor-pointer">
                             <TableCell className="font-medium">{order.id}</TableCell>
-                            <TableCell>{order.customer}</TableCell>
+                            <TableCell>{order.customer.name}</TableCell>
                             <TableCell>
                                 <Badge 
                                 variant={
@@ -188,7 +207,7 @@ export default function AdminDashboard() {
                                 }
                                 >{order.status}</Badge>
                             </TableCell>
-                            <TableCell className="text-right">{order.total}</TableCell>
+                            <TableCell className="text-right">${order.total.toFixed(2)}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
