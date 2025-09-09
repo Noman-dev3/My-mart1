@@ -48,7 +48,7 @@ async function writeProducts(products: Product[]): Promise<void> {
     // Revalidate paths to show changes immediately across the app
     revalidatePath('/');
     revalidatePath('/products');
-    revalidatePath('/product/[id]', 'layout');
+    revalidatePath('/product/[id]');
     revalidatePath('/admin/products');
 }
 
