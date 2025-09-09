@@ -4,19 +4,21 @@
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { ArrowRight, MessageSquare, ShoppingCart, Info } from 'lucide-react';
+import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2 } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { products } from '@/lib/placeholder-data';
+import { products, type Product } from '@/lib/placeholder-data';
 import ProductRating from '@/components/product-rating';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import ProductCard from '@/components/product-card';
 import Link from 'next/link';
-import { useMemo, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CartContext } from '@/context/cart-context';
 import { useToast } from '@/hooks/use-toast';
+import { getProductRecommendations } from '@/ai/flows/product-recommendations';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -24,11 +26,30 @@ export default function ProductDetailPage() {
   const { addToCart } = useContext(CartContext);
   const { toast } = useToast();
 
-  const relatedProducts = useMemo(() => {
-    if (!product) return [];
-    return products
-      .filter((p) => p.category === product.category && p.id !== product.id)
-      .slice(0, 3);
+  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (!product) return;
+      setIsLoadingRecommendations(true);
+      try {
+        const { recommendedProductIds } = await getProductRecommendations({ productId: product.id });
+        const recommendations = products.filter(p => recommendedProductIds.includes(p.id) && p.id !== product.id);
+        setRecommendedProducts(recommendations.slice(0,3));
+      } catch (error) {
+        console.error("Failed to get AI recommendations:", error);
+        // Fallback to category-based recommendations on error
+        const categoryProducts = products
+            .filter((p) => p.category === product.category && p.id !== product.id)
+            .slice(0, 3);
+        setRecommendedProducts(categoryProducts);
+      } finally {
+        setIsLoadingRecommendations(false);
+      }
+    };
+
+    fetchRecommendations();
   }, [product]);
 
   const containerVariants = {
@@ -84,6 +105,22 @@ export default function ProductDetailPage() {
       </div>
     );
   }
+
+  const RecommendationsSkeleton = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {[...Array(3)].map((_, i) => (
+        <motion.div key={i} variants={itemVariants}>
+          <div className="flex flex-col space-y-3">
+            <Skeleton className="h-[300px] w-full rounded-xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-[250px]" />
+              <Skeleton className="h-4 w-[200px]" />
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -189,23 +226,27 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {relatedProducts.length > 0 && (
-            <motion.section className="mt-24" variants={containerVariants}>
-              <motion.h2 className="text-center font-headline text-3xl md:text-4xl font-bold mb-10" variants={itemVariants}>
-                You Might Also Like
-              </motion.h2>
+          <motion.section className="mt-24" variants={containerVariants}>
+            <motion.h2 className="text-center font-headline text-3xl md:text-4xl font-bold mb-10" variants={itemVariants}>
+              You Might Also Like
+            </motion.h2>
+            {isLoadingRecommendations ? (
+              <RecommendationsSkeleton />
+            ) : recommendedProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {relatedProducts.map((relatedProduct) => (
+                {recommendedProducts.map((relatedProduct) => (
                   <motion.div key={relatedProduct.id} variants={itemVariants}>
                     <ProductCard product={relatedProduct} />
                   </motion.div>
                 ))}
               </div>
-            </motion.section>
-          )}
+            ) : null}
+          </motion.section>
         </motion.div>
       </main>
       <Footer />
     </div>
   );
 }
+
+    
