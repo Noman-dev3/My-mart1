@@ -3,12 +3,30 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-
-// Re-export the Product type from placeholder-data to avoid duplication
-export type { Product } from './placeholder-data';
-import type { Product } from './placeholder-data';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+
+// We define the Product type here as this file is the source of truth for product data structures.
+export type Product = {
+    id: string;
+    name: string;
+    description: string;
+    price: number;
+    image: string;
+    category: 'Electronics' | 'Groceries' | 'Fashion' | 'Home Goods';
+    brand: string;
+    inStock: boolean;
+    rating: number;
+    reviews: number;
+    specifications: Record<string, string>;
+    reviewsData: {
+      author: string;
+      rating: number;
+      comment: string;
+      date: string;
+    }[];
+};
+
 
 const productsFilePath = path.join(process.cwd(), 'src', 'lib', 'products.json');
 
@@ -27,9 +45,10 @@ async function readProducts(): Promise<Product[]> {
 
 async function writeProducts(products: Product[]): Promise<void> {
     await fs.writeFile(productsFilePath, JSON.stringify(products, null, 2));
-    // Revalidate paths to show changes immediately
+    // Revalidate paths to show changes immediately across the app
     revalidatePath('/');
     revalidatePath('/products');
+    revalidatePath('/product/[id]', 'layout');
     revalidatePath('/admin/products');
 }
 

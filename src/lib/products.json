@@ -119,7 +119,7 @@
     "rating": 4,
     "reviews": 67,
     "brand": "CozyHome",
-    "inStock": false,
+    "inStock": true,
     "specifications": {
       "Power": "10W",
       "Color Temperature": "2700K - 6500K",
