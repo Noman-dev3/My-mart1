@@ -14,7 +14,7 @@ import { ListFilter, X } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from './ui/separator';
 
-export default function ProductListing({ products }: { products: Product[] }) {
+export default function ProductListing({ products, searchQuery }: { products: Product[], searchQuery: string }) {
   const [sortOrder, setSortOrder] = useState('newest');
   const [priceRange, setPriceRange] = useState([0, 500]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -23,7 +23,18 @@ export default function ProductListing({ products }: { products: Product[] }) {
   const [inStockOnly, setInStockOnly] = useState(false);
 
   const filteredAndSortedProducts = useMemo(() => {
+    const lowercasedQuery = searchQuery.toLowerCase();
+    
     let result = products
+      .filter((p) => {
+        if (!searchQuery) return true;
+        return (
+          p.name.toLowerCase().includes(lowercasedQuery) ||
+          p.description.toLowerCase().includes(lowercasedQuery) ||
+          p.brand.toLowerCase().includes(lowercasedQuery) ||
+          p.category.toLowerCase().includes(lowercasedQuery)
+        );
+      })
       .filter((p) => p.price >= priceRange[0] && p.price <= priceRange[1])
       .filter((p) => (selectedCategories.length > 0 ? selectedCategories.includes(p.category) : true))
       .filter((p) => (selectedBrands.length > 0 ? selectedBrands.includes(p.brand) : true))
@@ -48,7 +59,7 @@ export default function ProductListing({ products }: { products: Product[] }) {
     }
 
     return result;
-  }, [products, sortOrder, priceRange, selectedCategories, selectedBrands, selectedRating, inStockOnly]);
+  }, [products, searchQuery, sortOrder, priceRange, selectedCategories, selectedBrands, selectedRating, inStockOnly]);
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategories((prev) =>

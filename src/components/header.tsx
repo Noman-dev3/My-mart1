@@ -5,7 +5,21 @@ import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/icons';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
-export default function Header() {
+type HeaderProps = {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+};
+
+export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    // Potentially trigger a search action if needed, for now it filters live
+  };
+  
   return (
     <header className="bg-background/80 backdrop-blur-sm sticky top-0 z-40 border-b">
       <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -13,12 +27,18 @@ export default function Header() {
           <Icons.logo className="h-8 w-8 text-primary" />
           <span className="font-headline text-3xl font-bold text-primary">My Mart</span>
         </Link>
-        <div className="hidden md:flex flex-1 max-w-md items-center">
-          <Input type="search" placeholder="Search products, brands, and categories..." className="h-10 rounded-r-none focus:ring-0 focus:ring-offset-0" />
+        <form onSubmit={handleSearchSubmit} className="hidden md:flex flex-1 max-w-md items-center">
+          <Input 
+            type="search" 
+            placeholder="Search products, brands, and categories..." 
+            className="h-10 rounded-r-none"
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
           <Button type="submit" size="icon" className="h-10 w-10 rounded-l-none">
             <Search className="h-5 w-5" />
           </Button>
-        </div>
+        </form>
         <div className="hidden md:flex items-center gap-2">
           <Button variant="ghost" size="icon" aria-label="My Account">
             <User className="h-6 w-6" />
@@ -43,10 +63,16 @@ export default function Header() {
                   </Link>
                 </div>
                 <div className="p-4 flex-1 flex flex-col gap-4">
-                  <div className="relative">
+                  <form onSubmit={handleSearchSubmit} className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input type="search" placeholder="Search..." className="pl-10 h-10" />
-                  </div>
+                    <Input 
+                      type="search" 
+                      placeholder="Search..." 
+                      className="pl-10 h-10"
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                    />
+                  </form>
                   <Button variant="ghost" className="justify-start gap-2">
                     <User className="h-5 w-5" />
                     My Account
