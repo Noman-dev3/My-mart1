@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -131,10 +132,10 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/admin"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
-                  Track Order
+                  Admin Login
                 </Link>
               </li>
             </ul>
