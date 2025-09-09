@@ -162,7 +162,7 @@ export default function AdminDashboard() {
                         ))}
                     </Pie>
                 </PieChart>
-            </Container>
+            </ChartContainer>
           </CardContent>
         </Card>
       </div>

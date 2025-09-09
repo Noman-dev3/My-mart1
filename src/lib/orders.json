@@ -1,0 +1,49 @@
+[
+  {
+    "id": "ORD001",
+    "customer": {
+      "name": "Noman",
+      "email": "noman.dev3@gmail.com",
+      "address": "Sultanwas main road",
+      "phone": "03119991973"
+    },
+    "items": [
+      {
+        "id": "prod_010",
+        "name": "Gourmet Coffee Beans",
+        "description": "A rich and aromatic medium roast blend, ethically sourced from single-origin farms.",
+        "price": 18.99,
+        "image": "https://picsum.photos/600/600?random=10",
+        "category": "Groceries",
+        "rating": 5,
+        "reviews": 189,
+        "brand": "The Daily Grind",
+        "inStock": true,
+        "specifications": {
+          "Roast": "Medium",
+          "Origin": "Colombia",
+          "Weight": "12 oz (340g)",
+          "Flavor Notes": "Chocolate, Caramel, Citrus"
+        },
+        "reviewsData": [
+          {
+            "author": "Rachel",
+            "rating": 5,
+            "comment": "My new favorite coffee. So smooth and flavorful.",
+            "date": "2023-10-30"
+          },
+          {
+            "author": "Mark",
+            "rating": 5,
+            "comment": "Excellent beans. Makes a perfect cup of coffee every morning.",
+            "date": "2023-10-28"
+          }
+        ],
+        "quantity": 1
+      }
+    ],
+    "total": 18.99,
+    "status": "Processing",
+    "date": "2025-09-09T17:45:05.827Z"
+  }
+]
