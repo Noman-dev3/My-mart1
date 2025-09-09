@@ -2,17 +2,27 @@
 
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowRight, ShoppingBag, Zap } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import ProductCard from '@/components/product-card';
 import { products } from '@/lib/placeholder-data';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 
 export default function LandingPage() {
   const featuredProducts = useMemo(() => products.slice(0, 3), []);
+
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress: heroScrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  });
+
+  const heroTextOpacity = useTransform(heroScrollYProgress, [0, 0.8], [1, 0]);
+  const heroTextY = useTransform(heroScrollYProgress, [0, 0.5], ['0%', '50%']);
+  const heroImageScale = useTransform(heroScrollYProgress, [0, 1], [1, 1.2]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -43,21 +53,36 @@ export default function LandingPage() {
       <main className="flex-grow">
         {/* Hero Section */}
         <motion.section
-          className="relative h-[80vh] min-h-[500px] flex items-center justify-center text-center text-white"
-          initial="hidden"
-          animate="visible"
-          variants={containerVariants}
+          ref={heroRef}
+          className="relative h-screen min-h-[600px] flex items-center justify-center text-center text-white overflow-hidden"
         >
-          <Image
-            src="https://picsum.photos/1600/900?random=13"
-            alt="Hero background"
-            fill
-            className="object-cover -z-10"
-            quality={100}
-            data-ai-hint="fashion store"
-          />
-          <div className="absolute inset-0 bg-black/50 -z-10" />
-          <div className="max-w-4xl px-4">
+          <motion.div
+            className="absolute inset-0 -z-10"
+            style={{
+              scale: heroImageScale,
+            }}
+          >
+            <Image
+              src="https://picsum.photos/1600/900?random=13"
+              alt="Hero background"
+              fill
+              className="object-cover"
+              quality={100}
+              priority
+              data-ai-hint="fashion store"
+            />
+             <div className="absolute inset-0 bg-black/50" />
+          </motion.div>
+          <motion.div 
+            className="max-w-4xl px-4"
+            style={{
+                opacity: heroTextOpacity,
+                y: heroTextY,
+            }}
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+          >
             <motion.h1
               className="font-headline text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight"
               variants={itemVariants}
@@ -82,7 +107,7 @@ export default function LandingPage() {
                 </Link>
               </Button>
             </motion.div>
-          </div>
+          </motion.div>
         </motion.section>
 
         {/* Features Section */}
