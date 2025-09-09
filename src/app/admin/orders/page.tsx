@@ -18,7 +18,32 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogFooter,
+    DialogClose,
+} from "@/components/ui/dialog"
 import {
     ColumnDef,
     flexRender,
@@ -33,9 +58,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getAllOrders, type Order } from '@/lib/order-actions';
-import { ChevronDown, File, ListFilter, MoreHorizontal } from 'lucide-react';
+import { getAllOrders, updateOrderStatus, type Order } from '@/lib/order-actions';
+import { ChevronDown, File, ListFilter, MoreHorizontal, Eye, Truck, CheckCircle, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -43,21 +70,41 @@ export default function OrdersPage() {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('');
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const { toast } = useToast();
+
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    try {
+      const fetchedOrders = await getAllOrders();
+      setOrders(fetchedOrders);
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+      toast({ title: "Error", description: "Failed to fetch orders.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadOrders() {
-      setIsLoading(true);
-      try {
-        const fetchedOrders = await getAllOrders();
-        setOrders(fetchedOrders);
-      } catch (error) {
-        console.error("Failed to fetch orders:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadOrders();
+    fetchOrders();
   }, []);
+
+  const handleUpdateStatus = async (orderId: string, status: Order['status']) => {
+    try {
+        await updateOrderStatus(orderId, status);
+        toast({
+            title: "Success",
+            description: `Order ${orderId} has been updated to "${status}".`
+        });
+        fetchOrders(); // Refresh data
+    } catch (error) {
+        toast({
+            title: "Error",
+            description: "Failed to update order status.",
+            variant: "destructive"
+        });
+    }
+  }
 
  const columns: ColumnDef<Order>[] = useMemo(() => [
     {
@@ -113,26 +160,124 @@ export default function OrdersPage() {
     {
         id: "actions",
         cell: ({ row }) => {
+            const order = row.original;
+            const statusOptions: Order['status'][] = ['Processing', 'Shipped', 'Delivered', 'Cancelled'];
+
             return (
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>View Order</DropdownMenuItem>
-                        <DropdownMenuItem>Update Status</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">Cancel Order</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <Dialog>
+                    <AlertDialog>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DialogTrigger asChild>
+                                    <DropdownMenuItem>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Order
+                                    </DropdownMenuItem>
+                                </DialogTrigger>
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                        <Truck className="mr-2 h-4 w-4" />
+                                        Update Status
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                        <DropdownMenuLabel>Set status</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        {statusOptions.map(status => (
+                                            <DropdownMenuItem key={status} onClick={() => handleUpdateStatus(order.id, status)} disabled={order.status === status}>
+                                                {status}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuSubContent>
+                                    </DropdownMenuPortal>
+                                </DropdownMenuSub>
+                                <DropdownMenuSeparator />
+                                <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Cancel Order
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        {/* Cancel Order Confirmation */}
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action will cancel the order <span className="font-bold">{order.id}</span>. This cannot be undone.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Dismiss</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleUpdateStatus(order.id, 'Cancelled')}>Continue</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* View Order Details */}
+                    <DialogContent className="sm:max-w-2xl">
+                        <DialogHeader>
+                        <DialogTitle>Order Details - {order.id}</DialogTitle>
+                        <DialogDescription>
+                            Placed on {format(new Date(order.date), "MMMM d, yyyy 'at' h:mm a")}
+                        </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                            <div>
+                                <h4 className="font-semibold mb-2">Customer</h4>
+                                <p>{order.customer.name}</p>
+                                <p>{order.customer.email}</p>
+                                <p>{order.customer.phone}</p>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold mb-2">Order Info</h4>
+                                <p>Status: <Badge variant={
+                                    order.status === 'Delivered' ? 'default' :
+                                    order.status === 'Shipped' ? 'default' :
+                                    order.status === 'Processing' ? 'secondary' :
+                                    order.status === 'Cancelled' ? 'destructive' :
+                                    'outline'
+                                } className="capitalize">{order.status}</Badge></p>
+                                <p>Total: <span className="font-bold">${order.total.toFixed(2)}</span></p>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 className="font-semibold mb-2">Items</h4>
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                                {order.items.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                                        <div className="flex items-center gap-3">
+                                            <Image src={item.image} alt={item.name} width={48} height={48} className="rounded" />
+                                            <div>
+                                                <p className="font-medium">{item.name}</p>
+                                                <p className="text-sm text-muted-foreground">Qty: {item.quantity} x ${item.price.toFixed(2)}</p>
+                                            </div>
+                                        </div>
+                                        <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button">Close</Button>
+                            </DialogClose>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             )
         },
     },
- ], [])
+ ], [fetchOrders])
 
   const table = useReactTable({
     data: orders,

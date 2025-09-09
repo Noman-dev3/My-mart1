@@ -11,12 +11,34 @@ export type Order = {
         name: string;
         email: string;
         phone: string;
+        address: string;
     };
     items: CartItem[];
     total: number;
     status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
     date: string;
 };
+
+const ordersFilePath = path.join(process.cwd(), 'src', 'lib', 'orders.json');
+
+// Helper function to read orders from the file
+async function readOrders(): Promise<Order[]> {
+    try {
+        const fileContent = await fs.readFile(ordersFilePath, 'utf-8');
+        return JSON.parse(fileContent);
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return []; // File doesn't exist, return empty array
+        }
+        throw error;
+    }
+}
+
+// Helper function to write orders to the file
+async function writeOrders(orders: Order[]): Promise<void> {
+    await fs.writeFile(ordersFilePath, JSON.stringify(orders, null, 2));
+}
+
 
 // Simulate a notification service
 async function sendAdminNotification(order: Order) {
@@ -42,23 +64,12 @@ async function sendAdminNotification(order: Order) {
 
 
 export async function placeOrder(data: {
-  customer: { name: string; email: string; phone: string; };
+  customer: { name: string; email: string; phone: string; address: string; };
   items: CartItem[];
   total: number;
 }) {
-  const filePath = path.join(process.cwd(), 'src', 'lib', 'orders.json');
+  const orders = await readOrders();
   
-  let orders: Order[] = [];
-  try {
-    const fileContent = await fs.readFile(filePath, 'utf-8');
-    orders = JSON.parse(fileContent);
-  } catch (error) {
-    // File might not exist yet, which is fine.
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-      throw error;
-    }
-  }
-
   const newOrder: Order = {
     id: `ORD${(orders.length + 1).toString().padStart(3, '0')}`,
     customer: data.customer,
@@ -70,7 +81,7 @@ export async function placeOrder(data: {
 
   orders.unshift(newOrder); // Add new order to the beginning
 
-  await fs.writeFile(filePath, JSON.stringify(orders, null, 2));
+  await writeOrders(orders);
 
   // Send notifications after successfully saving the order
   await sendAdminNotification(newOrder);
@@ -78,30 +89,31 @@ export async function placeOrder(data: {
   return newOrder;
 }
 
-export async function getRecentOrders() {
-    const filePath = path.join(process.cwd(), 'src', 'lib', 'orders.json');
-    try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const orders: Order[] = JSON.parse(fileContent);
-        return orders.slice(0, 5); // Return the 5 most recent orders
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return []; // No orders file yet, return empty array
-        }
-        throw error;
-    }
+export async function getRecentOrders(): Promise<Order[]> {
+    const orders = await readOrders();
+    return orders.slice(0, 5); // Return the 5 most recent orders
 }
 
 export async function getAllOrders(): Promise<Order[]> {
-    const filePath = path.join(process.cwd(), 'src', 'lib', 'orders.json');
-    try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const orders: Order[] = JSON.parse(fileContent);
-        return orders;
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return [];
-        }
-        throw error;
+    return await readOrders();
+}
+
+export async function getOrderById(orderId: string): Promise<Order | undefined> {
+    const orders = await readOrders();
+    return orders.find(order => order.id === orderId);
+}
+
+export async function updateOrderStatus(orderId: string, status: Order['status']): Promise<Order> {
+    const orders = await readOrders();
+    const orderIndex = orders.findIndex(order => order.id === orderId);
+
+    if (orderIndex === -1) {
+        throw new Error('Order not found');
     }
+
+    orders[orderIndex].status = status;
+
+    await writeOrders(orders);
+
+    return orders[orderIndex];
 }
