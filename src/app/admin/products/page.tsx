@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -18,6 +19,23 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import {
     ColumnDef,
     flexRender,
     getCoreRowModel,
@@ -30,16 +48,21 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getAllProducts, type Product } from '@/lib/product-actions';
+import { addProduct, deleteProduct, getAllProducts, updateProduct, type Product } from '@/lib/product-actions';
 import { MoreHorizontal, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import ProductForm from './product-form';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchProducts = async () => {
@@ -58,6 +81,48 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts();
   }, []);
+  
+  const handleEdit = (product: Product) => {
+    setSelectedProduct(product);
+    setIsFormOpen(true);
+  }
+
+  const handleDeleteTrigger = (productId: string) => {
+    setProductToDelete(productId);
+    setIsAlertOpen(true);
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!productToDelete) return;
+    try {
+        await deleteProduct(productToDelete);
+        toast({ title: "Success", description: "Product deleted successfully." });
+        fetchProducts();
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to delete product.", variant: "destructive" });
+    } finally {
+        setIsAlertOpen(false);
+        setProductToDelete(null);
+    }
+  }
+  
+  const handleFormSubmit = async (values: any) => {
+    try {
+        if(selectedProduct) {
+            await updateProduct(selectedProduct.id, values);
+            toast({ title: "Success", description: "Product updated successfully." });
+        } else {
+            await addProduct(values);
+            toast({ title: "Success", description: "Product added successfully." });
+        }
+        fetchProducts();
+        setIsFormOpen(false);
+        setSelectedProduct(undefined);
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to save product.", variant: "destructive" });
+    }
+  }
+
 
  const columns: ColumnDef<Product>[] = useMemo(() => [
     {
@@ -119,12 +184,12 @@ export default function ProductsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(product)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit Product
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDeleteTrigger(product.id)}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Product
                         </DropdownMenuItem>
@@ -151,108 +216,147 @@ export default function ProductsPage() {
   });
 
   return (
-    <div className="space-y-6">
-       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-                <h1 className="text-3xl font-bold font-headline">Products</h1>
-                <p className="text-muted-foreground">Manage your store's products.</p>
+    <Dialog open={isFormOpen} onOpenChange={(open) => {
+        setIsFormOpen(open);
+        if (!open) setSelectedProduct(undefined);
+    }}>
+        <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+            <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold font-headline">Products</h1>
+                        <p className="text-muted-foreground">Manage your store's products.</p>
+                    </div>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Product
+                        </Button>
+                    </DialogTrigger>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Input
+                    placeholder="Search by name, category, or brand..."
+                    value={globalFilter ?? ''}
+                    onChange={(event) => setGlobalFilter(event.target.value)}
+                    className="max-w-sm"
+                    />
+                </div>
+
+            <div className="rounded-lg border">
+                <Table>
+                <TableHeader>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => {
+                        return (
+                            <TableHead key={header.id}>
+                            {header.isPlaceholder
+                                ? null
+                                : flexRender(
+                                    header.column.columnDef.header,
+                                    header.getContext()
+                                )}
+                            </TableHead>
+                        )
+                        })}
+                    </TableRow>
+                    ))}
+                </TableHeader>
+                <TableBody>
+                    {isLoading ? (
+                        <TableRow>
+                            <TableCell colSpan={columns.length} className="h-24 text-center">
+                                Loading products...
+                            </TableCell>
+                        </TableRow>
+                    ) : table.getRowModel().rows?.length ? (
+                    table.getRowModel().rows.map((row) => (
+                        <TableRow
+                        key={row.id}
+                        data-state={row.getIsSelected() && "selected"}
+                        className="hover:bg-muted/50"
+                        >
+                        {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id}>
+                            {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                            )}
+                            </TableCell>
+                        ))}
+                        </TableRow>
+                    ))
+                    ) : (
+                    <TableRow>
+                        <TableCell
+                        colSpan={columns.length}
+                        className="h-24 text-center"
+                        >
+                        No results.
+                        </TableCell>
+                    </TableRow>
+                    )}
+                </TableBody>
+                </Table>
             </div>
-            <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Product
-            </Button>
-        </div>
-
-        <div className="flex items-center gap-2">
-            <Input
-              placeholder="Search by name, category, or brand..."
-              value={globalFilter ?? ''}
-              onChange={(event) => setGlobalFilter(event.target.value)}
-              className="max-w-sm"
-            />
-        </div>
-
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-                <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                        Loading products...
-                    </TableCell>
-                </TableRow>
-            ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  className="hover:bg-muted/50"
+            <div className="flex items-center justify-end space-x-2 py-4">
+                <div className="flex-1 text-sm text-muted-foreground">
+                {table.getFilteredRowModel().rows.length} of{" "}
+                {products.length} product(s) displayed.
+                </div>
+                <div className="space-x-2">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.previousPage()}
+                    disabled={!table.getCanPreviousPage()}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
+                    Previous
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => table.nextPage()}
+                    disabled={!table.getCanNextPage()}
                 >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} of{" "}
-          {products.length} product(s) displayed.
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
-    </div>
+                    Next
+                </Button>
+                </div>
+            </div>
+            </div>
+            
+            {/* Product Form Dialog */}
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>{selectedProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
+                </DialogHeader>
+                <ProductForm 
+                    onSubmit={handleFormSubmit}
+                    product={selectedProduct}
+                    onCancel={() => {
+                        setIsFormOpen(false);
+                        setSelectedProduct(undefined);
+                    }}
+                />
+            </DialogContent>
+            
+            {/* Delete Confirmation Dialog */}
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the product.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setProductToDelete(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteConfirm}>Continue</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </Dialog>
   );
 }
+
