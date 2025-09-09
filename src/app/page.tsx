@@ -57,9 +57,9 @@ export default function LandingPage() {
     offset: ['start start', 'end start'],
   });
 
-  const heroTextOpacity = useTransform(heroScrollYProgress, [0, 0.8], [1, 0]);
-  const heroTextY = useTransform(heroScrollYProgress, [0, 0.5], ['0%', '50%']);
-  const heroImageScale = useTransform(heroScrollYProgress, [0, 1], [1, 1.2]);
+  const heroTextOpacity = useTransform(heroScrollYProgress, [0, 0.5], [1, 0]);
+  const heroTextY = useTransform(heroScrollYProgress, [0, 0.8], ['0%', '100%']);
+  const heroImageX = useTransform(heroScrollYProgress, [0, 1], ['0%', '-50%']);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -121,7 +121,7 @@ export default function LandingPage() {
               <motion.div
                 className="absolute inset-0"
                 style={{
-                  scale: heroImageScale,
+                  x: heroImageX,
                 }}
               >
                 <Image
