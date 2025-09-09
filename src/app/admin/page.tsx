@@ -2,46 +2,61 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, Package, CreditCard, Users } from 'lucide-react';
+import { DollarSign, Package, CreditCard, Users, Download, Activity } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Area, AreaChart, Pie, PieChart, Cell } from 'recharts';
+import { Button } from '@/components/ui/button';
 
-const chartData = [
-  { month: 'Jan', total: Math.floor(Math.random() * 2000) + 1000 },
-  { month: 'Feb', total: Math.floor(Math.random() * 2000) + 1000 },
-  { month: 'Mar', total: Math.floor(Math.random() * 2000) + 1000 },
-  { month: 'Apr', total: Math.floor(Math.random() * 2000) + 1000 },
-  { month: 'May', total: Math.floor(Math.random() * 2000) + 1000 },
-  { month: 'Jun', total: Math.floor(Math.random() * 3000) + 2000 },
-  { month: 'Jul', total: Math.floor(Math.random() * 3000) + 2000 },
-  { month: 'Aug', total: Math.floor(Math.random() * 3000) + 2000 },
-  { month: 'Sep', total: Math.floor(Math.random() * 3000) + 2000 },
-  { month: 'Oct', total: Math.floor(Math.random() * 4000) + 2500 },
-  { month: 'Nov', total: Math.floor(Math.random() * 4000) + 2500 },
-  { month: 'Dec', total: Math.floor(Math.random() * 5000) + 3000 },
+const salesData = [
+  { date: '2023-01', sales: 4000 }, { date: '2023-02', sales: 3000 },
+  { date: '2023-03', sales: 5000 }, { date: '2023-04', sales: 4500 },
+  { date: '2023-05', sales: 6000 }, { date: '2023-06', sales: 7500 },
 ];
 
-const chartConfig = {
-  total: {
-    label: 'Total',
-    color: 'hsl(var(--chart-1))',
-  },
-};
+const topProductsData = [
+    { name: 'Headphones', sales: 450 },
+    { name: 'T-Shirt', sales: 380 },
+    { name: 'Smart TV', sales: 320 },
+    { name: 'Coffee Beans', sales: 280 },
+    { name: 'Running Shoes', sales: 240 },
+];
+
+const categoryData = [
+    { name: 'Electronics', value: 45, color: 'hsl(var(--chart-1))' },
+    { name: 'Fashion', value: 25, color: 'hsl(var(--chart-2))'},
+    { name: 'Groceries', value: 20, color: 'hsl(var(--chart-3))' },
+    { name: 'Home Goods', value: 10, color: 'hsl(var(--chart-4))' },
+];
 
 const recentOrders = [
-    { id: 'ORD001', customer: 'Olivia Martin', email: 'olivia.martin@email.com', amount: 49.99, status: 'Shipped' },
-    { id: 'ORD002', customer: 'Jackson Lee', email: 'jackson.lee@email.com', amount: 129.50, status: 'Processing' },
-    { id: 'ORD003', customer: 'Isabella Nguyen', email: 'isabella.nguyen@email.com', amount: 32.00, status: 'Delivered' },
-    { id: 'ORD004', customer: 'William Kim', email: 'will@email.com', amount: 250.00, status: 'Shipped' },
-    { id: 'ORD005', customer: 'Sofia Davis', email: 'sofia.davis@email.com', amount: 75.75, status: 'Cancelled' },
+    { id: 'ORD001', customer: 'Olivia Martin', status: 'Delivered', total: '$49.99' },
+    { id: 'ORD002', customer: 'Jackson Lee', status: 'Processing', total: '$129.50' },
+    { id: 'ORD003', customer: 'Isabella Nguyen', status: 'Shipped', total: '$32.00' },
+    { id: 'ORD004', customer: 'William Kim', status: 'Delivered', total: '$250.00' },
 ];
 
+const activityLog = [
+    { user: 'Admin User', action: 'Updated product "Wireless Headphones"', time: '2h ago' },
+    { user: 'Manager Alex', action: 'Changed order ORD002 status to "Processing"', time: '3h ago' },
+    { user: 'Admin User', action: 'Added new product "Leather Wallet"', time: '5h ago' },
+];
 
 export default function AdminDashboard() {
   return (
     <div className="space-y-6">
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 className="text-3xl font-bold font-headline">Dashboard</h1>
+            <p className="text-muted-foreground">An overview of your store's performance.</p>
+        </div>
+        <Button>
+            <Download className="mr-2 h-4 w-4" />
+            Download Report
+        </Button>
+       </div>
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -55,104 +70,147 @@ export default function AdminDashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Orders Today</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">+25</div>
+            <p className="text-xs text-muted-foreground">+10% from yesterday</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">New Customers</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+2350</div>
-            <p className="text-xs text-muted-foreground">+180.1% from last month</p>
+            <div className="text-2xl font-bold">+120</div>
+            <p className="text-xs text-muted-foreground">+5% from last week</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className='border-destructive/50'>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sales</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+12,234</div>
-            <p className="text-xs text-muted-foreground">+19% from last month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+            <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">+2 since last hour</p>
+            <div className="text-2xl font-bold text-destructive">5</div>
+            <p className="text-xs text-muted-foreground">Products running low</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
+      <Card>
+        <CardHeader>
+          <CardTitle>Sales Trends</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={{}} className="h-[250px] w-full">
+            <AreaChart data={salesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="date" stroke="" tickLine={false} axisLine={false} tickMargin={8} />
+              <YAxis stroke="" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `$${value / 1000}k`} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+              <Area type="monotone" dataKey="sales" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSales)" />
+            </AreaChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Sales Overview</CardTitle>
-            <CardDescription>An overview of your sales performance for the year.</CardDescription>
+            <CardTitle>Top Selling Products</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px] w-full">
-              <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <defs>
-                    <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-total)" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="var(--color-total)" stopOpacity={0}/>
-                    </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="month"
-                  stroke=""
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  tickFormatter={(value) => value.slice(0, 3)}
-                />
-                 <YAxis stroke="" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `$${value / 1000}k`} />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent indicator="dot" />}
-                />
-                <Area type="monotone" dataKey="total" stroke="var(--color-total)" fillOpacity={1} fill="url(#colorTotal)" />
-              </AreaChart>
+            <ChartContainer config={{}} className="h-[300px] w-full">
+                <BarChart data={topProductsData} layout="vertical" margin={{ left: 20, right: 30 }}>
+                    <CartesianGrid horizontal={false} />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} stroke="" width={100} />
+                    <ChartTooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent />} />
+                    <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>
-        <Card className="lg:col-span-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Category Performance</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <ChartContainer config={{}} className="h-[300px] w-full">
+                <PieChart>
+                    <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                    <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={60} strokeWidth={5}>
+                         {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                    </Pie>
+                </PieChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+       <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
           <CardHeader>
             <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>A list of the most recent orders.</CardDescription>
           </CardHeader>
           <CardContent>
              <Table>
                 <TableHeader>
                     <TableRow>
+                        <TableHead>Order ID</TableHead>
                         <TableHead>Customer</TableHead>
-                        <TableHead>Amount</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {recentOrders.map((order) => (
-                        <TableRow key={order.id}>
+                        <TableRow key={order.id} className="hover:bg-muted/50 cursor-pointer">
+                            <TableCell className="font-medium">{order.id}</TableCell>
+                            <TableCell>{order.customer}</TableCell>
                             <TableCell>
-                                <div className="font-medium">{order.customer}</div>
-                                <div className="text-sm text-muted-foreground">{order.email}</div>
+                                <Badge 
+                                variant={
+                                    order.status === 'Delivered' ? 'default' : 
+                                    order.status === 'Processing' ? 'secondary' : 
+                                    'outline'
+                                }
+                                >{order.status}</Badge>
                             </TableCell>
-                            <TableCell>${order.amount.toFixed(2)}</TableCell>
-                            <TableCell>
-                                <Badge variant={
-                                    order.status === 'Shipped' ? 'default' :
-                                    order.status === 'Processing' ? 'secondary' :
-                                    order.status === 'Delivered' ? 'outline' :
-                                    'destructive'
-                                }>{order.status}</Badge>
-                            </TableCell>
+                            <TableCell className="text-right">{order.total}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             {activityLog.map((activity, index) => (
+                <div key={index} className="flex items-start gap-3">
+                    <div className="bg-muted rounded-full p-2">
+                        <Activity className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                        <p className="text-sm" dangerouslySetInnerHTML={{ __html: activity.action.replace(/"(.*?)"/g, '<span class="font-semibold text-foreground">"$1"</span>') }} />
+                        <p className="text-xs text-muted-foreground">{activity.user} &middot; {activity.time}</p>
+                    </div>
+                </div>
+             ))}
           </CardContent>
         </Card>
       </div>
