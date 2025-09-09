@@ -3,16 +3,46 @@
 
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ShoppingBag, Zap } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import ProductCard from '@/components/product-card';
 import { products } from '@/lib/placeholder-data';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
+
+const heroContent = [
+  {
+    image: 'https://picsum.photos/1600/900?random=13',
+    hint: 'fashion store',
+    headline: 'Style Meets Simplicity',
+    subtext: 'Discover curated collections of the finest products, delivered with speed and care. Your next favorite thing is just a click away.',
+  },
+  {
+    image: 'https://picsum.photos/1600/900?random=14',
+    hint: 'electronics gadgets',
+    headline: 'Tech for a Better Life',
+    subtext: 'Explore the latest in cutting-edge technology. High-performance gadgets to simplify and enhance your world.',
+  },
+  {
+    image: 'https://picsum.photos/1600/900?random=15',
+    hint: 'modern furniture',
+    headline: 'Elegance in Every Detail',
+    subtext: 'Transform your space with our beautifully crafted home goods. Where design and comfort live in perfect harmony.',
+  },
+];
 
 export default function LandingPage() {
+  const [heroIndex, setHeroIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeroIndex((prevIndex) => (prevIndex + 1) % heroContent.length);
+    }, 7000); // Change hero content every 7 seconds
+    return () => clearInterval(interval);
+  }, []);
+  
   const featuredProducts = useMemo(() => products.slice(0, 3), []);
 
   const heroRef = useRef<HTMLElement>(null);
@@ -47,6 +77,22 @@ export default function LandingPage() {
     },
   };
 
+  const buttonVariants = {
+    hidden: { y: -50, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 100,
+        damping: 10,
+        delay: 0.4
+      },
+    },
+  };
+
+  const currentHero = heroContent[heroIndex];
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header searchQuery="" setSearchQuery={() => {}} />
@@ -57,57 +103,76 @@ export default function LandingPage() {
           ref={heroRef}
           className="relative h-screen min-h-[600px] flex items-center justify-center text-center text-white overflow-hidden"
         >
-          <motion.div
-            className="absolute inset-0"
-            style={{
-              scale: heroImageScale,
-            }}
-          >
-            <Image
-              src="https://picsum.photos/1600/900?random=13"
-              alt="Hero background"
-              fill
-              className="object-cover"
-              quality={100}
-              priority
-              data-ai-hint="fashion store"
-            />
-             <div className="absolute inset-0 bg-black/50" />
-          </motion.div>
+          <AnimatePresence initial={false}>
+            <motion.div
+              key={heroIndex}
+              className="absolute inset-0"
+              initial={{ x: '100%', opacity: 0 }}
+              animate={{ x: '0%', opacity: 1 }}
+              exit={{ x: '-100%', opacity: 0 }}
+              transition={{ duration: 1, ease: [0.43, 0.13, 0.23, 0.96] }}
+            >
+              <motion.div
+                className="absolute inset-0"
+                style={{
+                  scale: heroImageScale,
+                }}
+              >
+                <Image
+                  src={currentHero.image}
+                  alt="Hero background"
+                  fill
+                  className="object-cover"
+                  quality={100}
+                  priority
+                  data-ai-hint={currentHero.hint}
+                />
+                <div className="absolute inset-0 bg-black/50" />
+              </motion.div>
+            </motion.div>
+          </AnimatePresence>
+
           <motion.div 
             className="relative max-w-4xl px-4"
             style={{
                 opacity: heroTextOpacity,
                 y: heroTextY,
             }}
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
           >
-            <motion.h1
-              className="font-headline text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight"
-              variants={itemVariants}
-            >
-              Style Meets Simplicity
-            </motion.h1>
-            <motion.p
-              className="mt-4 text-lg md:text-xl max-w-2xl mx-auto"
-              variants={itemVariants}
-            >
-              Discover curated collections of the finest products, delivered with speed and care. Your next favorite thing is just a click away.
-            </motion.p>
-            <motion.div className="mt-8 flex justify-center gap-4" variants={itemVariants}>
-              <Button asChild size="lg" className="font-bold">
-                <Link href="/products">
-                  Shop Now <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="secondary" className="font-bold">
-                <Link href="#featured">
-                  See Featured
-                </Link>
-              </Button>
-            </motion.div>
+            <AnimatePresence mode="wait">
+              <motion.div
+                 key={`text-${heroIndex}`}
+                 initial="hidden"
+                 animate="visible"
+                 exit="hidden"
+                 variants={containerVariants}
+              >
+                <motion.h1
+                  className="font-headline text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight"
+                  variants={itemVariants}
+                >
+                  {currentHero.headline}
+                </motion.h1>
+                <motion.p
+                  className="mt-4 text-lg md:text-xl max-w-2xl mx-auto"
+                  variants={itemVariants}
+                >
+                  {currentHero.subtext}
+                </motion.p>
+                <motion.div className="mt-8 flex justify-center gap-4" variants={buttonVariants}>
+                  <Button asChild size="lg" className="font-bold">
+                    <Link href="/products">
+                      Shop Now <ArrowRight className="ml-2 h-5 w-5" />
+                    </Link>
+                  </Button>
+                  <Button asChild size="lg" variant="secondary" className="font-bold">
+                    <Link href="#featured">
+                      See Featured
+                    </Link>
+                  </Button>
+                </motion.div>
+              </motion.div>
+            </AnimatePresence>
           </motion.div>
         </motion.section>
 
