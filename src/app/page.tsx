@@ -38,7 +38,13 @@ export default function LandingPage() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setHeroIndex((prevIndex) => (prevIndex + 1) % heroContent.length);
+      setHeroIndex((prevIndex) => {
+        let nextIndex;
+        do {
+          nextIndex = Math.floor(Math.random() * heroContent.length);
+        } while (nextIndex === prevIndex);
+        return nextIndex;
+      });
     }, 7000); // Change hero content every 7 seconds
     return () => clearInterval(interval);
   }, []);
