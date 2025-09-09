@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ShoppingCart, User, Search, Menu } from 'lucide-react';
+import { ShoppingCart, Search, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/icons';
@@ -53,9 +53,6 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" aria-label="My Account">
-            <User className="h-6 w-6" />
-          </Button>
           <Button variant="ghost" size="icon" aria-label="Shopping Cart">
             <ShoppingCart className="h-6 w-6" />
           </Button>
