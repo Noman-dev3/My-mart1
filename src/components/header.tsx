@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { ShoppingCart, Search, Menu } from 'lucide-react';
+import { Search, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/icons';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { usePathname } from 'next/navigation';
+import { CartSheet } from '@/components/cart-sheet';
 
 type HeaderProps = {
   searchQuery: string;
@@ -53,9 +54,7 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" aria-label="Shopping Cart">
-            <ShoppingCart className="h-6 w-6" />
-          </Button>
+          <CartSheet />
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>

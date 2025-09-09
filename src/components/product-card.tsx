@@ -6,12 +6,27 @@ import type { Product } from '@/lib/placeholder-data';
 import ProductRating from '@/components/product-rating';
 import { cn } from '@/lib/utils';
 import { ShoppingCart } from 'lucide-react';
+import { useContext } from 'react';
+import { CartContext } from '@/context/cart-context';
+import { useToast } from '@/hooks/use-toast';
 
 type ProductCardProps = {
   product: Product;
 };
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const { addToCart } = useContext(CartContext);
+  const { toast } = useToast();
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    addToCart(product);
+    toast({
+      title: "Added to cart",
+      description: `${product.name} has been added to your cart.`,
+    });
+  };
+
   return (
     <Card className="flex flex-col overflow-hidden h-full rounded-lg shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
       <CardHeader className="p-0 border-b relative">
@@ -46,7 +61,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <p className="text-xl font-bold font-headline text-primary">
           ${product.price.toFixed(2)}
         </p>
-        <Button size="icon" variant="outline" disabled={!product.inStock} aria-label="Add to cart">
+        <Button size="icon" variant="outline" disabled={!product.inStock} aria-label="Add to cart" onClick={handleAddToCart}>
           <ShoppingCart className="h-5 w-5" />
         </Button>
       </CardFooter>

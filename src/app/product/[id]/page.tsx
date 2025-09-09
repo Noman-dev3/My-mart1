@@ -13,12 +13,16 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import ProductCard from '@/components/product-card';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useContext } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { CartContext } from '@/context/cart-context';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const product = products.find((p) => p.id === id);
+  const { addToCart } = useContext(CartContext);
+  const { toast } = useToast();
 
   const relatedProducts = useMemo(() => {
     if (!product) return [];
@@ -51,6 +55,16 @@ export default function ProductDetailPage() {
       opacity: 1,
       transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
     },
+  };
+  
+  const handleAddToCart = () => {
+    if (product) {
+      addToCart(product);
+      toast({
+        title: "Added to cart",
+        description: `${product.name} has been added to your cart.`,
+      });
+    }
   };
 
   if (!product) {
@@ -124,7 +138,7 @@ export default function ProductDetailPage() {
 
               <motion.div className="mt-8 flex flex-wrap items-center gap-6" variants={itemVariants}>
                 <p className="text-4xl font-bold font-headline text-primary">${product.price.toFixed(2)}</p>
-                <Button size="lg" disabled={!product.inStock} className="font-bold">
+                <Button size="lg" disabled={!product.inStock} className="font-bold" onClick={handleAddToCart}>
                   <ShoppingCart className="mr-2 h-5 w-5" />
                   Add to Cart
                 </Button>
