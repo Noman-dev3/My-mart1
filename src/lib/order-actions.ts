@@ -1,18 +1,20 @@
+
 'use server';
 
 import { promises as fs } from 'fs';
 import path from 'path';
 import { type CartItem } from '@/context/cart-context';
 
-type Order = {
+export type Order = {
     id: string;
     customer: {
         name: string;
         email: string;
+        phone: string;
     };
     items: CartItem[];
     total: number;
-    status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered';
+    status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
     date: string;
 };
 
@@ -40,7 +42,7 @@ async function sendAdminNotification(order: Order) {
 
 
 export async function placeOrder(data: {
-  customer: { name: string; email: string };
+  customer: { name: string; email: string; phone: string; };
   items: CartItem[];
   total: number;
 }) {
@@ -85,6 +87,20 @@ export async function getRecentOrders() {
     } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
             return []; // No orders file yet, return empty array
+        }
+        throw error;
+    }
+}
+
+export async function getAllOrders(): Promise<Order[]> {
+    const filePath = path.join(process.cwd(), 'src', 'lib', 'orders.json');
+    try {
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        const orders: Order[] = JSON.parse(fileContent);
+        return orders;
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return [];
         }
         throw error;
     }

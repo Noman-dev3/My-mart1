@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useContext } from 'react';
@@ -63,7 +64,7 @@ export default function CheckoutPage() {
         description: 'Thank you for your purchase. Your order is being processed.',
       });
       clearCart();
-      router.push('/admin');
+      router.push('/admin/orders');
     } catch (error) {
       toast({
         title: 'Order Failed',

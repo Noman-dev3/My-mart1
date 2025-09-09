@@ -1,7 +1,8 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, Package, CreditCard, Users, Download, Activity, ShoppingCart } from 'lucide-react';
+import { DollarSign, Package, Users, Download, Activity, ShoppingCart } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -9,7 +10,8 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Area, 
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { getRecentOrders } from '@/lib/order-actions';
-import type { CartItem } from '@/context/cart-context';
+import type { Order as OrderType } from '@/lib/order-actions';
+import Link from 'next/link';
 
 const salesData = [
   { date: '2023-01', sales: 4000 }, { date: '2023-02', sales: 3000 },
@@ -32,19 +34,6 @@ const categoryData = [
     { name: 'Home Goods', value: 10, color: 'hsl(var(--chart-4))' },
 ];
 
-type Order = {
-    id: string;
-    customer: {
-        name: string;
-        email: string;
-    };
-    items: CartItem[];
-    total: number;
-    status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered';
-    date: string;
-};
-
-
 const activityLog = [
     { user: 'Admin User', action: 'Updated product "Wireless Headphones"', time: '2h ago' },
     { user: 'Manager Alex', action: 'Changed order ORD002 status to "Processing"', time: '3h ago' },
@@ -52,7 +41,7 @@ const activityLog = [
 ];
 
 export default function AdminDashboard() {
-  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [recentOrders, setRecentOrders] = useState<OrderType[]>([]);
 
   useEffect(() => {
     async function fetchOrders() {
@@ -173,7 +162,7 @@ export default function AdminDashboard() {
                         ))}
                     </Pie>
                 </PieChart>
-            </ChartContainer>
+            </Container>
           </CardContent>
         </Card>
       </div>
@@ -182,6 +171,7 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Orders</CardTitle>
+            <CardDescription>You have {recentOrders.length} recent orders.</CardDescription>
           </CardHeader>
           <CardContent>
              <Table>
@@ -195,7 +185,8 @@ export default function AdminDashboard() {
                 </TableHeader>
                 <TableBody>
                     {recentOrders.map((order) => (
-                        <TableRow key={order.id} className="hover:bg-muted/50 cursor-pointer">
+                        <TableRow key={order.id} className="hover:bg-muted/50">
+                          <Link href="/admin/orders" className="contents">
                             <TableCell className="font-medium">{order.id}</TableCell>
                             <TableCell>{order.customer.name}</TableCell>
                             <TableCell>
@@ -208,6 +199,7 @@ export default function AdminDashboard() {
                                 >{order.status}</Badge>
                             </TableCell>
                             <TableCell className="text-right">${order.total.toFixed(2)}</TableCell>
+                          </Link>
                         </TableRow>
                     ))}
                 </TableBody>
