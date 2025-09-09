@@ -1,3 +1,4 @@
+
 'use client';
 
 import Header from '@/components/header';
@@ -57,7 +58,7 @@ export default function LandingPage() {
           className="relative h-screen min-h-[600px] flex items-center justify-center text-center text-white overflow-hidden"
         >
           <motion.div
-            className="absolute inset-0 -z-10"
+            className="absolute inset-0"
             style={{
               scale: heroImageScale,
             }}
@@ -74,7 +75,7 @@ export default function LandingPage() {
              <div className="absolute inset-0 bg-black/50" />
           </motion.div>
           <motion.div 
-            className="max-w-4xl px-4"
+            className="relative max-w-4xl px-4"
             style={{
                 opacity: heroTextOpacity,
                 y: heroTextY,
