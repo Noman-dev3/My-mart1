@@ -2,7 +2,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, Package, CreditCard, Users, Download, Activity } from 'lucide-react';
+import { DollarSign, Package, CreditCard, Users, Download, Activity, ShoppingCart } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
               </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="date" stroke="" tickLine={false} axisLine={false} tickMargin={8} />
-              <YAxis stroke="" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `$${value / 1000}k`} />
+              <YAxis stroke="" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `$${'${value / 1000}'}k`} />
               <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
               <Area type="monotone" dataKey="sales" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSales)" />
             </AreaChart>
