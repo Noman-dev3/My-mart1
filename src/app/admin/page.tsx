@@ -204,21 +204,33 @@ export default function AdminDashboard() {
                     </TableHeader>
                     <TableBody>
                         {recentOrders.map((order) => (
-                            <TableRow key={order.id} className="hover:bg-muted/50">
-                            <Link href="/admin/orders" className="contents">
-                                <TableCell className="font-medium">{order.id.slice(0, 8)}...</TableCell>
-                                <TableCell>{order.customer.name}</TableCell>
-                                <TableCell>
-                                    <Badge 
-                                    variant={
-                                        order.status === 'Delivered' ? 'default' : 
-                                        order.status === 'Processing' ? 'secondary' : 
-                                        'outline'
-                                    }
-                                    >{order.status}</Badge>
+                            <TableRow key={order.id} className="hover:bg-muted/50 cursor-pointer">
+                                <TableCell className="font-medium">
+                                    <Link href="/admin/orders" className="block w-full h-full">
+                                        {order.id.slice(0, 8)}...
+                                    </Link>
                                 </TableCell>
-                                <TableCell className="text-right">PKR {order.total.toFixed(2)}</TableCell>
-                            </Link>
+                                <TableCell>
+                                    <Link href="/admin/orders" className="block w-full h-full">
+                                        {order.customer.name}
+                                    </Link>
+                                </TableCell>
+                                <TableCell>
+                                    <Link href="/admin/orders" className="block w-full h-full">
+                                        <Badge 
+                                        variant={
+                                            order.status === 'Delivered' ? 'default' : 
+                                            order.status === 'Processing' ? 'secondary' : 
+                                            'outline'
+                                        }
+                                        >{order.status}</Badge>
+                                    </Link>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Link href="/admin/orders" className="block w-full h-full">
+                                        PKR {order.total.toFixed(2)}
+                                    </Link>
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
