@@ -4,19 +4,21 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { getProducts as fetchProducts, type Product } from '@/lib/placeholder-data';
+import { type Product } from '@/lib/product-actions';
 import ProductListing from '@/components/product-listing';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    const loadProducts = async () => {
-        const fetched = await fetchProducts();
-        setProducts(fetched);
-    }
-    loadProducts();
+    const q = query(collection(db, 'products'), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+    }, (error) => console.error("Failed to listen to products:", error));
+    return () => unsubscribe();
   }, [])
 
   return (

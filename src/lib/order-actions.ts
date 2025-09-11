@@ -3,7 +3,7 @@
 
 import { type CartItem } from '@/context/cart-context';
 import { db } from './firebase';
-import { collection, getDocs, doc, addDoc, updateDoc, query, orderBy, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, updateDoc, query, orderBy, serverTimestamp, limit, onSnapshot, getDoc } from 'firebase/firestore';
 
 export type Order = {
     id: string;
@@ -100,17 +100,30 @@ export async function getAllOrders(): Promise<Order[]> {
 }
 
 export async function getOrderById(orderId: string): Promise<Order | undefined> {
-    const orders = await readOrders();
-    return orders.find(order => order.id === orderId);
+    const orderDoc = await getDoc(doc(db, 'orders', orderId));
+    if (!orderDoc.exists()) {
+        return undefined;
+    }
+    const data = orderDoc.data();
+    return {
+        id: orderDoc.id,
+        ...data,
+        date: data.date.toDate().toISOString(),
+    } as Order;
 }
 
-export async function updateOrderStatus(orderId: string, status: Order['status']): Promise<Order> {
+export async function updateOrderStatus(orderId: string, status: Order['status']) {
     const orderRef = doc(db, 'orders', orderId);
     await updateDoc(orderRef, { status });
 
-    const orders = await readOrders();
-    const updatedOrder = orders.find(o => o.id === orderId);
-    if (!updatedOrder) throw new Error('Order not found after update');
-    
-    return updatedOrder;
+    const updatedDoc = await getDoc(orderRef);
+    const updatedData = updatedDoc.data();
+
+     if (!updatedData) throw new Error('Order not found after update');
+
+    return {
+        id: updatedDoc.id,
+        ...updatedData,
+        date: updatedData.date.toDate().toISOString()
+    } as Order;
 }

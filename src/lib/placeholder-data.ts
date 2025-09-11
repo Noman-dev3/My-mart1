@@ -1,23 +1,16 @@
 
-'use server';
-
-import { getAllProducts } from './product-actions';
-import type { Product } from './product-actions';
+import { getCategories, getBrands, getAllProducts, type Product } from './product-actions';
 
 export type { Product };
 
-export async function getProducts(): Promise<Product[]> {
-  return getAllProducts();
+// These functions remain as they fetch derived data, which is fine to do on the server.
+// The components using them will be client components that call these server actions.
+export async function getCategoryList(): Promise<string[]> {
+    return await getCategories();
 }
 
-export async function getCategories(): Promise<string[]> {
-    const products = await getProducts();
-    const categories = [...new Set(products.map((p) => p.category))];
-    return categories;
+export async function getBrandList(): Promise<string[]> {
+    return await getBrands();
 }
 
-export async function getBrands(): Promise<string[]> {
-    const products = await getProducts();
-    const brands = [...new Set(products.map((p) => p.brand))];
-    return brands;
-}
+    

@@ -2,9 +2,8 @@
 'use server';
 
 import { z } from 'zod';
-import { revalidatePath } from 'next/cache';
 import { db } from './firebase';
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, getDoc } from 'firebase/firestore';
 
 // We define the Product type here as this file is the source of truth for product data structures.
 export type Product = {
@@ -40,9 +39,25 @@ export async function getAllProducts(): Promise<Product[]> {
 }
 
 export async function getProductById(productId: string): Promise<Product | undefined> {
-    const products = await getAllProducts();
-    return products.find(p => p.id === productId);
+    const productDoc = await getDoc(doc(db, 'products', productId));
+    if (!productDoc.exists()) {
+        return undefined;
+    }
+    return { id: productDoc.id, ...productDoc.data() } as Product;
 }
+
+export async function getCategories(): Promise<string[]> {
+    const products = await getAllProducts();
+    const categories = [...new Set(products.map((p) => p.category))];
+    return categories;
+}
+
+export async function getBrands(): Promise<string[]> {
+    const products = await getAllProducts();
+    const brands = [...new Set(products.map((p) => p.brand))];
+    return brands;
+}
+
 
 const productSchema = z.object({
     name: z.string().min(3, "Name must be at least 3 characters long."),
@@ -64,27 +79,17 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         createdAt: serverTimestamp(),
     };
     const docRef = await addDoc(productsCollection, newProduct);
-    revalidatePath('/');
-    revalidatePath('/products');
-    revalidatePath('/admin/products');
     return { ...newProduct, id: docRef.id };
 }
 
 export async function updateProduct(productId: string, data: z.infer<typeof productSchema>) {
     const productRef = doc(db, 'products', productId);
     await updateDoc(productRef, data);
-    revalidatePath('/');
-    revalidatePath('/products');
-    revalidatePath(`/product/${productId}`);
-    revalidatePath('/admin/products');
     return { id: productId, ...data };
 }
 
 export async function deleteProduct(productId: string) {
     const productRef = doc(db, 'products', productId);
     await deleteDoc(productRef);
-    revalidatePath('/');
-    revalidatePath('/products');
-    revalidatePath('/admin/products');
     return { success: true };
 }

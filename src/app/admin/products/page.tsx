@@ -48,11 +48,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { addProduct, deleteProduct, getAllProducts, updateProduct, type Product } from '@/lib/product-actions';
+import { addProduct, deleteProduct, updateProduct, type Product } from '@/lib/product-actions';
 import { MoreHorizontal, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import ProductForm from './product-form';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,22 +67,21 @@ export default function ProductsPage() {
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchProducts = async () => {
-    setIsLoading(true);
-    try {
-      const fetchedProducts = await getAllProducts();
-      setProducts(fetchedProducts);
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-      toast({ title: "Error", description: "Failed to fetch products.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    setIsLoading(true);
+    const q = query(collection(db, 'products'), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        setProducts(fetchedProducts);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Failed to fetch products:", error);
+        toast({ title: "Error", description: "Failed to fetch products.", variant: "destructive" });
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
   
   const handleEdit = (product: Product) => {
     setSelectedProduct(product);
@@ -97,7 +98,7 @@ export default function ProductsPage() {
     try {
         await deleteProduct(productToDelete);
         toast({ title: "Success", description: "Product deleted successfully." });
-        fetchProducts();
+        // Real-time listener will update the list
     } catch (error) {
         toast({ title: "Error", description: "Failed to delete product.", variant: "destructive" });
     } finally {
@@ -115,7 +116,7 @@ export default function ProductsPage() {
             await addProduct(values);
             toast({ title: "Success", description: "Product added successfully." });
         }
-        fetchProducts();
+        // Real-time listener will update the list
         setIsFormOpen(false);
         setSelectedProduct(undefined);
     } catch (error) {
@@ -359,4 +360,3 @@ export default function ProductsPage() {
     </Dialog>
   );
 }
-

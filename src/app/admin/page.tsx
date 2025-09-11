@@ -9,9 +9,11 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Area, AreaChart, Pie, PieChart, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
-import { getRecentOrders } from '@/lib/order-actions';
-import type { Order as OrderType } from '@/lib/order-actions';
+import { type Order as OrderType } from '@/lib/order-actions';
 import Link from 'next/link';
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 
 const salesData = [
   { date: '2023-01', sales: 4000 }, { date: '2023-02', sales: 3000 },
@@ -44,11 +46,21 @@ export default function AdminDashboard() {
   const [recentOrders, setRecentOrders] = useState<OrderType[]>([]);
 
   useEffect(() => {
-    async function fetchOrders() {
-        const orders = await getRecentOrders();
+    const q = query(collection(db, 'orders'), orderBy("date", "desc"), limit(5));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const orders = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                date: data.date?.toDate().toISOString() || new Date().toISOString(),
+            } as OrderType;
+        });
         setRecentOrders(orders);
-    }
-    fetchOrders();
+    }, (error) => {
+        console.error("Failed to listen to recent orders:", error);
+    });
+    return () => unsubscribe();
   }, [])
 
 

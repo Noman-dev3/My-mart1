@@ -2,8 +2,8 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import type { Product } from '@/lib/placeholder-data';
-import { getCategories, getBrands } from '@/lib/placeholder-data';
+import type { Product } from '@/lib/product-actions';
+import { getCategories, getBrands } from '@/lib/product-actions';
 import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -69,8 +69,10 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
         break;
       case 'newest':
       default:
-        // Assuming higher ID is newer for mock data
-        result.sort((a, b) => (b.id > a.id ? 1 : -1));
+        // Firestore timestamp objects can be compared directly if they exist
+        if (result.length > 0 && result[0].createdAt) {
+          result.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+        }
         break;
     }
 
@@ -237,3 +239,5 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
     </div>
   );
 }
+
+    

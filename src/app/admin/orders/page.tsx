@@ -58,11 +58,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { getAllOrders, updateOrderStatus, type Order } from '@/lib/order-actions';
-import { ChevronDown, File, ListFilter, MoreHorizontal, Eye, Truck, CheckCircle, XCircle } from 'lucide-react';
+import { updateOrderStatus, type Order } from '@/lib/order-actions';
+import { ChevronDown, File, ListFilter, MoreHorizontal, Eye, Truck, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -72,22 +74,28 @@ export default function OrdersPage() {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const { toast } = useToast();
 
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    try {
-      const fetchedOrders = await getAllOrders();
-      setOrders(fetchedOrders);
-    } catch (error) {
-      console.error("Failed to fetch orders:", error);
-      toast({ title: "Error", description: "Failed to fetch orders.", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    setIsLoading(true);
+    const q = query(collection(db, 'orders'), orderBy("date", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedOrders = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                date: data.date?.toDate().toISOString() || new Date().toISOString(),
+            } as Order;
+        });
+        setOrders(fetchedOrders);
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Failed to fetch orders:", error);
+        toast({ title: "Error", description: "Failed to fetch orders.", variant: "destructive" });
+        setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
 
   const handleUpdateStatus = async (orderId: string, status: Order['status']) => {
     try {
@@ -96,7 +104,7 @@ export default function OrdersPage() {
             title: "Success",
             description: `Order ${orderId} has been updated to "${status}".`
         });
-        fetchOrders(); // Refresh data
+        // No need to fetch orders, real-time listener will update it
     } catch (error) {
         toast({
             title: "Error",
@@ -277,7 +285,7 @@ export default function OrdersPage() {
             )
         },
     },
- ], [fetchOrders])
+ ], [])
 
   const table = useReactTable({
     data: orders,

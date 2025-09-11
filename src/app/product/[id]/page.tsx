@@ -7,18 +7,19 @@ import { motion } from 'framer-motion';
 import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2 } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { getProducts, type Product } from '@/lib/placeholder-data';
+import { getProductById, type Product } from '@/lib/product-actions';
 import ProductRating from '@/components/product-rating';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import ProductCard from '@/components/product-card';
-import Link from 'next/link';
 import { useState, useEffect, useContext } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CartContext } from '@/context/cart-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProductRecommendations } from '@/ai/flows/product-recommendations';
 import { Skeleton } from '@/components/ui/skeleton';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -32,15 +33,22 @@ export default function ProductDetailPage() {
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-        const products = await getProducts();
-        setAllProducts(products);
-        const currentProduct = products.find((p) => p.id === id);
+    if (!id) return;
+    const fetchProduct = async () => {
+        const currentProduct = await getProductById(id as string);
         setProduct(currentProduct);
     };
-    fetchProducts();
+    fetchProduct();
   }, [id]);
 
+
+  useEffect(() => {
+    const q = query(collection(db, 'products'), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        setAllProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+    }, (error) => console.error("Failed to listen to all products:", error));
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -107,11 +115,9 @@ export default function ProductDetailPage() {
         <Header searchQuery="" setSearchQuery={() => {}} />
         <main className="flex-grow flex items-center justify-center text-center">
           <div>
-            <h1 className="text-3xl font-bold font-headline">Product not found</h1>
-            <p className="text-muted-foreground mt-2">Sorry, we couldn't find the product you're looking for.</p>
-            <Button asChild className="mt-6">
-              <Link href="/products">Go to Products</Link>
-            </Button>
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+            <h1 className="text-3xl font-bold font-headline mt-4">Loading Product...</h1>
+            <p className="text-muted-foreground mt-2">Please wait a moment.</p>
           </div>
         </main>
         <Footer />
@@ -261,5 +267,3 @@ export default function ProductDetailPage() {
     </div>
   );
 }
-
-    

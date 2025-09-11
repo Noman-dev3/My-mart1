@@ -9,8 +9,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import ProductCard from '@/components/product-card';
-import { getProducts, type Product } from '@/lib/placeholder-data';
+import { type Product } from '@/lib/product-actions';
 import { useMemo, useRef, useState, useEffect } from 'react';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
 
 const heroContent = [
   {
@@ -38,11 +41,11 @@ export default function LandingPage() {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    async function loadProducts() {
-        const fetchedProducts = await getProducts();
-        setProducts(fetchedProducts);
-    }
-    loadProducts();
+    const q = query(collection(db, 'products'), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+    }, (error) => console.error("Failed to listen to products:", error));
+    return () => unsubscribe();
   }, []);
 
 
