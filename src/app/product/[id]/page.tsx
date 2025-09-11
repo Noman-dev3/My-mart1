@@ -1,12 +1,14 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2, HelpCircle } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { getProductById, type Product } from '@/lib/product-actions';
+import { getProductById, type Product, askProductQuestion } from '@/lib/product-actions';
 import ProductRating from '@/components/product-rating';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -14,11 +16,23 @@ import ProductCard from '@/components/product-card';
 import { useState, useEffect, useContext } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CartContext } from '@/context/cart-context';
+import { AuthContext } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProductRecommendations } from '@/ai/flows/product-recommendations';
 import { Skeleton } from '@/components/ui/skeleton';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+
+const questionFormSchema = z.object({
+  text: z.string().min(10, "Question must be at least 10 characters.").max(500, "Question must be at most 500 characters."),
+});
+
+type QuestionFormValues = z.infer<typeof questionFormSchema>;
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -26,6 +40,7 @@ export default function ProductDetailPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
 
   const { addToCart } = useContext(CartContext);
+  const { user, loading: userLoading } = useContext(AuthContext);
   const { toast } = useToast();
 
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
@@ -241,25 +256,46 @@ export default function ProductDetailPage() {
                       </div>
                     </AccordionContent>
                   </AccordionItem>
-                   {answeredQuestions.length > 0 && (
-                    <AccordionItem value="qa">
-                        <AccordionTrigger>
-                        <div className="flex items-center gap-2 font-headline text-lg">
-                            <HelpCircle className="h-5 w-5" /> Questions &amp; Answers
-                        </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                        <div className="space-y-6 mt-2">
-                            {answeredQuestions.map((qa) => (
-                            <div key={qa.id}>
-                                <p className="font-semibold text-foreground">Q: {qa.text}</p>
-                                <p className="text-muted-foreground mt-1">A: {qa.answer}</p>
+                  <AccordionItem value="qa">
+                    <AccordionTrigger>
+                    <div className="flex items-center gap-2 font-headline text-lg">
+                        <HelpCircle className="h-5 w-5" /> Questions &amp; Answers
+                    </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        {answeredQuestions.length > 0 ? (
+                            <div className="space-y-6 mt-2">
+                                {answeredQuestions.map((qa) => (
+                                    <div key={qa.id}>
+                                        <p className="font-semibold text-foreground">Q: {qa.text}</p>
+                                        <p className="text-muted-foreground mt-1">A: {qa.answer}</p>
+                                    </div>
+                                ))}
                             </div>
-                            ))}
-                        </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                   )}
+                        ) : (
+                            <p className="text-sm text-muted-foreground mt-2">No answered questions yet. Be the first to ask!</p>
+                        )}
+                        
+                        <Separator className="my-6"/>
+
+                        {!userLoading && (
+                            user ? (
+                                <QuestionForm productId={product.id} user={user} onQuestionSubmitted={() => {
+                                    toast({ title: "Question Submitted!", description: "Your question has been sent and will be answered shortly." });
+                                }}/>
+                            ) : (
+                                <div className="text-center bg-muted/50 p-4 rounded-md">
+                                    <p className="text-sm text-muted-foreground">You must be logged in to ask a question.</p>
+                                    <Button asChild variant="link" className="p-0 h-auto">
+                                        <Link href={`/login?redirect=/product/${product.id}`}>
+                                            Login or Sign Up
+                                        </Link>
+                                    </Button>
+                                </div>
+                            )
+                        )}
+                    </AccordionContent>
+                  </AccordionItem>
                 </Accordion>
               </motion.div>
             </div>
@@ -287,3 +323,51 @@ export default function ProductDetailPage() {
     </div>
   );
 }
+
+function QuestionForm({ productId, user, onQuestionSubmitted }: { productId: string, user: any, onQuestionSubmitted: () => void }) {
+    const form = useForm<QuestionFormValues>({
+        resolver: zodResolver(questionFormSchema),
+        defaultValues: { text: "" }
+    });
+
+    const onSubmit = async (values: QuestionFormValues) => {
+        const result = await askProductQuestion({
+            productId,
+            text: values.text,
+            author: user.displayName || user.email,
+            authorId: user.uid,
+        });
+
+        if (result.success) {
+            form.reset();
+            onQuestionSubmitted();
+        } else {
+            form.setError("text", { type: "server", message: result.error });
+        }
+    }
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <h4 className="font-headline font-semibold">Ask a New Question</h4>
+                <FormField
+                    control={form.control}
+                    name="text"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormControl>
+                                <Textarea placeholder={`Ask a question about the ${name}...`} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? <Loader2 className="animate-spin mr-2"/> : null}
+                    Submit Question
+                </Button>
+            </form>
+        </Form>
+    );
+}
+

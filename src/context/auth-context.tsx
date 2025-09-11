@@ -12,12 +12,14 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   signOut: () => void;
+  uid: string | null;
 };
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signOut: () => {},
+  uid: null,
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -52,7 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const value = { user, loading, signOut };
+  const value = { user, loading, signOut, uid: user?.uid || null };
 
   return (
     <AuthContext.Provider value={value}>

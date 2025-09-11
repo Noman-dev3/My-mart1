@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -241,12 +242,11 @@ const QAndAItem = ({ question, onAnswerSubmit }: { question: Product['questions'
         <div className="p-4 border rounded-lg">
             <p className="text-sm font-semibold">{question.text}</p>
             <p className="text-xs text-muted-foreground">From: {question.author} on {new Date(question.date).toLocaleDateString()}</p>
-            {question.answer && (
+            {question.answer ? (
                 <p className="text-sm mt-2 pt-2 border-t text-green-700 bg-green-50 p-2 rounded-md">
                     <strong>A:</strong> {question.answer}
                 </p>
-            )}
-            {!question.answer && (
+            ) : (
                  <form onSubmit={handleSubmit} className="mt-2 pt-2 border-t">
                     <Textarea 
                         placeholder="Type your answer here..."

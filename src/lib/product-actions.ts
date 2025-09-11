@@ -3,7 +3,8 @@
 
 import { z } from 'zod';
 import { db } from './firebase';
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, getDoc, arrayUnion } from 'firebase/firestore';
+import { randomBytes } from 'crypto';
 
 // We define the Product type here as this file is the source of truth for product data structures.
 export type Product = {
@@ -27,6 +28,7 @@ export type Product = {
     questions: {
         id: string;
         author: string;
+        authorId: string;
         text: string;
         date: string;
         answer?: string;
@@ -83,12 +85,18 @@ const productSchema = z.object({
     category: z.enum(['Electronics', 'Groceries', 'Fashion', 'Home Goods']),
     brand: z.string().min(2, "Brand must be at least 2 characters long."),
     inStock: z.boolean(),
-    // We don't include questions in the base update schema, it's handled separately
 });
 
 const answerSchema = z.object({
     questionId: z.string(),
     answer: z.string().min(1, "Answer cannot be empty."),
+});
+
+const questionSchema = z.object({
+    productId: z.string(),
+    text: z.string().min(10, "Question must be at least 10 characters.").max(500, "Question cannot be more than 500 characters."),
+    author: z.string(),
+    authorId: z.string(),
 });
 
 
@@ -131,6 +139,34 @@ export async function answerProductQuestion(productId: string, data: z.infer<typ
 
     await updateDoc(productRef, { questions: updatedQuestions });
     return { success: true };
+}
+
+export async function askProductQuestion(data: z.infer<typeof questionSchema>) {
+    const { productId, text, author, authorId } = questionSchema.parse(data);
+
+    const productRef = doc(db, 'products', productId);
+    const productSnap = await getDoc(productRef);
+     if (!productSnap.exists()) {
+        throw new Error("Product not found");
+    }
+
+    const newQuestion = {
+        id: randomBytes(8).toString('hex'), // simple unique id
+        text,
+        author,
+        authorId,
+        date: new Date().toISOString(),
+    };
+
+    try {
+        await updateDoc(productRef, {
+            questions: arrayUnion(newQuestion)
+        });
+        return { success: true, question: newQuestion };
+    } catch(error) {
+        console.error("Error submitting question:", error);
+        return { success: false, error: "Failed to submit your question." };
+    }
 }
 
 
