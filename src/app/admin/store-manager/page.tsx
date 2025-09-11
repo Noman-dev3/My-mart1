@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,6 @@ import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getProductByBarcode, type Product } from '@/lib/product-actions';
-import JsBarcode from 'jsbarcode';
 
 // A version of product for the POS cart
 type ScannedProduct = {
@@ -28,6 +27,89 @@ export default function StoreManagerPage() {
   const [manualBarcode, setManualBarcode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Barcode scanner input handling
+  const barcodeBuffer = useRef<string[]>([]);
+  const barcodeTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const processBarcode = useCallback(async (barcode: string) => {
+    if (!barcode.trim()) return;
+    setIsSubmitting(true);
+
+    try {
+        const { data: product, error } = await getProductByBarcode(barcode.trim());
+
+        if (error || !product) {
+          toast({
+            variant: 'destructive',
+            title: 'Product Not Found',
+            description: `No product found with barcode: ${barcode}`,
+          });
+        } else {
+          setCart(prevCart => {
+            const existingItem = prevCart.find(item => item.id === product.id);
+            if (existingItem) {
+              return prevCart.map(item =>
+                item.id === product.id
+                  ? { ...item, quantity: item.quantity + 1 }
+                  : item
+              );
+            }
+            toast({ title: "Item Added", description: `${product.name} added to cart.` });
+            return [...prevCart, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
+          });
+        }
+    } catch(e) {
+        console.error("Error processing barcode:", e);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not process the barcode.',
+        });
+    } finally {
+        setManualBarcode('');
+        setIsSubmitting(false);
+    }
+  }, [toast]);
+  
+
+  // Effect for dedicated barcode scanner input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            if (barcodeBuffer.current.length > 0) {
+                processBarcode(barcodeBuffer.current.join(''));
+                barcodeBuffer.current = [];
+            }
+            return;
+        }
+
+        // Ignore control keys, function keys, etc.
+        if (e.key.length > 1) return;
+
+        barcodeBuffer.current.push(e.key);
+
+        if (barcodeTimeout.current) {
+            clearTimeout(barcodeTimeout.current);
+        }
+
+        barcodeTimeout.current = setTimeout(() => {
+            if (barcodeBuffer.current.length > 3) { // Typical barcode length check
+                processBarcode(barcodeBuffer.current.join(''));
+            }
+            barcodeBuffer.current = [];
+        }, 200); // Scanners type fast, 200ms timeout is generous
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        if (barcodeTimeout.current) {
+            clearTimeout(barcodeTimeout.current);
+        }
+    };
+  }, [processBarcode]);
+
   // Request camera permission on component mount
   useEffect(() => {
     async function getCameraPermission() {
@@ -60,40 +142,9 @@ export default function StoreManagerPage() {
     getCameraPermission();
   }, [toast]);
 
-  const addToCart = (product: Product) => {
-    setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === product.id);
-      if (existingItem) {
-        return prevCart.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prevCart, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
-    });
-    toast({ title: "Item Added", description: `${product.name} added to cart.` });
-  };
-
   const handleManualAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualBarcode.trim()) return;
-    setIsSubmitting(true);
-
-    const { data: product, error } = await getProductByBarcode(manualBarcode.trim());
-
-    if (error || !product) {
-      toast({
-        variant: 'destructive',
-        title: 'Product Not Found',
-        description: `No product found with barcode: ${manualBarcode}`,
-      });
-    } else {
-      addToCart(product);
-    }
-
-    setManualBarcode('');
-    setIsSubmitting(false);
+    processBarcode(manualBarcode);
   };
 
   const removeFromCart = (productId: string) => {
@@ -207,3 +258,5 @@ export default function StoreManagerPage() {
     </div>
   );
 }
+
+    
