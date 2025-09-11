@@ -274,6 +274,39 @@ export default function OrdersPage() {
 
   const statusOptions: Order['status'][] = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
+  const handleExport = () => {
+    const dataToExport = table.getFilteredRowModel().rows.map(row => row.original);
+    
+    if (dataToExport.length === 0) {
+      toast({ title: "No Data", description: "There is no data to export." });
+      return;
+    }
+
+    const headers = ["Order ID", "Customer Name", "Customer Email", "Status", "Total", "Date", "Payment Method"];
+    const csvContent = [
+      headers.join(','),
+      ...dataToExport.map(order => [
+        `"${order.id}"`,
+        `"${order.customer.name}"`,
+        `"${order.customer.email}"`,
+        order.status,
+        order.total,
+        format(new Date(order.date), 'yyyy-MM-dd HH:mm:ss'),
+        order.paymentMethod,
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `mymart_orders_export_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
 
   return (
     <>
@@ -284,7 +317,7 @@ export default function OrdersPage() {
                 <p className="text-muted-foreground">Manage all customer orders.</p>
             </div>
             <div className="flex gap-2 self-start sm:self-center">
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleExport}>
                     <File className="mr-2 h-4 w-4" />
                     Export
                 </Button>
@@ -516,7 +549,8 @@ export default function OrdersPage() {
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedOrder(null)}>Dismiss</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setSelectedOrder(null)}>Dismiss</Aler
+tDialogCancel>
             <AlertDialogAction onClick={handleCancelConfirm}>Continue</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
@@ -524,5 +558,3 @@ export default function OrdersPage() {
     </>
   );
 }
-
-    
