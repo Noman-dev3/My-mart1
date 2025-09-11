@@ -1,11 +1,22 @@
 import Link from 'next/link';
-import { Search, Menu } from 'lucide-react';
+import { Search, Menu, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/icons';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { usePathname } from 'next/navigation';
 import { CartSheet } from '@/components/cart-sheet';
+import { useContext } from 'react';
+import { AuthContext } from '@/context/auth-context';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 type HeaderProps = {
   searchQuery: string;
@@ -15,6 +26,7 @@ type HeaderProps = {
 export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
   const pathname = usePathname();
   const showSearch = pathname.startsWith('/products');
+  const { user, signOut, loading } = useContext(AuthContext);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -22,7 +34,6 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Potentially trigger a search action if needed, for now it filters live
   };
   
   return (
@@ -55,6 +66,47 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
 
         <div className="flex items-center gap-2">
           <CartSheet />
+          {loading ? null : user ? (
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-9 w-9">
+                        <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    My Orders
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut}>
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="hidden md:flex items-center gap-2">
+              <Button asChild variant="ghost">
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </div>
+          )}
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -83,10 +135,22 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
                         />
                       </form>
                     )}
-                    <nav className="flex flex-col gap-2">
+                    <nav className="flex flex-col gap-2 mb-auto">
                       <Link href="/" className="text-lg font-medium hover:text-primary transition-colors">Home</Link>
                       <Link href="/products" className="text-lg font-medium hover:text-primary transition-colors">Products</Link>
                     </nav>
+                     {user ? (
+                        <div className="border-t pt-4">
+                            <p className="font-medium">{user.displayName || 'User'}</p>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                            <Button onClick={signOut} className="w-full mt-4">Log Out</Button>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-2 border-t pt-4">
+                            <Button asChild className="w-full"><Link href="/login">Login</Link></Button>
+                            <Button asChild variant="outline" className="w-full"><Link href="/signup">Sign Up</Link></Button>
+                        </div>
+                    )}
                   </div>
                 </div>
               </SheetContent>
