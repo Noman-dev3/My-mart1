@@ -68,23 +68,27 @@ export async function placeOrder(data: {
   customer: { name: string; email: string; phone: string; address: string; };
   items: CartItem[];
   total: number;
-}) {
+}): Promise<Order> {
   const newOrder: Omit<Order, 'id'> = {
     customer: data.customer,
     items: data.items,
     total: data.total,
-    status: 'Processing',
+    status: 'Pending', // Changed to Pending for manual confirmation
     date: serverTimestamp(),
   };
 
-  // First, send the notification (or simulate it)
-  // This ensures that if the notification fails, we can handle it before saving the order
   await sendAdminNotification(newOrder);
 
-  // Then, save the order to the database
   const docRef = await addDoc(ordersCollection, newOrder);
+  
+  const savedOrder = await getDoc(doc(db, 'orders', docRef.id));
+  const savedData = savedOrder.data();
 
-  return { ...newOrder, id: docRef.id };
+  return { 
+    ...savedData,
+    id: docRef.id,
+    date: savedData?.date.toDate().toISOString() 
+  } as Order;
 }
 
 async function readOrders(): Promise<Order[]> {

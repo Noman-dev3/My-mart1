@@ -53,22 +53,22 @@ export default function CheckoutPage() {
     }
 
     try {
-      await placeOrder({
+      const newOrder = await placeOrder({
         customer: data,
         items: cartItems,
         total: cartTotal,
       });
 
       toast({
-        title: 'Order Placed!',
-        description: 'Thank you for your purchase. Your order is being processed.',
+        title: 'Order Submitted!',
+        description: 'Your order has been received. Please follow the instructions to confirm.',
       });
       clearCart();
-      router.push('/admin/orders');
+      router.push(`/order-confirmation/${newOrder.id}`);
     } catch (error) {
       toast({
         title: 'Order Failed',
-        description: 'There was a problem placing your order. Please try again.',
+        description: 'There was a problem submitting your order. Please try again.',
         variant: 'destructive',
       });
     }
@@ -153,7 +153,7 @@ export default function CheckoutPage() {
                   )}
                 />
                 <Button type="submit" size="lg" className="w-full font-bold" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Placing Order...' : `Place Order - $${cartTotal.toFixed(2)}`}
+                  {form.formState.isSubmitting ? 'Submitting Order...' : `Submit Order - $${cartTotal.toFixed(2)}`}
                 </Button>
               </form>
             </Form>
