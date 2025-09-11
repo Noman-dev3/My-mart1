@@ -6,15 +6,15 @@ import { DollarSign, Package, Users, Download, Activity, ShoppingCart, AlertTria
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { type Order } from '@/lib/order-actions';
-import { type Product } from '@/lib/product-actions';
 import Link from 'next/link';
-import { collection, query, orderBy, limit, onSnapshot, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, startOfDay, endOfDay, getMonth, getYear } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { format, subDays, startOfDay, endOfDay, getMonth, getYear } from 'date-fns';
+import { format } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Stats = {
   totalRevenue: number;
@@ -106,7 +106,7 @@ export default function AdminDashboard() {
           <Skeleton className="h-8 w-24" />
         ) : (
           <>
-            <div className={`text-2xl font-bold ${variant === 'destructive' && value > 0 ? 'text-destructive' : ''}`}>{value}</div>
+            <div className={`text-2xl font-bold ${variant === 'destructive' && Number(value) > 0 ? 'text-destructive' : ''}`}>{value}</div>
             <p className="text-xs text-muted-foreground">{description}</p>
           </>
         )}
@@ -175,7 +175,7 @@ export default function AdminDashboard() {
                     </defs>
                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
                     <XAxis dataKey="date" stroke="" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis stroke="" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `$${value / 1000}k`} />
+                    <YAxis stroke="" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `$${Number(value) / 1000}k`} />
                     <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
                     <Area type="monotone" dataKey="sales" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSales)" />
                     </AreaChart>
