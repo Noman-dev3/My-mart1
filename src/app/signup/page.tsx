@@ -61,11 +61,11 @@ export default function SignupPage() {
 
   return (
      <main className="w-full min-h-screen flex items-center justify-center bg-muted/30 p-4">
-       <Card className="w-full max-w-4xl grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl">
+       <Card className="w-full max-w-4xl grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl bg-card border-border">
           <div className="p-8 sm:p-12 flex flex-col justify-center">
             <Link href="/" className="w-fit">
               <Button variant="outline" className="rounded-full px-4 mb-8 text-muted-foreground group">
-                 <Icons.logo className="h-5 w-5 mr-2 text-primary group-hover:text-primary transition-colors"/> Crextio
+                 <Icons.logo className="h-5 w-5 mr-2 text-primary group-hover:text-primary transition-colors"/> My Mart
               </Button>
             </Link>
 
@@ -113,7 +113,7 @@ export default function SignupPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full font-bold mt-4 h-12 rounded-xl bg-yellow-400 text-yellow-950 hover:bg-yellow-500" disabled={form.formState.isSubmitting}>
+                <Button type="submit" className="w-full font-bold mt-4 h-12 rounded-xl btn-primary" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? 'Creating Account...' : 'Create an account'}
                 </Button>
               </form>
@@ -124,7 +124,7 @@ export default function SignupPage() {
                     <span className="w-full border-t"></span>
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                    <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
                 </div>
             </div>
 
