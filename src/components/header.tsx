@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/icons';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { CartSheet } from '@/components/cart-sheet';
-import { useContext } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '@/context/auth-context';
 import {
   DropdownMenu,
@@ -23,15 +23,19 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { signOutUser } from '@/lib/auth-actions';
 import { ShoppingCart, LayoutDashboard } from 'lucide-react';
 
-type HeaderProps = {
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-};
-
-export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
+export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const showSearch = pathname.startsWith('/products');
   const { user, loading } = useContext(AuthContext);
+
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+
+  useEffect(() => {
+    // Sync search input with URL params on navigation
+    setSearchQuery(searchParams.get('q') || '');
+  }, [searchParams]);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -39,6 +43,15 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    if (!searchQuery) {
+      current.delete('q');
+    } else {
+      current.set('q', searchQuery);
+    }
+    const search = current.toString();
+    const query = search ? `?${search}` : '';
+    router.push(`${pathname}${query}`);
   };
   
   const userInitial = user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U';

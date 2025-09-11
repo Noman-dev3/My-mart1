@@ -14,8 +14,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { ListFilter } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from './ui/separator';
+import { useSearchParams } from 'next/navigation';
 
-export default function ProductListing({ products, searchQuery, initialCategory }: { products: Product[], searchQuery: string, initialCategory?: string | null }) {
+export default function ProductListing({ products }: { products: Product[] }) {
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get('q') || '';
+  const initialCategory = searchParams.get('category');
+
   const [sortOrder, setSortOrder] = useState('newest');
   const [priceRange, setPriceRange] = useState([0, 500000]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -77,7 +82,7 @@ export default function ProductListing({ products, searchQuery, initialCategory 
         result.sort((a, b) => a.price - b.price);
         break;
       case 'price-desc':
-        result.sort((a, b) => b.price - a.price);
+        result.sort((a, b) => b.price - b.price);
         break;
       case 'popularity':
         result.sort((a, b) => b.reviews - a.reviews);

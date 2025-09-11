@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 export default function ShippingReturnsPage() {
   return (
     <div className="flex flex-col min-h-screen">
-      <Header searchQuery="" setSearchQuery={() => {}} />
+      <Header />
       <main className="flex-grow container mx-auto px-4 py-12">
         <Card className="max-w-3xl mx-auto">
           <CardHeader className="text-center">

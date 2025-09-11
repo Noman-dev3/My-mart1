@@ -100,7 +100,7 @@ export default function CheckoutPage() {
   if (cartItems.length === 0 && form.formState.isSubmitted === false) {
      return (
         <div className="flex flex-col min-h-screen">
-         <Header searchQuery="" setSearchQuery={() => {}} />
+         <Header />
             <main className="flex-grow container mx-auto px-4 py-8 text-center">
                 <h1 className="text-2xl font-headline font-bold">Your cart is empty</h1>
                 <p className="text-muted-foreground mt-2">You can't proceed to checkout without any items.</p>
@@ -115,7 +115,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Header searchQuery="" setSearchQuery={() => {}} />
+      <Header />
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-4xl font-headline font-bold text-center mb-10">Checkout</h1>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

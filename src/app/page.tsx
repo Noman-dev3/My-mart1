@@ -155,7 +155,7 @@ export default function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Header searchQuery="" setSearchQuery={() => {}} />
+      <Header />
 
       <main className="flex-grow">
         {/* Hero Section */}
@@ -302,5 +302,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
-    

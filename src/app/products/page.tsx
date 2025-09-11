@@ -11,12 +11,9 @@ import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 function ProductsPageContent() {
-  const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createSupabaseBrowserClient();
-  const searchParams = useSearchParams();
-  const category = searchParams.get('category');
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -38,14 +35,14 @@ function ProductsPageContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Header searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <Header />
       <main className="flex-grow">
         {isLoading ? (
           <div className="flex-grow flex items-center justify-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
           </div>
         ) : (
-          <ProductListing products={products} searchQuery={searchQuery} initialCategory={category} />
+          <ProductListing products={products} />
         )}
       </main>
       <Footer />
@@ -58,7 +55,7 @@ export default function ProductsPage() {
   return (
     <Suspense fallback={
       <div className="flex flex-col min-h-screen bg-background">
-        <Header searchQuery="" setSearchQuery={() => {}} />
+        <Header />
         <main className="flex-grow flex items-center justify-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </main>

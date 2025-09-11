@@ -25,7 +25,7 @@ export default function AccountLayout({
   if (loading) {
     return (
         <div className="flex flex-col min-h-screen">
-            <Header searchQuery="" setSearchQuery={() => {}} />
+            <Header />
             <div className="container mx-auto px-4 py-8 flex-grow">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                     <div className="md:col-span-1">
@@ -56,7 +56,7 @@ export default function AccountLayout({
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Header searchQuery="" setSearchQuery={() => {}} />
+      <Header />
       <main className="flex-grow bg-muted/30">
         <div className="container mx-auto px-4 py-12">
            <div className="text-center md:text-left mb-10">

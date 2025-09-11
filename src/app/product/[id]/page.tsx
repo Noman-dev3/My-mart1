@@ -158,7 +158,7 @@ export default function ProductDetailPage() {
   if (isLoadingProduct) {
     return (
       <div className="flex flex-col min-h-screen">
-        <Header searchQuery="" setSearchQuery={() => {}} />
+        <Header />
         <main className="flex-grow flex items-center justify-center text-center">
           <div>
             <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
@@ -174,7 +174,7 @@ export default function ProductDetailPage() {
   if (!product) {
       return (
          <div className="flex flex-col min-h-screen">
-            <Header searchQuery="" setSearchQuery={() => {}} />
+            <Header />
             <main className="flex-grow flex items-center justify-center text-center">
             <div>
                 <h1 className="text-3xl font-bold font-headline mt-4">Product Not Found</h1>
@@ -209,7 +209,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Header searchQuery="" setSearchQuery={() => {}} />
+      <Header />
       <main className="flex-grow py-12 sm:py-16">
         <motion.div
           className="container mx-auto px-4 sm:px-6 lg:px-8"
@@ -428,5 +428,3 @@ function QuestionForm({ productId, productName, user, onQuestionSubmitted }: { p
         </Form>
     );
 }
-
-    

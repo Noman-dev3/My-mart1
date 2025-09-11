@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 export default function ContactPage() {
   return (
     <div className="flex flex-col min-h-screen">
-      <Header searchQuery="" setSearchQuery={() => {}} />
+      <Header />
       <main className="flex-grow container mx-auto px-4 py-12">
         <Card className="max-w-3xl mx-auto">
           <CardHeader className="text-center">

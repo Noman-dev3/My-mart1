@@ -47,7 +47,7 @@ export default function PaymentFallbackPage() {
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen">
-        <Header searchQuery="" setSearchQuery={() => {}} />
+        <Header />
         <main className="flex-grow flex items-center justify-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </main>
@@ -59,7 +59,7 @@ export default function PaymentFallbackPage() {
   if (!order) {
     return (
       <div className="flex flex-col min-h-screen">
-        <Header searchQuery="" setSearchQuery={() => {}} />
+        <Header />
         <main className="flex-grow flex items-center justify-center text-center p-4">
             <div>
                 <h1 className="text-2xl font-headline font-bold">Order Not Found</h1>
@@ -76,7 +76,7 @@ export default function PaymentFallbackPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/20">
-      <Header searchQuery="" setSearchQuery={() => {}} />
+      <Header />
       <main className="flex-grow container mx-auto px-4 py-8 sm:py-16">
         <Card className="max-w-3xl mx-auto">
           <CardHeader className="text-center items-center gap-2 pt-8">
@@ -139,4 +139,3 @@ export default function PaymentFallbackPage() {
     </div>
   );
 }
-
