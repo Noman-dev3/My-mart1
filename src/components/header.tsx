@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { signOutUser } from '@/lib/auth-actions';
+import { ShoppingCart, LayoutDashboard } from 'lucide-react';
 
 type HeaderProps = {
   searchQuery: string;
@@ -89,11 +90,23 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    Profile
+                  <DropdownMenuItem asChild>
+                    <Link href="/account">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>My Profile</span>
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    My Orders
+                  <DropdownMenuItem asChild>
+                    <Link href="/account/orders">
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      <span>My Orders</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        <span>Admin</span>
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <form action={signOutUser}>
@@ -151,9 +164,12 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
                         <div className="border-t pt-4">
                             <p className="font-medium">{user.user_metadata.full_name || 'User'}</p>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
-                            <form action={signOutUser}>
-                              <Button type="submit" className="w-full mt-4">Log Out</Button>
-                            </form>
+                            <div className="flex flex-col gap-2 mt-4">
+                                <Button asChild className="w-full"><Link href="/account">My Account</Link></Button>
+                                <form action={signOutUser}>
+                                  <Button type="submit" variant="outline" className="w-full">Log Out</Button>
+                                </form>
+                            </div>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-2 border-t pt-4">

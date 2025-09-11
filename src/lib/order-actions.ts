@@ -3,7 +3,7 @@
 
 import { type CartItem } from '@/context/cart-context';
 import { db } from './firebase';
-import { collection, getDocs, doc, addDoc, updateDoc, query, orderBy, serverTimestamp, limit, onSnapshot, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, updateDoc, query, orderBy, serverTimestamp, limit, onSnapshot, getDoc, where } from 'firebase/firestore';
 
 // A simpler version of CartItem for Server Actions, containing only primitive types.
 export type OrderItem = {
@@ -153,6 +153,16 @@ export async function getOrderById(orderId: string): Promise<Order | undefined> 
     }
     return processOrderDoc(orderDoc);
 }
+
+export async function getOrdersByUser(userEmail: string): Promise<Order[]> {
+    const q = query(ordersCollection, where("customer.email", "==", userEmail), orderBy("date", "desc"));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+        return [];
+    }
+    return snapshot.docs.map(processOrderDoc);
+}
+
 
 export async function updateOrderStatus(orderId: string, status: Order['status']) {
     const orderRef = doc(db, 'orders', orderId);

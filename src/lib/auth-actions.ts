@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -15,6 +16,10 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1, 'Password is required.'),
+});
+
+const profileSchema = z.object({
+    fullName: z.string().min(2, "Full name must be at least 2 characters."),
 });
 
 export async function registerUser(values: z.infer<typeof registerSchema>) {
@@ -28,7 +33,7 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
       data: {
         full_name: name,
       },
-      emailRedirectTo: '/login',
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login`,
     },
   });
 
@@ -53,6 +58,7 @@ export async function signInUser(values: z.infer<typeof loginSchema>) {
         return { success: false, error: 'Invalid login credentials.' };
     }
 
+    revalidatePath('/', 'layout');
     return { success: true };
 }
 
@@ -78,4 +84,21 @@ export async function signInWithGoogle() {
   }
 
   redirect(data.url);
+}
+
+export async function updateUserProfile(values: z.infer<typeof profileSchema>) {
+    const supabase = createServerActionClient({ cookies });
+    const { fullName } = profileSchema.parse(values);
+
+    const { error } = await supabase.auth.updateUser({
+        data: { full_name: fullName }
+    });
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+    
+    // Revalidate the account path to show updated info
+    revalidatePath('/account');
+    return { success: true };
 }
