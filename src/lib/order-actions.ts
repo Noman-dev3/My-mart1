@@ -21,22 +21,46 @@ export type Order = {
 
 const ordersCollection = collection(db, 'orders');
 
+/**
+ * Sends a notification to the store administrator about a new order.
+ * In a production environment, this would integrate with a service like SendGrid for email
+ * or Twilio for SMS/WhatsApp.
+ * 
+ * @param order The newly placed order details.
+ */
 async function sendAdminNotification(order: Omit<Order, 'id' | 'date'>) {
     const adminEmail = 'noman.dev3@gmail.com';
     const adminWhatsApp = '+923119991972';
 
+    const notificationPayload = {
+        orderId: `(will be generated upon saving)`,
+        customerName: order.customer.name,
+        totalAmount: order.total,
+        itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
+    };
+
     console.log(`
     ---
-    SIMULATING NOTIFICATION
+    SIMULATING ADMIN NOTIFICATION
     ---
-    New Order Received!
-    Total: $${order.total.toFixed(2)}
-    Customer: ${order.customer.name}
+    A new order has been received!
 
-    Sending email to: ${adminEmail}
-    Sending WhatsApp to: ${adminWhatsApp}
+    Details:
+    - Customer: ${notificationPayload.customerName}
+    - Total: $${notificationPayload.totalAmount.toFixed(2)}
+    - Items: ${notificationPayload.itemCount}
+
+    Actions:
+    - Sending email notification to: ${adminEmail}
+    - Sending WhatsApp notification to: ${adminWhatsApp}
     ---
+    In a real app, API calls to SendGrid/Twilio would be made here.
     `);
+
+    // Example of what a real integration might look like:
+    // await sendEmail({ to: adminEmail, subject: 'New Order!', body: '...' });
+    // await sendWhatsApp({ to: adminWhatsApp, message: '...' });
+
     return Promise.resolve();
 }
 
@@ -53,10 +77,12 @@ export async function placeOrder(data: {
     date: serverTimestamp(),
   };
 
-  const docRef = await addDoc(ordersCollection, newOrder);
-
-  // Send notifications after successfully saving the order
+  // First, send the notification (or simulate it)
+  // This ensures that if the notification fails, we can handle it before saving the order
   await sendAdminNotification(newOrder);
+
+  // Then, save the order to the database
+  const docRef = await addDoc(ordersCollection, newOrder);
 
   return { ...newOrder, id: docRef.id };
 }
