@@ -1,5 +1,7 @@
 
-import admin from 'firebase-admin';
+import admin, { App } from 'firebase-admin';
+import { Auth } from 'firebase-admin/auth';
+import { Firestore } from 'firebase-admin/firestore';
 import { config } from 'dotenv';
 
 config();
@@ -19,16 +21,32 @@ const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
       client_x509_cert_url: process.env.FIREBASE_client_x509_cert_url,
     };
 
-if (!admin.apps.length) {
+function getFirebaseAdminApp(): App {
+  if (admin.apps.length > 0) {
+    return admin.app();
+  }
+
   try {
-    admin.initializeApp({
+    return admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
     });
   } catch (error: any) {
     console.error('Firebase admin initialization error', error.stack);
+    // Re-throw the error to make it visible and prevent downstream errors
+    throw new Error('Failed to initialize Firebase Admin SDK.');
   }
 }
 
-export const auth = admin.auth();
-export const db = admin.firestore();
+export function getAdminAuth(): Auth {
+    return getFirebaseAdminApp().auth();
+}
+
+export function getAdminDb(): Firestore {
+    return getFirebaseAdminApp().firestore();
+}
+
+// We keep these exports for any files that might still use them,
+// but they now use the robust getter function.
+export const auth = getAdminAuth();
+export const db = getAdminDb();

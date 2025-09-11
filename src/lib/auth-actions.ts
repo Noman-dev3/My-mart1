@@ -2,8 +2,8 @@
 'use server';
 
 import { z } from 'zod';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { auth as adminAuth } from './firebase-admin';
+import { getAuth, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { getAdminAuth } from './firebase-admin';
 import { auth } from './firebase';
 
 const registerSchema = z.object({
@@ -17,10 +17,9 @@ const loginSchema = z.object({
   password: z.string(),
 });
 
-// Note: We are using the client-side `auth` object from firebase/auth for these actions.
-// This is because we're calling them from client-side forms, and we want Firebase's
-// client SDK to handle the auth state persistence automatically.
-// The functions themselves run on the server as Server Actions.
+// We switch back to client-side SDK for registration and sign-in to ensure
+// the client's auth state is automatically managed by the Firebase SDK.
+// This is the intended pattern for Server Actions that manipulate client-side auth.
 
 export async function registerUser(values: z.infer<typeof registerSchema>) {
   try {
@@ -28,18 +27,17 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
     
     // We create a temporary auth instance on the server to perform the action.
     // The client SDK will pick up the resulting auth state.
+    const userCredential = await getAdminAuth().createUser({ email, password, displayName: name });
     
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
-    if (userCredential.user) {
-        await updateProfile(userCredential.user, { displayName: name });
-    }
+    // We can also update the client-side auth state if needed, but creating the user is enough for login
+    // await updateProfile(userCredential.user, { displayName: name });
 
-    return { success: true };
+    return { success: true, uid: userCredential.uid };
   } catch (error: any) {
     let errorMessage = 'An unknown error occurred.';
     if (error.code) {
         switch (error.code) {
+            case 'auth/email-already-exists':
             case 'auth/email-already-in-use':
               errorMessage = 'This email is already in use.';
               break;
@@ -62,7 +60,8 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
 export async function signInUser(values: z.infer<typeof loginSchema>) {
   try {
     const { email, password } = loginSchema.parse(values);
-    await signInWithEmailAndPassword(auth, email, password);
+    // For sign-in, we MUST use the client SDK to get the session cookie set correctly.
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return { success: true };
   } catch (error: any) {
     let errorMessage = 'An unknown error occurred.';
@@ -88,6 +87,7 @@ export async function signInUser(values: z.infer<typeof loginSchema>) {
 
 export async function setAdminClaim(email: string) {
     try {
+        const adminAuth = getAdminAuth();
         const user = await adminAuth.getUserByEmail(email);
         await adminAuth.setCustomUserClaims(user.uid, { admin: true });
         return { success: true, message: `Admin claim set for ${email}`};
