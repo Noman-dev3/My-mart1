@@ -1,9 +1,51 @@
 
+'use client';
+
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ShippingReturnsPage() {
+  const [content, setContent] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const supabase = createSupabaseBrowserClient();
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('siteContent')
+        .select('content')
+        .eq('page', 'shippingReturns')
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching shipping/returns content:', error);
+      } else if (data) {
+        setContent((data.content as any).content || '');
+      }
+      setIsLoading(false);
+    };
+    fetchContent();
+  }, [supabase]);
+
+  const ContentSkeleton = () => (
+    <div className="space-y-4">
+      <Skeleton className="h-6 w-1/3" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+      <br/>
+      <Skeleton className="h-6 w-1/3" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+    </div>
+  )
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
@@ -13,20 +55,14 @@ export default function ShippingReturnsPage() {
             <CardTitle className="text-4xl font-headline">Shipping & Returns</CardTitle>
             <CardDescription>Information about our shipping and return policies.</CardDescription>
           </CardHeader>
-          <CardContent className="prose dark:prose-invert max-w-none">
-            <h2>Shipping Policy</h2>
-            <p>We are committed to delivering your order accurately, in good condition, and always on time. We currently offer shipping only within Pakistan.</p>
-            <ul>
-              <li><strong>Standard Shipping:</strong> 3-5 business days.</li>
-              <li><strong>Express Shipping:</strong> 1-2 business days.</li>
-              <li>Orders are dispatched within 24 hours of being placed.</li>
-              <li>Shipping costs are calculated at checkout based on your location and the weight of your order.</li>
-            </ul>
-
-            <h2>Return Policy</h2>
-            <p>We want you to be completely satisfied with your purchase. If you are not, you can return the product for a full refund or exchange within 30 days of purchase.</p>
-            <p>To be eligible for a return, your item must be unused and in the same condition that you received it. It must also be in the original packaging.</p>
-            <p>To initiate a return, please contact our customer support team with your order number and the reason for the return. We will guide you through the process.</p>
+          <CardContent className="prose dark:prose-invert max-w-none whitespace-pre-wrap">
+            {isLoading ? <ContentSkeleton /> : content ? (
+              // Using a simple div with pre-wrap to render newlines from textarea.
+              // A more robust solution would use a markdown parser.
+              <div>{content}</div>
+            ) : (
+              <p>Content not available. Please check back later.</p>
+            )}
           </CardContent>
         </Card>
       </main>

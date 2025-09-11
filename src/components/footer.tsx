@@ -130,14 +130,6 @@ export default function Footer() {
                   Shipping & Returns
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/admin"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Admin Login
-                </Link>
-              </li>
             </ul>
           </div>
 
