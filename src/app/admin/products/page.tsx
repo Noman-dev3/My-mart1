@@ -116,13 +116,20 @@ export default function ProductsPage() {
             await addProduct(values);
             toast({ title: "Success", description: "Product added successfully." });
         }
-        // Real-time listener will update the list
-        setIsFormOpen(false);
-        setSelectedProduct(undefined);
+        return true; // Indicate success
     } catch (error) {
         toast({ title: "Error", description: "Failed to save product.", variant: "destructive" });
+        return false; // Indicate failure
     }
   }
+
+  const onFormSubmit = async (values: any) => {
+    const success = await handleFormSubmit(values);
+    if (success) {
+      setIsFormOpen(false);
+      setSelectedProduct(undefined);
+    }
+  };
 
 
  const columns: ColumnDef<Product>[] = useMemo(() => [
@@ -334,7 +341,7 @@ export default function ProductsPage() {
                     <DialogTitle>{selectedProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
                 </DialogHeader>
                 <ProductForm 
-                    onSubmit={handleFormSubmit}
+                    onSubmit={onFormSubmit}
                     product={selectedProduct}
                     onCancel={() => {
                         setIsFormOpen(false);

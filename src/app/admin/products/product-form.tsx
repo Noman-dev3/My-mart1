@@ -39,7 +39,7 @@ const productFormSchema = z.object({
 type ProductFormValues = z.infer<typeof productFormSchema>
 
 type ProductFormProps = {
-    onSubmit: (values: ProductFormValues) => void;
+    onSubmit: (values: ProductFormValues) => Promise<any>;
     onCancel: () => void;
     product?: Product;
 }
@@ -175,7 +175,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
             <Button type="button" variant="outline" onClick={onCancel}>
                 Cancel
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? 'Saving...' : 'Save Product'}
             </Button>
         </div>
