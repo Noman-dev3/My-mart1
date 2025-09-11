@@ -19,8 +19,8 @@ To get the application running, you need to set up your Supabase database schema
 ### Database Setup SQL Script
 
 ```sql
--- Create the products table
-CREATE TABLE products (
+-- Create the products table if it doesn't exist
+CREATE TABLE IF NOT EXISTS products (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     description TEXT,
@@ -37,8 +37,8 @@ CREATE TABLE products (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Create the orders table
-CREATE TABLE orders (
+-- Create the orders table if it doesn't exist
+CREATE TABLE IF NOT EXISTS orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     customer JSONB,
     items JSONB,
@@ -48,8 +48,8 @@ CREATE TABLE orders (
     "paymentMethod" TEXT
 );
 
--- Create the site content table
-CREATE TABLE "siteContent" (
+-- Create the site content table if it doesn't exist
+CREATE TABLE IF NOT EXISTS "siteContent" (
     page TEXT PRIMARY KEY,
     content JSONB
 );
@@ -57,19 +57,27 @@ CREATE TABLE "siteContent" (
 
 -- RLS Policies for products table
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Products are viewable by everyone." ON products;
 CREATE POLICY "Products are viewable by everyone." ON products FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins can manage products." ON products;
 CREATE POLICY "Admins can manage products." ON products FOR ALL USING (auth.jwt() ->> 'role' = 'admin') WITH CHECK (auth.jwt() ->> 'role' = 'admin');
 
 -- RLS Policies for orders table
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can view their own orders." ON orders;
 CREATE POLICY "Users can view their own orders." ON orders FOR SELECT USING (auth.uid() = (customer ->> 'uid')::uuid);
+DROP POLICY IF EXISTS "Admins can view all orders." ON orders;
 CREATE POLICY "Admins can view all orders." ON orders FOR SELECT USING (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "Users can create orders." ON orders;
 CREATE POLICY "Users can create orders." ON orders FOR INSERT WITH CHECK (auth.uid() = (customer ->> 'uid')::uuid);
+DROP POLICY IF EXISTS "Admins can update orders." ON orders;
 CREATE POLICY "Admins can update orders." ON orders FOR UPDATE USING (auth.jwt() ->> 'role' = 'admin');
 
 -- RLS Policies for siteContent table
 ALTER TABLE "siteContent" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Site content is viewable by everyone." ON "siteContent";
 CREATE POLICY "Site content is viewable by everyone." ON "siteContent" FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins can manage site content." ON "siteContent";
 CREATE POLICY "Admins can manage site content." ON "siteContent" FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 
 
@@ -91,6 +99,7 @@ $$ LANGUAGE plpgsql;
 
 
 -- Add tables to the publication for real-time updates
+-- This might fail if the tables are already added, which is safe to ignore.
 ALTER PUBLICATION supabase_realtime ADD TABLE products;
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE "siteContent";
@@ -111,3 +120,4 @@ To access the admin dashboard, you need to create a user and assign them an 'adm
 9.  Click **"Save"**.
 
 You can now log into the application with these credentials to access the admin dashboard.
+
