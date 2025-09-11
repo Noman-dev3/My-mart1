@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { getAdminAuth } from './firebase-admin';
-import { auth } from './firebase';
+import { auth as clientAuth } from './firebase';
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -52,9 +52,10 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
 export async function signInUser(values: z.infer<typeof loginSchema>) {
   try {
     const { email, password } = loginSchema.parse(values);
-    // For sign-in, we MUST use the client SDK to get the session cookie set correctly.
-    // This server action calls the client SDK running on the server.
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    // For sign-in, we use the client SDK to ensure the session cookie is set correctly for the browser.
+    // This server action is called from a client component, but it's safe to use the client SDK here
+    // as it communicates with Firebase services over the network.
+    const userCredential = await signInWithEmailAndPassword(clientAuth, email, password);
     return { success: true };
   } catch (error: any) {
     let errorMessage = 'An unknown error occurred.';
