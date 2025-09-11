@@ -62,3 +62,20 @@ export async function signOutUser() {
     await supabase.auth.signOut();
     redirect('/');
 }
+
+export async function signInWithGoogle() {
+  const supabase = createServerActionClient({ cookies });
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    console.error('Error signing in with Google:', error);
+    redirect('/login?error=Could not authenticate with Google');
+  }
+
+  redirect(data.url);
+}

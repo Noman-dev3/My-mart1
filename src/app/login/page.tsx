@@ -9,9 +9,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { signInUser } from '@/lib/auth-actions';
+import { signInUser, signInWithGoogle } from '@/lib/auth-actions';
 import { Icons } from '@/components/icons';
 import Image from 'next/image';
 import AnimatedAuthText from '@/components/animated-auth-text';
@@ -60,9 +59,8 @@ export default function LoginPage() {
             <Image
               src="https://picsum.photos/seed/crextio-login/800/1200"
               alt="Background"
-              layout="fill"
-              objectFit="cover"
-              className="z-0"
+              fill
+              className="z-0 object-cover"
               data-ai-hint="team meeting"
             />
             <div className="absolute inset-0 bg-black/60 z-10" />
@@ -107,7 +105,7 @@ export default function LoginPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full font-bold mt-4 h-12 rounded-xl btn-primary" disabled={form.formState.isSubmitting}>
+                <Button type="submit" className="w-full font-bold mt-4 h-12 rounded-xl" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? 'Signing In...' : 'Sign In'}
                 </Button>
               </form>
@@ -124,7 +122,11 @@ export default function LoginPage() {
 
             <div className="grid grid-cols-2 gap-4">
                 <Button variant="outline" className="h-12 rounded-xl"><AppleIcon className="h-5 w-5 mr-2" /> Apple</Button>
-                <Button variant="outline" className="h-12 rounded-xl"><GoogleIcon className="h-5 w-5 mr-2" /> Google</Button>
+                <form action={signInWithGoogle}>
+                  <Button variant="outline" className="h-12 rounded-xl w-full">
+                    <GoogleIcon className="h-5 w-5 mr-2" /> Google
+                  </Button>
+                </form>
             </div>
 
             <div className="mt-8 text-center text-sm">
