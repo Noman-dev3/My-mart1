@@ -28,7 +28,7 @@ CREATE TABLE products (
     image TEXT,
     category TEXT,
     brand TEXT,
-    in_stock BOOLEAN DEFAULT TRUE,
+    "inStock" BOOLEAN DEFAULT TRUE,
     rating NUMERIC DEFAULT 0,
     reviews INT DEFAULT 0,
     specifications JSONB,
@@ -58,9 +58,8 @@ CREATE TABLE "siteContent" (
 -- RLS Policies for products table
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Products are viewable by everyone." ON products FOR SELECT USING (true);
-CREATE POLICY "Admins can insert products." ON products FOR INSERT WITH CHECK (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "Admins can update products." ON products FOR UPDATE USING (auth.jwt() ->> 'role' = 'admin');
-CREATE POLICY "Admins can delete products." ON products FOR DELETE USING (auth.jwt() ->> 'role' = 'admin');
+-- THIS IS THE NEW POLICY TO ADD
+CREATE POLICY "Admins can manage products." ON products FOR ALL USING (auth.jwt() ->> 'role' = 'admin') WITH CHECK (auth.jwt() ->> 'role' = 'admin');
 
 -- RLS Policies for orders table
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
