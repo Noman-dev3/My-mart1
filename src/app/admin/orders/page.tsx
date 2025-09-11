@@ -60,7 +60,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { updateOrderStatus, type Order } from '@/lib/order-actions';
-import { ChevronDown, File, ListFilter, MoreHorizontal, Eye, Truck, XCircle } from 'lucide-react';
+import { ChevronDown, File, ListFilter, MoreHorizontal, Eye, Truck, XCircle, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
@@ -105,7 +105,6 @@ export default function OrdersPage() {
             title: "Success",
             description: `Order ${orderId} has been updated to "${status}".`
         });
-        // No need to fetch orders, real-time listener will update it
     } catch (error) {
         toast({
             title: "Error",
@@ -190,6 +189,12 @@ export default function OrdersPage() {
                                         View Order
                                     </DropdownMenuItem>
                                 </DialogTrigger>
+                                {order.status === 'Pending' && (
+                                    <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'Processing')}>
+                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                        Approve Payment
+                                    </DropdownMenuItem>
+                                )}
                                 <DropdownMenuSub>
                                     <DropdownMenuSubTrigger>
                                         <Truck className="mr-2 h-4 w-4" />
@@ -217,7 +222,6 @@ export default function OrdersPage() {
                             </DropdownMenuContent>
                         </DropdownMenu>
                         
-                        {/* Cancel Order Confirmation */}
                         <AlertDialogContent>
                             <AlertDialogHeader>
                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -232,7 +236,6 @@ export default function OrdersPage() {
                         </AlertDialogContent>
                     </AlertDialog>
 
-                    {/* View Order Details */}
                     <DialogContent className="sm:max-w-2xl">
                         <DialogHeader>
                         <DialogTitle>Order Details - {order.id}</DialogTitle>
@@ -240,7 +243,7 @@ export default function OrdersPage() {
                             Placed on {format(new Date(order.date), "MMMM d, yyyy 'at' h:mm a")}
                         </DialogDescription>
                         </DialogHeader>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
                             <div>
                                 <h4 className="font-semibold mb-2">Customer</h4>
                                 <p>{order.customer.name}</p>
@@ -257,6 +260,13 @@ export default function OrdersPage() {
                                     'outline'
                                 } className="capitalize">{order.status}</Badge></p>
                                 <p>Total: <span className="font-bold">PKR {order.total.toFixed(2)}</span></p>
+                            </div>
+                             <div>
+                                <h4 className="font-semibold mb-2">Payment</h4>
+                                <p>Method: {order.paymentMethod}</p>
+                                {order.paymentMethod === 'Online' && order.status === 'Pending' && (
+                                     <p className="text-yellow-600 text-xs mt-1">Awaiting payment confirmation.</p>
+                                )}
                             </div>
                         </div>
                         <div>
