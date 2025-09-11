@@ -17,7 +17,7 @@ import { Separator } from './ui/separator';
 
 export default function ProductListing({ products, searchQuery }: { products: Product[], searchQuery: string }) {
   const [sortOrder, setSortOrder] = useState('newest');
-  const [priceRange, setPriceRange] = useState([0, 500]);
+  const [priceRange, setPriceRange] = useState([0, 500000]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
   const [selectedRating, setSelectedRating] = useState(0);
@@ -25,6 +25,7 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
 
   const [categories, setCategories] = useState<string[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
+  const [maxPrice, setMaxPrice] = useState(500000);
 
   useEffect(() => {
     const fetchFilters = async () => {
@@ -37,6 +38,14 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
     };
     fetchFilters();
   }, []);
+
+  useEffect(() => {
+    if (products.length > 0) {
+      const max = Math.ceil(products.reduce((acc, p) => p.price > acc ? p.price : acc, 0) / 1000) * 1000;
+      setMaxPrice(max > 0 ? max : 500000);
+      setPriceRange([0, max > 0 ? max : 500000]);
+    }
+  }, [products]);
 
   const filteredAndSortedProducts = useMemo(() => {
     const lowercasedQuery = searchQuery.toLowerCase();
@@ -71,7 +80,11 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
       default:
         // Firestore timestamp objects can be compared directly if they exist
         if (result.length > 0 && result[0].createdAt) {
-          result.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+          result.sort((a, b) => {
+            const dateA = a.createdAt?.seconds ? (a.createdAt.seconds * 1000) : 0;
+            const dateB = b.createdAt?.seconds ? (b.createdAt.seconds * 1000) : 0;
+            return dateB - dateA;
+          });
         }
         break;
     }
@@ -89,10 +102,10 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
     setSelectedBrands((prev) => (prev.includes(brand) ? prev.filter((b) => b !== brand) : [...prev, brand]));
   };
 
-  const hasActiveFilters = selectedCategories.length > 0 || selectedBrands.length > 0 || priceRange[0] > 0 || priceRange[1] < 500 || selectedRating > 0 || inStockOnly;
+  const hasActiveFilters = selectedCategories.length > 0 || selectedBrands.length > 0 || priceRange[0] > 0 || priceRange[1] < maxPrice || selectedRating > 0 || inStockOnly;
 
   const clearFilters = () => {
-    setPriceRange([0, 500]);
+    setPriceRange([0, maxPrice]);
     setSelectedCategories([]);
     setSelectedBrands([]);
     setSelectedRating(0);
@@ -119,14 +132,14 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
         <h4 className="font-headline text-lg font-semibold">Price Range</h4>
         <Slider
           min={0}
-          max={500}
-          step={10}
+          max={maxPrice}
+          step={1000}
           value={priceRange}
           onValueChange={setPriceRange}
         />
         <div className="flex justify-between text-sm text-muted-foreground">
-          <span>${priceRange[0]}</span>
-          <span>${priceRange[1]}</span>
+          <span>PKR {priceRange[0]}</span>
+          <span>PKR {priceRange[1]}</span>
         </div>
       </div>
 
@@ -239,5 +252,7 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
     </div>
   );
 }
+
+    
 
     
