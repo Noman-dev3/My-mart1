@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
@@ -9,6 +10,8 @@ export const metadata: Metadata = {
   title: 'My Mart',
   description: 'Your one-stop online shop.',
 };
+
+export const dynamic = 'force-dynamic';
 
 export default function RootLayout({
   children,

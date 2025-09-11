@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Search, Menu, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { signOutUser } from '@/lib/auth-actions';
 
 type HeaderProps = {
   searchQuery: string;
@@ -26,7 +28,7 @@ type HeaderProps = {
 export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
   const pathname = usePathname();
   const showSearch = pathname.startsWith('/products');
-  const { user, signOut, loading } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
@@ -36,6 +38,8 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
     event.preventDefault();
   };
   
+  const userInitial = user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U';
+
   return (
     <header className="bg-background/80 backdrop-blur-sm sticky top-0 z-40 border-b">
       <div className="container mx-auto flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -71,14 +75,14 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-9 w-9">
-                        <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{userInitial}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.displayName || 'User'}</p>
+                      <p className="text-sm font-medium leading-none">{user.user_metadata.full_name || 'User'}</p>
                       <p className="text-xs leading-none text-muted-foreground">
                         {user.email}
                       </p>
@@ -92,9 +96,13 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
                     My Orders
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut}>
-                    Log out
-                  </DropdownMenuItem>
+                  <form action={signOutUser}>
+                    <button type="submit" className="w-full">
+                      <DropdownMenuItem>
+                        Log out
+                      </DropdownMenuItem>
+                    </button>
+                  </form>
                 </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -141,9 +149,11 @@ export default function Header({ searchQuery, setSearchQuery }: HeaderProps) {
                     </nav>
                      {user ? (
                         <div className="border-t pt-4">
-                            <p className="font-medium">{user.displayName || 'User'}</p>
+                            <p className="font-medium">{user.user_metadata.full_name || 'User'}</p>
                             <p className="text-sm text-muted-foreground">{user.email}</p>
-                            <Button onClick={signOut} className="w-full mt-4">Log Out</Button>
+                            <form action={signOutUser}>
+                              <Button type="submit" className="w-full mt-4">Log Out</Button>
+                            </form>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-2 border-t pt-4">

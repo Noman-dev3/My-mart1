@@ -2,90 +2,63 @@
 'use server';
 
 import { z } from 'zod';
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { getAdminAuth } from './firebase-admin';
-import { auth as clientAuth } from './firebase';
+import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 const registerSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  password: z.string().min(6),
+  name: z.string().min(2, 'Name must be at least 2 characters.'),
+  email: z.string().email('Please enter a valid email.'),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
 });
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string(),
+  password: z.string().min(1, 'Password is required.'),
 });
 
 export async function registerUser(values: z.infer<typeof registerSchema>) {
-  try {
-    const adminAuth = getAdminAuth();
-    const { name, email, password } = registerSchema.parse(values);
-    
-    const userCredential = await adminAuth.createUser({ email, password, displayName: name });
-    
-    return { success: true, uid: userCredential.uid };
-  } catch (error: any) {
-    let errorMessage = 'An unknown error occurred.';
-    if (error.code) {
-        switch (error.code) {
-            case 'auth/email-already-exists':
-            case 'auth/email-already-in-use':
-              errorMessage = 'This email is already in use.';
-              break;
-            case 'auth/invalid-email':
-              errorMessage = 'The email address is not valid.';
-              break;
-            case 'auth/weak-password':
-              errorMessage = 'The password is too weak.';
-              break;
-            default:
-              errorMessage = error.message;
-        }
-    } else if (error instanceof z.ZodError) {
-        errorMessage = error.errors.map(e => e.message).join(', ');
-    }
-    return { success: false, error: errorMessage };
+  const supabase = createServerActionClient({ cookies });
+  const { name, email, password } = registerSchema.parse(values);
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: name,
+      },
+      emailRedirectTo: '/login',
+    },
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
   }
+
+  return { success: true, message: 'Please check your email to verify your account.' };
 }
+
 
 export async function signInUser(values: z.infer<typeof loginSchema>) {
-  try {
+    const supabase = createServerActionClient({ cookies });
     const { email, password } = loginSchema.parse(values);
-    // For sign-in, we use the client SDK to ensure the session cookie is set correctly for the browser.
-    // This server action is called from a client component, but it's safe to use the client SDK here
-    // as it communicates with Firebase services over the network.
-    const userCredential = await signInWithEmailAndPassword(clientAuth, email, password);
-    return { success: true };
-  } catch (error: any) {
-    let errorMessage = 'An unknown error occurred.';
-     if (error.code) {
-        switch (error.code) {
-            case 'auth/user-not-found':
-            case 'auth/wrong-password':
-            case 'auth/invalid-credential':
-              errorMessage = 'Invalid email or password.';
-              break;
-            case 'auth/invalid-email':
-              errorMessage = 'The email address is not valid.';
-              break;
-            default:
-              errorMessage = 'Invalid email or password.';
-        }
-    } else if (error instanceof z.ZodError) {
-        errorMessage = error.errors.map(e => e.message).join(', ');
+
+    const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    });
+
+    if (error) {
+        return { success: false, error: 'Invalid login credentials.' };
     }
-    return { success: false, error: errorMessage };
-  }
+
+    return { success: true };
 }
 
-export async function setAdminClaim(email: string) {
-    try {
-        const adminAuth = getAdminAuth();
-        const user = await adminAuth.getUserByEmail(email);
-        await adminAuth.setCustomUserClaims(user.uid, { admin: true });
-        return { success: true, message: `Admin claim set for ${email}`};
-    } catch (error: any) {
-        return { success: false, error: error.message };
-    }
+
+export async function signOutUser() {
+    const supabase = createServerActionClient({ cookies });
+    await supabase.auth.signOut();
+    redirect('/');
 }

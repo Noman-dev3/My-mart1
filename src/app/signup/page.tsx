@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { registerUser } from '@/lib/auth-actions';
 import { Icons } from '@/components/icons';
-import Footer from '@/components/footer';
+import Image from 'next/image';
 
 const signupSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -35,7 +35,11 @@ export default function SignupPage() {
   const onSubmit = async (data: SignupFormValues) => {
     const result = await registerUser(data);
     if (result.success) {
-      toast({ title: 'Success', description: 'Account created successfully! Please log in.' });
+      toast({ 
+        title: 'Account Created!', 
+        description: result.message || 'Please check your email to verify your account.',
+        duration: 10000 
+      });
       router.push('/login');
     } else {
       toast({
@@ -47,21 +51,20 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <main className="flex-grow flex items-center justify-center bg-muted/30 px-4 py-12">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-             <div className="flex justify-center mb-4">
-              <Link href="/" className="flex items-center gap-2">
-                <Icons.logo className="h-10 w-10 text-primary" />
-              </Link>
+    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2 xl:min-h-screen">
+        <div className="flex items-center justify-center py-12">
+            <Card className="mx-auto grid w-[350px] gap-6 border-none shadow-none">
+            <div className="grid gap-2 text-center">
+                <Link href="/" className="flex justify-center items-center gap-2 mb-4">
+                    <Icons.logo className="h-10 w-10 text-primary" />
+                </Link>
+                <h1 className="text-3xl font-bold font-headline">Sign Up</h1>
+                <p className="text-balance text-muted-foreground">
+                Enter your information to create an account
+                </p>
             </div>
-            <CardTitle className="text-3xl font-headline">Create an Account</CardTitle>
-            <CardDescription>Join My Mart to start shopping</CardDescription>
-          </CardHeader>
-          <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
                  <FormField
                   control={form.control}
                   name="name"
@@ -95,27 +98,35 @@ export default function SignupPage() {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
+                        <Input type="password" placeholder="••••••••" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full font-bold" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Creating Account...' : 'Sign Up'}
+                <Button type="submit" className="w-full font-bold mt-2" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? 'Creating Account...' : 'Create an account'}
                 </Button>
               </form>
             </Form>
-             <div className="mt-6 text-center text-sm">
-              Already have an account?{' '}
-              <Link href="/login" className="font-medium text-primary hover:underline">
-                Log in
+            <div className="mt-4 text-center text-sm">
+              Already have an account?{" "}
+              <Link href="/login" className="underline text-primary font-semibold">
+                Sign in
               </Link>
             </div>
-          </CardContent>
-        </Card>
-      </main>
-      <Footer />
+            </Card>
+        </div>
+        <div className="hidden bg-muted lg:block">
+            <Image
+                src="https://picsum.photos/seed/signup/1200/1800"
+                alt="Image"
+                width="1200"
+                height="1800"
+                data-ai-hint="abstract background"
+                className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+            />
+        </div>
     </div>
   );
 }

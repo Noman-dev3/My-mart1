@@ -334,8 +334,8 @@ function QuestionForm({ productId, user, onQuestionSubmitted }: { productId: str
         const result = await askProductQuestion({
             productId,
             text: values.text,
-            author: user.displayName || user.email,
-            authorId: user.uid,
+            author: user.user_metadata.full_name || user.email,
+            authorId: user.id,
         });
 
         if (result.success) {
