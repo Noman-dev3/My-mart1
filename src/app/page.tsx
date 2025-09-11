@@ -11,9 +11,8 @@ import { Button } from '@/components/ui/button';
 import ProductCard from '@/components/product-card';
 import { type Product } from '@/lib/product-actions';
 import { useMemo, useRef, useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 type HeroSlide = {
   image: string;
@@ -28,41 +27,58 @@ export default function LandingPage() {
   const [heroIndex, setHeroIndex] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
       const fetchPageContent = async () => {
         setIsLoading(true);
-        const contentDocRef = doc(db, 'siteContent', 'homepage');
-        const contentSnap = await getDoc(contentDocRef);
-        if(contentSnap.exists()) {
-            const data = contentSnap.data();
-            if (data.heroSlides && data.heroSlides.length > 0) {
-              setHeroContent(data.heroSlides);
+        
+        // Fetch hero content
+        const { data: contentData, error: contentError } = await supabase
+            .from('siteContent')
+            .select('content')
+            .eq('page', 'homepage')
+            .single();
+
+        if (contentError && contentError.code !== 'PGRST116') {
+            console.error("Error fetching content:", contentError);
+        }
+        
+        if (contentData) {
+            const content = contentData.content as any;
+            if (content.heroSlides && content.heroSlides.length > 0) {
+              setHeroContent(content.heroSlides);
             }
         } else {
-           // Fallback to some default content if nothing is in the database
-           setHeroContent([
-              { image: 'https://picsum.photos/1600/900?random=13', hint: 'fashion store', headline: 'Style Meets Simplicity', subtext: 'Discover curated collections of the finest products, delivered with speed and care. Your next favorite thing is just a click away.' },
-              { image: 'https://picsum.photos/1600/900?random=14', hint: 'electronics gadgets', headline: 'Tech for a Better Life', subtext: 'Explore the latest in cutting-edge technology. High-performance gadgets to simplify and enhance your world.' },
-              { image: 'https://picsum.photos/1600/900?random=15', hint: 'modern furniture', headline: 'Elegance in Every Detail', subtext: 'Transform your space with our beautifully crafted home goods. Where design and comfort live in perfect harmony.' },
+            // Fallback to some default content if nothing is in the database
+            setHeroContent([
+                { image: 'https://picsum.photos/1600/900?random=13', hint: 'fashion store', headline: 'Style Meets Simplicity', subtext: 'Discover curated collections of the finest products, delivered with speed and care. Your next favorite thing is just a click away.' },
+                { image: 'https://picsum.photos/1600/900?random=14', hint: 'electronics gadgets', headline: 'Tech for a Better Life', subtext: 'Explore the latest in cutting-edge technology. High-performance gadgets to simplify and enhance your world.' },
+                { image: 'https://picsum.photos/1600/900?random=15', hint: 'modern furniture', headline: 'Elegance in Every Detail', subtext: 'Transform your space with our beautifully crafted home goods. Where design and comfort live in perfect harmony.' },
             ]);
         }
+        
+        // Fetch products
+        const { data: productsData, error: productsError } = await supabase
+            .from('products')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (productsError) {
+            console.error("Failed to fetch products:", productsError);
+        } else {
+            setProducts(productsData as Product[]);
+        }
 
-        const q = query(collection(db, 'products'), orderBy("createdAt", "desc"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
-          setIsLoading(false);
-        }, (error) => {
-            console.error("Failed to listen to products:", error);
-            setIsLoading(false);
-        });
-
-        return () => unsubscribe();
+        setIsLoading(false);
     };
 
     fetchPageContent();
 
-  }, []);
+    // No real-time subscription on homepage for performance reasons.
+    // Data will be fresh on page load.
+
+  }, [supabase]);
 
 
   useEffect(() => {

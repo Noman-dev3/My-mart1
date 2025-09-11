@@ -2,8 +2,9 @@
 'use server';
 
 import { type CartItem } from '@/context/cart-context';
-import { db } from './firebase';
-import { collection, getDocs, doc, addDoc, updateDoc, query, orderBy, serverTimestamp, limit, onSnapshot, getDoc, where } from 'firebase/firestore';
+import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { revalidatePath } from 'next/cache';
 
 // A simpler version of CartItem for Server Actions, containing only primitive types.
 export type OrderItem = {
@@ -30,18 +31,6 @@ export type Order = {
     date: any; // Using `any` for serverTimestamp flexibility
     paymentMethod: PaymentMethod;
 };
-
-const ordersCollection = collection(db, 'orders');
-
-const processOrderDoc = (doc: any) => {
-    const data = doc.data();
-    return {
-        id: doc.id,
-        ...data,
-        date: data.date?.toDate ? data.date.toDate().toISOString() : new Date().toISOString(),
-    } as Order;
-}
-
 
 /**
  * Sends a notification to the store administrator about a new order.
@@ -106,70 +95,83 @@ export async function placeOrder(data: {
   total: number;
   paymentMethod: PaymentMethod;
 }): Promise<Order> {
-  const newOrder: Omit<Order, 'id'> = {
+  const supabase = createServerActionClient({ cookies });
+
+  const newOrderData = {
     customer: data.customer,
     items: data.items,
     total: data.total,
     status: data.paymentMethod === 'COD' ? 'Processing' : 'Pending',
-    date: serverTimestamp(),
     paymentMethod: data.paymentMethod,
+    date: new Date().toISOString(),
   };
 
-  await sendAdminNotification(newOrder);
+  await sendAdminNotification(newOrderData as Omit<Order, 'id' | 'date'>);
 
-  const docRef = await addDoc(ordersCollection, newOrder);
+  const { data: savedOrder, error } = await supabase
+    .from('orders')
+    .insert(newOrderData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error placing order:", error);
+    throw new Error("Could not place order.");
+  }
   
-  const savedOrder = await getDoc(doc(db, 'orders', docRef.id));
-  return processOrderDoc(savedOrder);
+  revalidatePath('/admin/orders');
+  revalidatePath('/admin');
+  
+  return savedOrder as Order;
 }
 
-async function readOrders(): Promise<Order[]> {
-    const q = query(ordersCollection, orderBy("date", "desc"));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-        return [];
+
+export async function getOrderById(orderId: string): Promise<Order | null> {
+    const supabase = createServerActionClient({ cookies });
+    const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('id', orderId)
+        .single();
+    
+    if (error) {
+        console.error('Error fetching order by ID:', error);
+        return null;
     }
-    return snapshot.docs.map(processOrderDoc);
-}
-
-
-export async function getRecentOrders(): Promise<Order[]> {
-    const q = query(ordersCollection, orderBy("date", "desc"), limit(5));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-        return [];
-    }
-    return snapshot.docs.map(processOrderDoc);
-}
-
-export async function getAllOrders(): Promise<Order[]> {
-    return await readOrders();
-}
-
-export async function getOrderById(orderId: string): Promise<Order | undefined> {
-    const orderDoc = await getDoc(doc(db, 'orders', orderId));
-    if (!orderDoc.exists()) {
-        return undefined;
-    }
-    return processOrderDoc(orderDoc);
+    return data as Order;
 }
 
 export async function getOrdersByUser(userEmail: string): Promise<Order[]> {
-    const q = query(ordersCollection, where("customer.email", "==", userEmail), orderBy("date", "desc"));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
+    const supabase = createServerActionClient({ cookies });
+    const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('customer->>email', userEmail)
+        .order('date', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching orders by user', error);
         return [];
     }
-    return snapshot.docs.map(processOrderDoc);
+    return data as Order[];
 }
 
 
 export async function updateOrderStatus(orderId: string, status: Order['status']) {
-    const orderRef = doc(db, 'orders', orderId);
-    await updateDoc(orderRef, { status });
+    const supabase = createServerActionClient({ cookies });
+    const { data, error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', orderId)
+        .select()
+        .single();
 
-    const updatedDoc = await getDoc(orderRef);
-     if (!updatedDoc) throw new Error('Order not found after update');
+    if (error) {
+        console.error("Error updating order status:", error);
+        throw new Error("Could not update order status.");
+    }
     
-    return processOrderDoc(updatedDoc);
+    revalidatePath('/admin/orders');
+    revalidatePath(`/order-confirmation/${orderId}`);
+    return data as Order;
 }

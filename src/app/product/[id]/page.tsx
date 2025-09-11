@@ -20,13 +20,12 @@ import { AuthContext } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProductRecommendations } from '@/ai/flows/product-recommendations';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, onSnapshot, query, orderBy, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 const questionFormSchema = z.object({
   text: z.string().min(10, "Question must be at least 10 characters.").max(500, "Question must be at most 500 characters."),
@@ -46,31 +45,49 @@ export default function ProductDetailPage() {
 
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
     if (!id) return;
-    setIsLoadingProduct(true);
-    const productDocRef = doc(db, 'products', id as string);
-    const unsubscribe = onSnapshot(productDocRef, (doc) => {
-        if(doc.exists()){
-            setProduct({ id: doc.id, ...doc.data() } as Product);
+    
+    const fetchProduct = async () => {
+        setIsLoadingProduct(true);
+        const { data, error } = await getProductById(id as string);
+        if (error) {
+            setProduct(undefined);
+            console.error(error);
         } else {
-            setProduct(undefined)
+            setProduct(data as Product);
         }
         setIsLoadingProduct(false);
-    });
+    }
+    fetchProduct();
 
-    return () => unsubscribe();
-  }, [id]);
+    const channel = supabase
+      .channel(`product-${id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products', filter: `id=eq.${id}` }, (payload) => {
+        setProduct(payload.new as Product);
+      })
+      .subscribe();
+      
+    return () => {
+        supabase.removeChannel(channel);
+    }
+
+  }, [id, supabase]);
 
 
   useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        setAllProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
-    }, (error) => console.error("Failed to listen to all products:", error));
-    return () => unsubscribe();
-  }, []);
+    const fetchAllProducts = async () => {
+        const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+        if (error) {
+            console.error("Failed to listen to all products:", error);
+        } else {
+            setAllProducts(data as Product[]);
+        }
+    };
+    fetchAllProducts();
+  }, [supabase]);
 
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -259,7 +276,7 @@ export default function ProductDetailPage() {
                     </AccordionTrigger>
                     <AccordionContent>
                       <ul className="space-y-2 text-muted-foreground mt-2">
-                        {Object.entries(product.specifications).map(([key, value]) => (
+                        {product.specifications && Object.entries(product.specifications).map(([key, value]) => (
                           <li key={key} className="flex justify-between">
                             <span className="font-medium text-foreground">{key}:</span>
                             <span>{String(value)}</span>
@@ -276,7 +293,7 @@ export default function ProductDetailPage() {
                     </AccordionTrigger>
                     <AccordionContent>
                       <div className="space-y-6 mt-2">
-                        {product.reviewsData.map((review, index) => (
+                        {product.reviewsData?.map((review, index) => (
                           <div key={index}>
                             <div className="flex items-center gap-2">
                               <ProductRating rating={review.rating} />
@@ -286,7 +303,7 @@ export default function ProductDetailPage() {
                             <p className="text-muted-foreground mt-2">{review.comment}</p>
                           </div>
                         ))}
-                         {product.reviewsData.length === 0 && (
+                         {(!product.reviewsData || product.reviewsData.length === 0) && (
                             <p className="text-sm text-muted-foreground">No reviews yet.</p>
                          )}
                       </div>

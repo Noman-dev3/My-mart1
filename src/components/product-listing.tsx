@@ -78,7 +78,7 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
         break;
       case 'newest':
       default:
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
     }
 

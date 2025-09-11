@@ -12,5 +12,3 @@ export async function getCategoryList(): Promise<string[]> {
 export async function getBrandList(): Promise<string[]> {
     return await getBrands();
 }
-
-    

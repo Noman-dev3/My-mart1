@@ -2,8 +2,9 @@
 'use server';
 
 import { z } from 'zod';
-import { db } from './firebase';
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp, getDoc, arrayUnion } from 'firebase/firestore';
+import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { revalidatePath } from 'next/cache';
 import { randomBytes } from 'crypto';
 
 // We define the Product type here as this file is the source of truth for product data structures.
@@ -33,48 +34,52 @@ export type Product = {
         date: string;
         answer?: string;
     }[];
-    createdAt: any;
+    created_at: any;
 };
 
-const productsCollection = collection(db, 'products');
-
-const processProductDoc = (doc: any) => {
-    const data = doc.data();
-    return {
-        id: doc.id,
-        ...data,
-        questions: data.questions || [],
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
-    } as Product;
+export async function getAllProducts(): Promise<{data: Product[] | null, error: any }> {
+    const supabase = createServerActionClient({ cookies });
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+    
+    return { data: data as Product[] | null, error };
 }
 
-export async function getAllProducts(): Promise<Product[]> {
-    const q = query(productsCollection, orderBy("createdAt", "desc"));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-        return [];
-    }
-    return snapshot.docs.map(processProductDoc);
-}
-
-export async function getProductById(productId: string): Promise<Product | undefined> {
-    const productDoc = await getDoc(doc(db, 'products', productId));
-    if (!productDoc.exists()) {
-        return undefined;
-    }
-    return processProductDoc(productDoc);
+export async function getProductById(productId: string): Promise<{ data: Product | null, error: any }> {
+    const supabase = createServerActionClient({ cookies });
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', productId)
+        .single();
+        
+    return { data: data as Product | null, error };
 }
 
 export async function getCategories(): Promise<string[]> {
-    const products = await getAllProducts();
-    const categories = [...new Set(products.map((p) => p.category))];
-    return categories;
+    const supabase = createServerActionClient({ cookies });
+    const { data, error } = await supabase
+        .rpc('get_distinct_categories');
+    
+    if (error) {
+        console.error("Error fetching categories:", error);
+        return [];
+    }
+    return data;
 }
 
 export async function getBrands(): Promise<string[]> {
-    const products = await getAllProducts();
-    const brands = [...new Set(products.map((p) => p.brand))];
-    return brands;
+    const supabase = createServerActionClient({ cookies });
+    const { data, error } = await supabase
+        .rpc('get_distinct_brands');
+
+    if (error) {
+        console.error("Error fetching brands:", error);
+        return [];
+    }
+    return data;
 }
 
 
@@ -102,6 +107,7 @@ const questionSchema = z.object({
 
 
 export async function addProduct(data: z.infer<typeof productSchema>) {
+    const supabase = createServerActionClient({ cookies });
     const newProduct = {
         ...data,
         rating: Math.floor(Math.random() * 5) + 1,
@@ -109,45 +115,83 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         specifications: {}, // Placeholder
         reviewsData: [], // Placeholder
         questions: [], // Initialize with empty questions
-        createdAt: serverTimestamp(),
     };
-    const docRef = await addDoc(productsCollection, newProduct);
-    const savedDoc = await getDoc(docRef);
-    return processProductDoc(savedDoc);
+    
+    const { data: savedProduct, error } = await supabase
+        .from('products')
+        .insert(newProduct)
+        .select()
+        .single();
+    
+    if (error) throw error;
+    
+    revalidatePath('/admin/products');
+    revalidatePath('/products');
+    revalidatePath('/');
+    
+    return savedProduct;
 }
 
 export async function updateProduct(productId: string, data: z.infer<typeof productSchema>) {
-    const productRef = doc(db, 'products', productId);
-    await updateDoc(productRef, data);
-    return { id: productId, ...data };
+    const supabase = createServerActionClient({ cookies });
+    const { data: updatedProduct, error } = await supabase
+        .from('products')
+        .update(data)
+        .eq('id', productId)
+        .select()
+        .single();
+    
+    if (error) throw error;
+
+    revalidatePath('/admin/products');
+    revalidatePath(`/product/${productId}`);
+    
+    return updatedProduct;
 }
 
 export async function answerProductQuestion(productId: string, data: z.infer<typeof answerSchema>) {
+    const supabase = createServerActionClient({ cookies });
     const { questionId, answer } = data;
-    const productRef = doc(db, 'products', productId);
-    const productSnap = await getDoc(productRef);
 
-    if (!productSnap.exists()) {
+    const { data: product, error: fetchError } = await supabase
+        .from('products')
+        .select('questions')
+        .eq('id', productId)
+        .single();
+
+    if (fetchError || !product) {
         throw new Error("Product not found");
     }
 
-    const productData = productSnap.data();
-    const questions = productData.questions || [];
-
+    const questions = (product.questions as Product['questions']) || [];
     const updatedQuestions = questions.map((q: any) => 
         q.id === questionId ? { ...q, answer } : q
     );
+    
+    const { error: updateError } = await supabase
+        .from('products')
+        .update({ questions: updatedQuestions })
+        .eq('id', productId);
 
-    await updateDoc(productRef, { questions: updatedQuestions });
+    if (updateError) throw updateError;
+    
+    revalidatePath(`/product/${productId}`);
+    revalidatePath('/admin/products');
+
     return { success: true };
 }
 
 export async function askProductQuestion(data: z.infer<typeof questionSchema>) {
+    const supabase = createServerActionClient({ cookies });
     const { productId, text, author, authorId } = questionSchema.parse(data);
 
-    const productRef = doc(db, 'products', productId);
-    const productSnap = await getDoc(productRef);
-     if (!productSnap.exists()) {
+    const { data: product, error: fetchError } = await supabase
+        .from('products')
+        .select('questions')
+        .eq('id', productId)
+        .single();
+
+     if (fetchError || !product) {
         return { success: false, error: "Product not found." };
     }
 
@@ -158,21 +202,37 @@ export async function askProductQuestion(data: z.infer<typeof questionSchema>) {
         authorId,
         date: new Date().toISOString(),
     };
+    
+    const currentQuestions = product.questions || [];
+    const updatedQuestions = [...currentQuestions, newQuestion];
 
-    try {
-        await updateDoc(productRef, {
-            questions: arrayUnion(newQuestion)
-        });
-        return { success: true, question: newQuestion };
-    } catch(error) {
-        console.error("Error submitting question:", error);
+    const { error: updateError } = await supabase
+        .from('products')
+        .update({ questions: updatedQuestions })
+        .eq('id', productId);
+    
+    if (updateError) {
+        console.error("Error submitting question:", updateError);
         return { success: false, error: "Failed to submit your question." };
     }
+    
+    revalidatePath(`/product/${productId}`);
+
+    return { success: true, question: newQuestion };
 }
 
 
 export async function deleteProduct(productId: string) {
-    const productRef = doc(db, 'products', productId);
-    await deleteDoc(productRef);
+    const supabase = createServerActionClient({ cookies });
+    const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId);
+    
+    if (error) throw error;
+    
+    revalidatePath('/admin/products');
+    revalidatePath('/products');
+    
     return { success: true };
 }

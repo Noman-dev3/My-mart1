@@ -11,11 +11,11 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { type Order } from '@/lib/order-actions';
+import { type Product } from '@/lib/product-actions';
 import Link from 'next/link';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { format, startOfDay, endOfDay, getMonth, getYear } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 type Stats = {
   totalRevenue: number;
@@ -35,21 +35,24 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [salesData, setSalesData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
-    const ordersQuery = query(collection(db, 'orders'), orderBy("date", "desc"));
-    const productsQuery = query(collection(db, 'products'));
+    const fetchAndProcessData = async () => {
+        // Fetch orders
+        const { data: ordersData, error: ordersError } = await supabase
+            .from('orders')
+            .select('*')
+            .order('date', { ascending: false });
 
-    const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
-        const allOrders = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                date: data.date?.toDate() || new Date(),
-            } as Order;
-        });
+        if (ordersError) {
+            console.error("Failed to listen to orders:", ordersError);
+            setIsLoading(false);
+            return;
+        }
 
+        const allOrders: Order[] = ordersData.map((o: any) => ({ ...o, date: new Date(o.date) }));
+        
         const today = new Date();
         const startOfToday = startOfDay(today);
         const endOfToday = endOfDay(today);
@@ -76,25 +79,33 @@ export default function AdminDashboard() {
 
         const sortedSales = Object.values(monthlySales).sort((a,b) => a.date.localeCompare(b.date));
         setSalesData(sortedSales);
+        
+        // Fetch products for stock count
+        const { count: lowStockCount, error: productsError } = await supabase
+            .from('products')
+            .select('*', { count: 'exact', head: true })
+            .eq('inStock', false);
 
-        setStats(prev => ({ ...prev, totalRevenue, ordersToday: ordersTodayList.length, newCustomers: uniqueCustomersToday } as Stats));
+        if (productsError) {
+            console.error("Failed to get stock count:", productsError);
+        }
+
+        setStats({ totalRevenue, ordersToday: ordersTodayList.length, newCustomers: uniqueCustomersToday, lowStockCount: lowStockCount ?? 0 });
         setIsLoading(false);
-    }, (error) => {
-        console.error("Failed to listen to orders:", error);
-    });
+    };
 
-    const unsubscribeProducts = onSnapshot(productsQuery, (snapshot) => {
-        const lowStockCount = snapshot.docs.filter(doc => !doc.data().inStock).length;
-        setStats(prev => ({ ...prev, lowStockCount } as Stats));
-    }, (error) => {
-        console.error("Failed to listen to products for stock count:", error);
-    });
+    setIsLoading(true);
+    fetchAndProcessData();
+
+    const channel = supabase
+      .channel('admin-dashboard-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public' }, fetchAndProcessData)
+      .subscribe();
 
     return () => {
-        unsubscribeOrders();
-        unsubscribeProducts();
+        supabase.removeChannel(channel);
     }
-  }, []);
+  }, [supabase]);
 
   const StatCard = ({ title, value, icon: Icon, description, isLoading, variant }: { title: string, value: string | number, icon: React.ElementType, description: string, isLoading: boolean, variant?: 'default' | 'destructive' }) => (
     <Card className={variant === 'destructive' ? 'border-destructive/50' : ''}>

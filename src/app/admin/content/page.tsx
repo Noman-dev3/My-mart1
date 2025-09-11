@@ -5,8 +5,6 @@ import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 const heroSlideSchema = z.object({
   image: z.string().url({ message: "Please enter a valid URL." }),
@@ -32,6 +30,7 @@ type ContentFormValues = z.infer<typeof contentSchema>;
 export default function ContentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const supabase = createSupabaseBrowserClient();
 
   const form = useForm<ContentFormValues>({
     resolver: zodResolver(contentSchema),
@@ -48,15 +47,22 @@ export default function ContentPage() {
   useEffect(() => {
     async function fetchContent() {
       setIsLoading(true);
-      const docRef = doc(db, 'siteContent', 'homepage');
-      const docSnap = await getDoc(docRef);
+      const { data, error } = await supabase
+        .from('siteContent')
+        .select('content')
+        .eq('page', 'homepage')
+        .single();
 
-      if (docSnap.exists()) {
-        const data = docSnap.data() as ContentFormValues;
-        if (data.heroSlides && data.heroSlides.length > 0) {
-            form.reset(data);
+      if (error && error.code !== 'PGRST116') { // PGRST116: no rows found
+        console.error("Error fetching content:", error);
+      }
+      
+      if (data) {
+        const content = data.content as any;
+        if (content.heroSlides && content.heroSlides.length > 0) {
+            form.reset(content);
         } else {
-            // Pre-fill with some default structure if empty
+             // Pre-fill with some default structure if empty
             form.reset({
                 heroSlides: [
                     { image: 'https://picsum.photos/1600/900?random=13', hint: 'fashion store', headline: 'Style Meets Simplicity', subtext: 'Discover curated collections of the finest products, delivered with speed and care.' },
@@ -65,17 +71,29 @@ export default function ContentPage() {
                 ]
             })
         }
+      } else {
+         form.reset({
+            heroSlides: [
+                { image: 'https://picsum.photos/1600/900?random=13', hint: 'fashion store', headline: 'Style Meets Simplicity', subtext: 'Discover curated collections of the finest products, delivered with speed and care.' },
+                { image: 'https://picsum.photos/1600/900?random=14', hint: 'electronics gadgets', headline: 'Tech for a Better Life', subtext: 'Explore the latest in cutting-edge technology.' },
+                { image: 'https://picsum.photos/1600/900?random=15', hint: 'modern furniture', headline: 'Elegance in Every Detail', subtext: 'Transform your space with our beautifully crafted home goods.' }
+            ]
+        })
       }
       setIsLoading(false);
     }
 
     fetchContent();
-  }, [form]);
+  }, [form, supabase]);
 
   const onSubmit = async (data: ContentFormValues) => {
     try {
-      const docRef = doc(db, 'siteContent', 'homepage');
-      await setDoc(docRef, data, { merge: true });
+      const { error } = await supabase
+        .from('siteContent')
+        .upsert({ page: 'homepage', content: data }, { onConflict: 'page' });
+
+      if (error) throw error;
+      
       toast({
         title: 'Success!',
         description: 'Homepage content has been updated successfully.',

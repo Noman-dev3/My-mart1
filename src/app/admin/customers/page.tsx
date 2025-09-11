@@ -23,11 +23,10 @@ import {
 } from "@tanstack/react-table"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { type Order } from '@/lib/order-actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 type Customer = {
     email: string;
@@ -42,16 +41,27 @@ export default function CustomersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('');
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
-    setIsLoading(true);
-    const q = query(collection(db, 'orders'), orderBy("date", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const orders = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return { ...data, date: data.date?.toDate() || new Date() } as Order;
-        });
+    const fetchAndAggregateOrders = async () => {
+        setIsLoading(true);
+        const { data: ordersData, error } = await supabase
+            .from('orders')
+            .select('*')
+            .order('date', { ascending: false });
 
+        if (error) {
+            console.error("Failed to fetch orders for customer aggregation:", error);
+            setIsLoading(false);
+            return;
+        }
+
+        const orders: Order[] = ordersData.map((order: any) => ({
+            ...order,
+            date: new Date(order.date),
+        }));
+        
         const customerData = orders.reduce((acc, order) => {
             const email = order.customer.email;
             if (!acc[email]) {
@@ -75,13 +85,19 @@ export default function CustomersPage() {
         
         setCustomers(customerList);
         setIsLoading(false);
-    }, (error) => {
-        console.error("Failed to fetch orders for customer aggregation:", error);
-        setIsLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-  }, []);
+    fetchAndAggregateOrders();
+
+    const channel = supabase
+      .channel('customers-page-realtime-orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, fetchAndAggregateOrders)
+      .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
  const columns: ColumnDef<Customer>[] = useMemo(() => [
     {

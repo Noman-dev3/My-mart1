@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -52,8 +53,7 @@ import { MoreHorizontal, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import ProductForm from './product-form';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,22 +65,32 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { toast } = useToast();
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
-    setIsLoading(true);
-    const q = query(collection(db, 'products'), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const fetchedProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-        setProducts(fetchedProducts);
+    const fetchProducts = async () => {
+        setIsLoading(true);
+        const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+        if (error) {
+            console.error("Failed to fetch products:", error);
+            toast({ title: "Error", description: "Failed to fetch products.", variant: "destructive" });
+        } else {
+            setProducts(data as Product[]);
+        }
         setIsLoading(false);
-    }, (error) => {
-        console.error("Failed to fetch products:", error);
-        toast({ title: "Error", description: "Failed to fetch products.", variant: "destructive" });
-        setIsLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-  }, [toast]);
+    fetchProducts();
+
+    const channel = supabase
+      .channel('realtime-products')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, fetchProducts)
+      .subscribe();
+    
+    return () => {
+        supabase.removeChannel(channel);
+    }
+  }, [supabase, toast]);
   
   const handleEdit = (product: Product) => {
     setSelectedProduct(product);

@@ -62,8 +62,7 @@ import { ChevronDown, File, ListFilter, MoreHorizontal, Eye, Truck, XCircle, Che
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -76,29 +75,41 @@ export default function OrdersPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  
+  const supabase = createSupabaseBrowserClient();
 
-  useEffect(() => {
-    setIsLoading(true);
-    const q = query(collection(db, 'orders'), orderBy("date", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const fetchedOrders = snapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                date: data.date?.toDate().toISOString() || new Date().toISOString(),
-            } as Order;
-        });
-        setOrders(fetchedOrders);
-        setIsLoading(false);
-    }, (error) => {
+  const fetchOrders = async () => {
+    const { data, error } = await supabase.from('orders').select('*').order('date', { ascending: false });
+    if (error) {
         console.error("Failed to fetch orders:", error);
         toast({ title: "Error", description: "Failed to fetch orders.", variant: "destructive" });
         setIsLoading(false);
-    });
+    } else {
+        setOrders(data as Order[]);
+        setIsLoading(false);
+    }
+  };
 
-    return () => unsubscribe();
-  }, [toast]);
+  useEffect(() => {
+    setIsLoading(true);
+    fetchOrders();
+
+    const channel = supabase
+      .channel('realtime-orders')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          console.log('Change received!', payload)
+          fetchOrders();
+        }
+      )
+      .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel);
+      }
+  }, [supabase, toast]);
 
   const handleUpdateStatus = async (orderId: string, status: Order['status']) => {
     try {
