@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getAuth, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { getAdminAuth } from './firebase-admin';
 import { auth } from './firebase';
 
@@ -17,21 +17,13 @@ const loginSchema = z.object({
   password: z.string(),
 });
 
-// We switch back to client-side SDK for registration and sign-in to ensure
-// the client's auth state is automatically managed by the Firebase SDK.
-// This is the intended pattern for Server Actions that manipulate client-side auth.
-
 export async function registerUser(values: z.infer<typeof registerSchema>) {
   try {
+    const adminAuth = getAdminAuth();
     const { name, email, password } = registerSchema.parse(values);
     
-    // We create a temporary auth instance on the server to perform the action.
-    // The client SDK will pick up the resulting auth state.
-    const userCredential = await getAdminAuth().createUser({ email, password, displayName: name });
+    const userCredential = await adminAuth.createUser({ email, password, displayName: name });
     
-    // We can also update the client-side auth state if needed, but creating the user is enough for login
-    // await updateProfile(userCredential.user, { displayName: name });
-
     return { success: true, uid: userCredential.uid };
   } catch (error: any) {
     let errorMessage = 'An unknown error occurred.';
@@ -61,6 +53,7 @@ export async function signInUser(values: z.infer<typeof loginSchema>) {
   try {
     const { email, password } = loginSchema.parse(values);
     // For sign-in, we MUST use the client SDK to get the session cookie set correctly.
+    // This server action calls the client SDK running on the server.
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return { success: true };
   } catch (error: any) {
