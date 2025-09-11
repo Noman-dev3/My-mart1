@@ -58,7 +58,6 @@ CREATE TABLE "siteContent" (
 -- RLS Policies for products table
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Products are viewable by everyone." ON products FOR SELECT USING (true);
--- THIS IS THE NEW POLICY TO ADD
 CREATE POLICY "Admins can manage products." ON products FOR ALL USING (auth.jwt() ->> 'role' = 'admin') WITH CHECK (auth.jwt() ->> 'role' = 'admin');
 
 -- RLS Policies for orders table
@@ -96,3 +95,19 @@ ALTER PUBLICATION supabase_realtime ADD TABLE products;
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE "siteContent";
 ```
+---
+## Creating an Admin User
+
+To access the admin dashboard, you need to create a user and assign them an 'admin' role.
+
+1.  Navigate to your Supabase project dashboard.
+2.  Go to **Authentication** -> **Users**.
+3.  Click **"Add user"**.
+4.  Enter the user's email (e.g., `admin@example.com`) and a secure password (must be at least 6 characters).
+5.  After the user is created, go back to the **Users** list.
+6.  Click the three dots (`...`) next to the new admin user and select **"Edit user"**.
+7.  In the **User App Metadata** section, click **"+ Add new data"**.
+8.  A new field will appear. Set the **key** to `role` and the **value** to `admin`. Ensure both are lowercase and have no extra spaces.
+9.  Click **"Save"**.
+
+You can now log into the application with these credentials to access the admin dashboard.

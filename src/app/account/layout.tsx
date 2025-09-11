@@ -47,6 +47,7 @@ export default function AccountLayout({
   }
   
   const userInitial = user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U';
+  const isAdmin = user?.user_metadata?.role === 'admin';
 
   const navItems = [
     { href: '/account', icon: User, label: 'My Profile' },
@@ -84,15 +85,17 @@ export default function AccountLayout({
                       </Button>
                     </Link>
                   ))}
-                   <Link href="/admin">
-                      <Button
-                        variant='ghost'
-                        className="w-full justify-start"
-                      >
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Admin Dashboard
-                      </Button>
-                    </Link>
+                   {isAdmin && (
+                     <Link href="/admin">
+                        <Button
+                          variant='ghost'
+                          className="w-full justify-start"
+                        >
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          Admin Dashboard
+                        </Button>
+                      </Link>
+                   )}
                   <form action={signOutUser} className="w-full">
                     <Button variant="ghost" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10">
                         <LogOut className="mr-2 h-4 w-4" />
