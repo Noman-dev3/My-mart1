@@ -59,6 +59,16 @@ export async function getProductById(productId: string): Promise<{ data: Product
     return { data: data as Product | null, error };
 }
 
+export async function getProductByBarcode(barcode: string): Promise<{ data: Product | null, error: any }> {
+    const supabase = createServerActionClient({ cookies });
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('barcode', barcode)
+        .single();
+    return { data: data as Product | null, error };
+}
+
 export async function getCategories(): Promise<string[]> {
     const supabase = createServerActionClient({ cookies });
     const { data, error } = await supabase

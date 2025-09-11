@@ -6,11 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Barcode, ScanLine, ShoppingCart, Trash2 } from 'lucide-react';
+import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { getProductByBarcode, type Product } from '@/lib/product-actions';
+import JsBarcode from 'jsbarcode';
 
-// Placeholder for a scanned product type
+// A version of product for the POS cart
 type ScannedProduct = {
   id: string;
   name: string;
@@ -24,6 +26,7 @@ export default function StoreManagerPage() {
   const { toast } = useToast();
   const [cart, setCart] = useState<ScannedProduct[]>([]);
   const [manualBarcode, setManualBarcode] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Request camera permission on component mount
   useEffect(() => {
@@ -57,30 +60,41 @@ export default function StoreManagerPage() {
     getCameraPermission();
   }, [toast]);
 
-  const handleManualAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if(!manualBarcode.trim()) return;
-
-    // TODO: In the next step, we will look up the product by barcode.
-    // For now, we add a mock product.
-    console.log(`Manually adding barcode: ${manualBarcode}`);
-    const mockProduct: ScannedProduct = {
-        id: manualBarcode,
-        name: `Product ${manualBarcode.slice(0,5)}`,
-        price: Math.floor(Math.random() * 1000) + 100,
-        quantity: 1
-    }
+  const addToCart = (product: Product) => {
     setCart(prevCart => {
-        const existingItem = prevCart.find(item => item.id === mockProduct.id);
-        if (existingItem) {
-            return prevCart.map(item => item.id === mockProduct.id ? {...item, quantity: item.quantity + 1} : item);
-        }
-        return [...prevCart, mockProduct];
+      const existingItem = prevCart.find(item => item.id === product.id);
+      if (existingItem) {
+        return prevCart.map(item =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prevCart, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
     });
+    toast({ title: "Item Added", description: `${product.name} added to cart.` });
+  };
+
+  const handleManualAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualBarcode.trim()) return;
+    setIsSubmitting(true);
+
+    const { data: product, error } = await getProductByBarcode(manualBarcode.trim());
+
+    if (error || !product) {
+      toast({
+        variant: 'destructive',
+        title: 'Product Not Found',
+        description: `No product found with barcode: ${manualBarcode}`,
+      });
+    } else {
+      addToCart(product);
+    }
 
     setManualBarcode('');
-    toast({ title: "Item Added", description: `${mockProduct.name} added to cart.`});
-  }
+    setIsSubmitting(false);
+  };
 
   const removeFromCart = (productId: string) => {
     setCart(prev => prev.filter(item => item.id !== productId));
@@ -125,8 +139,11 @@ export default function StoreManagerPage() {
                             placeholder="Enter barcode..." 
                             value={manualBarcode} 
                             onChange={(e) => setManualBarcode(e.target.value)}
+                            disabled={isSubmitting}
                         />
-                        <Button type="submit">Add</Button>
+                        <Button type="submit" disabled={isSubmitting}>
+                           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
+                        </Button>
                     </div>
                 </form>
             </CardContent>
@@ -190,4 +207,3 @@ export default function StoreManagerPage() {
     </div>
   );
 }
-
