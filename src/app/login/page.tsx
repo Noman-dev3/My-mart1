@@ -9,11 +9,12 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { signInUser } from '@/lib/auth-actions';
 import { Icons } from '@/components/icons';
 import Image from 'next/image';
+import AnimatedAuthText from '@/components/animated-auth-text';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -132,7 +133,9 @@ export default function LoginPage() {
               data-ai-hint="team meeting"
               className="h-full w-full object-cover"
             />
-             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+             <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-background/20 to-transparent p-8 flex flex-col justify-end">
+                <AnimatedAuthText />
+             </div>
           </div>
        </Card>
     </main>
