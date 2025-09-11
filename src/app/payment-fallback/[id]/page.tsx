@@ -3,22 +3,20 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getOrderById, type Order, updateOrderStatus } from '@/lib/order-actions';
+import { getOrderById, type Order } from '@/lib/order-actions';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle, Copy } from 'lucide-react';
+import { Loader2, Copy, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import Image from 'next/image';
 
-export default function OrderConfirmationPage() {
+export default function PaymentFallbackPage() {
   const { id } = useParams();
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -45,32 +43,6 @@ export default function OrderConfirmationPage() {
       toast({ title: 'Copied!', description: 'Order ID copied to clipboard.' });
     }
   };
-
-  const handlePaymentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!order) return;
-
-    setIsSubmitting(true);
-    try {
-      // In a real app, you'd verify the transaction ID with SafePay's API.
-      // Here, we'll just simulate success and update the order status.
-      await updateOrderStatus(order.id, 'Processing');
-      toast({
-        title: 'Payment Confirmed!',
-        description: 'Your order is now being processed.',
-      });
-      router.push(`/`); // Redirect to home after successful "payment"
-    } catch (error) {
-      toast({
-        title: 'Payment Confirmation Failed',
-        description: 'Could not update order status. Please contact support.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
 
   if (loading) {
     return (
@@ -106,11 +78,11 @@ export default function OrderConfirmationPage() {
     <div className="flex flex-col min-h-screen bg-muted/20">
       <Header searchQuery="" setSearchQuery={() => {}} />
       <main className="flex-grow container mx-auto px-4 py-8 sm:py-16">
-        <Card className="max-w-2xl mx-auto">
+        <Card className="max-w-3xl mx-auto">
           <CardHeader className="text-center items-center gap-2 pt-8">
-            <CheckCircle className="h-16 w-16 text-green-500" />
-            <CardTitle className="text-3xl font-headline">Order Placed Successfully!</CardTitle>
-            <CardDescription>Your order has been submitted. Please complete the payment below.</CardDescription>
+            <AlertTriangle className="h-16 w-16 text-yellow-500" />
+            <CardTitle className="text-3xl font-headline">Manual Order Confirmation</CardTitle>
+            <CardDescription>Your order is pending. Please confirm it manually.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="bg-muted/50 p-4 rounded-lg text-center space-y-2">
@@ -123,28 +95,43 @@ export default function OrderConfirmationPage() {
                 </div>
             </div>
             
-            <div className="p-6 border border-dashed rounded-lg">
-                <h3 className="font-headline font-semibold text-xl text-center">Complete with SafePay</h3>
-                <div className="text-center text-muted-foreground mt-2 text-sm">
-                    <p>1. Open your SafePay app.</p>
-                    <p>2. Send <span className="font-bold text-foreground">${order.total.toFixed(2)}</span> to the merchant account: <span className="font-bold text-primary">mymart-store</span></p>
-                    <p>3. Enter the transaction ID below to confirm your order.</p>
+            <div className="text-center p-4 border border-dashed rounded-lg">
+                <h3 className="font-headline font-semibold text-lg">Next Steps: Confirm Your Order</h3>
+                <p className="text-muted-foreground mt-2">
+                    To complete your purchase, please contact us with your Order ID to arrange payment.
+                </p>
+                <div className="mt-4 text-lg">
+                    <p>Call or WhatsApp us at:</p>
+                    <p className="font-bold text-primary text-xl">+92 311 9991972</p>
                 </div>
-
-                <form onSubmit={handlePaymentSubmit} className="mt-6 space-y-4">
-                    <div className="grid w-full items-center gap-1.5">
-                        <Label htmlFor="transactionId">SafePay Transaction ID</Label>
-                        <Input type="text" id="transactionId" placeholder="e.g., SP12345678" required />
-                    </div>
-                    <Button type="submit" className="w-full font-bold" disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Confirm Payment
-                    </Button>
-                </form>
+                <p className="text-xs text-muted-foreground mt-3">Your order will be processed once payment is confirmed.</p>
             </div>
+
+            <div>
+                <h3 className="font-headline font-semibold text-lg mb-2">Order Summary</h3>
+                 <div className="space-y-3 max-h-60 overflow-y-auto pr-2 border-t border-b py-3">
+                    {order.items.map(item => (
+                        <div key={item.id} className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <Image src={item.image} alt={item.name} width={48} height={48} className="rounded-md" />
+                                <div>
+                                    <p className="font-semibold">{item.name}</p>
+                                    <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                                </div>
+                            </div>
+                            <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                        </div>
+                    ))}
+                </div>
+                 <div className="flex justify-between text-lg font-bold pt-3">
+                    <p>Total</p>
+                    <p>${order.total.toFixed(2)}</p>
+                </div>
+            </div>
+
           </CardContent>
-          <CardFooter className="flex flex-col justify-center pb-8 gap-2">
-             <p className="text-xs text-muted-foreground">Having trouble? <a href={`/payment-fallback/${order.id}`} className="text-primary hover:underline">Use manual confirmation</a>.</p>
+          <CardFooter className="flex justify-center pb-8">
+            <Button onClick={() => router.push('/products')}>Continue Shopping</Button>
           </CardFooter>
         </Card>
       </main>
@@ -152,3 +139,4 @@ export default function OrderConfirmationPage() {
     </div>
   );
 }
+

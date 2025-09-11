@@ -53,7 +53,6 @@ export default function CheckoutPage() {
     }
 
     try {
-      // Create a plain version of cart items, excluding complex objects
       const orderItems = cartItems.map(item => ({
         id: item.id,
         name: item.name,
@@ -69,8 +68,8 @@ export default function CheckoutPage() {
       });
 
       toast({
-        title: 'Order Submitted!',
-        description: 'Your order has been received. Please follow the instructions to confirm.',
+        title: 'Order Placed!',
+        description: 'Please complete payment to confirm your order.',
       });
       clearCart();
       router.push(`/order-confirmation/${newOrder.id}`);
@@ -163,7 +162,7 @@ export default function CheckoutPage() {
                   )}
                 />
                 <Button type="submit" size="lg" className="w-full font-bold" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Submitting Order...' : `Submit Order - $${cartTotal.toFixed(2)}`}
+                  {form.formState.isSubmitting ? 'Placing Order...' : `Place Order - $${cartTotal.toFixed(2)}`}
                 </Button>
               </form>
             </Form>
