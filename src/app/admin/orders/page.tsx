@@ -33,7 +33,6 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
     Dialog,
@@ -41,7 +40,6 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog"
@@ -74,6 +72,10 @@ export default function OrdersPage() {
   const [globalFilter, setGlobalFilter] = useState('');
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const { toast } = useToast();
+
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -112,6 +114,23 @@ export default function OrdersPage() {
             variant: "destructive"
         });
     }
+  }
+
+  const handleViewDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setIsDetailsOpen(true);
+  }
+
+  const handleCancelTrigger = (order: Order) => {
+    setSelectedOrder(order);
+    setIsAlertOpen(true);
+  }
+  
+  const handleCancelConfirm = async () => {
+    if (!selectedOrder) return;
+    await handleUpdateStatus(selectedOrder.id, 'Cancelled');
+    setIsAlertOpen(false);
+    setSelectedOrder(null);
   }
 
  const columns: ColumnDef<Order>[] = useMemo(() => [
@@ -172,131 +191,53 @@ export default function OrdersPage() {
             const statusOptions: Order['status'][] = ['Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
             return (
-                <Dialog>
-                    <AlertDialog>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DialogTrigger asChild>
-                                    <DropdownMenuItem>
-                                        <Eye className="mr-2 h-4 w-4" />
-                                        View Order
-                                    </DropdownMenuItem>
-                                </DialogTrigger>
-                                {order.status === 'Pending' && (
-                                    <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'Processing')}>
-                                        <CheckCircle className="mr-2 h-4 w-4" />
-                                        Approve Payment
-                                    </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSub>
-                                    <DropdownMenuSubTrigger>
-                                        <Truck className="mr-2 h-4 w-4" />
-                                        Update Status
-                                    </DropdownMenuSubTrigger>
-                                    <DropdownMenuPortal>
-                                    <DropdownMenuSubContent>
-                                        <DropdownMenuLabel>Set status</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        {statusOptions.map(status => (
-                                            <DropdownMenuItem key={status} onClick={() => handleUpdateStatus(order.id, status)} disabled={order.status === status}>
-                                                {status}
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuSubContent>
-                                    </DropdownMenuPortal>
-                                </DropdownMenuSub>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleViewDetails(order)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Order
+                        </DropdownMenuItem>
+                        {order.status === 'Pending' && (
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'Processing')}>
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Approve Payment
+                            </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                                <Truck className="mr-2 h-4 w-4" />
+                                Update Status
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuPortal>
+                            <DropdownMenuSubContent>
+                                <DropdownMenuLabel>Set status</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                        <XCircle className="mr-2 h-4 w-4" />
-                                        Cancel Order
+                                {statusOptions.map(status => (
+                                    <DropdownMenuItem key={status} onClick={() => handleUpdateStatus(order.id, status)} disabled={order.status === status}>
+                                        {status}
                                     </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action will cancel the order <span className="font-bold">{order.id}</span>. This cannot be undone.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Dismiss</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleUpdateStatus(order.id, 'Cancelled')}>Continue</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-
-                    <DialogContent className="sm:max-w-2xl">
-                        <DialogHeader>
-                        <DialogTitle>Order Details - {order.id}</DialogTitle>
-                        <DialogDescription>
-                            Placed on {format(new Date(order.date), "MMMM d, yyyy 'at' h:mm a")}
-                        </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
-                            <div>
-                                <h4 className="font-semibold mb-2">Customer</h4>
-                                <p>{order.customer.name}</p>
-                                <p>{order.customer.email}</p>
-                                <p>{order.customer.phone}</p>
-                            </div>
-                            <div>
-                                <h4 className="font-semibold mb-2">Order Info</h4>
-                                <p>Status: <Badge variant={
-                                    order.status === 'Delivered' ? 'default' :
-                                    order.status === 'Shipped' ? 'default' :
-                                    order.status === 'Processing' ? 'secondary' :
-                                    order.status === 'Cancelled' ? 'destructive' :
-                                    'outline'
-                                } className="capitalize">{order.status}</Badge></p>
-                                <p>Total: <span className="font-bold">PKR {order.total.toFixed(2)}</span></p>
-                            </div>
-                             <div>
-                                <h4 className="font-semibold mb-2">Payment</h4>
-                                <p>Method: {order.paymentMethod}</p>
-                                {order.paymentMethod === 'Online' && order.status === 'Pending' && (
-                                     <p className="text-yellow-600 text-xs mt-1">Awaiting payment confirmation.</p>
-                                )}
-                            </div>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold mb-2">Items</h4>
-                            <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                                {order.items.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                                        <div className="flex items-center gap-3">
-                                            <Image src={item.image} alt={item.name} width={48} height={48} className="rounded" />
-                                            <div>
-                                                <p className="font-medium">{item.name}</p>
-                                                <p className="text-sm text-muted-foreground">Qty: {item.quantity} x PKR {item.price.toFixed(2)}</p>
-                                            </div>
-                                        </div>
-                                        <p className="font-medium">PKR {(item.price * item.quantity).toFixed(2)}</p>
-                                    </div>
                                 ))}
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <DialogClose asChild>
-                                <Button type="button">Close</Button>
-                            </DialogClose>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                            </DropdownMenuSubContent>
+                            </DropdownMenuPortal>
+                        </DropdownMenuSub>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleCancelTrigger(order)}>
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Cancel Order
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             )
         },
     },
- ], [handleUpdateStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+ ], []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const table = useReactTable({
     data: orders,
@@ -319,6 +260,7 @@ export default function OrdersPage() {
 
 
   return (
+    <>
     <div className="space-y-6">
        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -476,5 +418,87 @@ export default function OrdersPage() {
         </div>
       </div>
     </div>
+    
+    {/* Order Details Dialog */}
+    <Dialog open={isDetailsOpen} onOpenChange={open => {
+        setIsDetailsOpen(open);
+        if (!open) setSelectedOrder(null);
+    }}>
+        {selectedOrder && (
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Order Details - {selectedOrder.id}</DialogTitle>
+                    <DialogDescription>
+                        Placed on {format(new Date(selectedOrder.date), "MMMM d, yyyy 'at' h:mm a")}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
+                    <div>
+                        <h4 className="font-semibold mb-2">Customer</h4>
+                        <p>{selectedOrder.customer.name}</p>
+                        <p>{selectedOrder.customer.email}</p>
+                        <p>{selectedOrder.customer.phone}</p>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-2">Order Info</h4>
+                        <p>Status: <Badge variant={
+                            selectedOrder.status === 'Delivered' ? 'default' :
+                            selectedOrder.status === 'Shipped' ? 'default' :
+                            selectedOrder.status === 'Processing' ? 'secondary' :
+                            selectedOrder.status === 'Cancelled' ? 'destructive' :
+                            'outline'
+                        } className="capitalize">{selectedOrder.status}</Badge></p>
+                        <p>Total: <span className="font-bold">PKR {selectedOrder.total.toFixed(2)}</span></p>
+                    </div>
+                        <div>
+                        <h4 className="font-semibold mb-2">Payment</h4>
+                        <p>Method: {selectedOrder.paymentMethod}</p>
+                        {selectedOrder.paymentMethod === 'Online' && selectedOrder.status === 'Pending' && (
+                                <p className="text-yellow-600 text-xs mt-1">Awaiting payment confirmation.</p>
+                        )}
+                    </div>
+                </div>
+                <div>
+                    <h4 className="font-semibold mb-2">Items</h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                        {selectedOrder.items.map(item => (
+                            <div key={item.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                                <div className="flex items-center gap-3">
+                                    <Image src={item.image} alt={item.name} width={48} height={48} className="rounded" />
+                                    <div>
+                                        <p className="font-medium">{item.name}</p>
+                                        <p className="text-sm text-muted-foreground">Qty: {item.quantity} x PKR {item.price.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                                <p className="font-medium">PKR {(item.price * item.quantity).toFixed(2)}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button">Close</Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        )}
+    </Dialog>
+
+    {/* Cancel Confirmation Alert */}
+    <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+                This action will cancel the order <span className="font-bold">{selectedOrder?.id}</span>. This cannot be undone.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedOrder(null)}>Dismiss</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelConfirm}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
