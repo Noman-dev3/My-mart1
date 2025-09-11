@@ -36,36 +36,36 @@ function ProductsPageContent() {
     fetchProducts();
   }, [supabase]);
 
-  if (isLoading) {
-    return (
-      <div className="flex-grow flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    )
-  }
-
   return (
-    <>
+    <div className="flex flex-col min-h-screen bg-background">
       <Header searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <main className="flex-grow">
-        <ProductListing products={products} searchQuery={searchQuery} initialCategory={category} />
+        {isLoading ? (
+          <div className="flex-grow flex items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </div>
+        ) : (
+          <ProductListing products={products} searchQuery={searchQuery} initialCategory={category} />
+        )}
       </main>
-    </>
+      <Footer />
+    </div>
   );
 }
 
 
 export default function ProductsPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <Suspense fallback={
-        <div className="flex-grow flex items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-      }>
-        <ProductsPageContent />
-      </Suspense>
-      <Footer />
-    </div>
+    <Suspense fallback={
+      <div className="flex flex-col min-h-screen bg-background">
+        <Header searchQuery="" setSearchQuery={() => {}} />
+        <main className="flex-grow flex items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    }>
+      <ProductsPageContent />
+    </Suspense>
   );
 }
