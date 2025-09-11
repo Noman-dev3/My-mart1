@@ -1,8 +1,11 @@
 
 import admin from 'firebase-admin';
+import { config } from 'dotenv';
+
+config();
 
 const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-  ? JSON.parse(process.env.FIREBEASE_SERVICE_ACCOUNT)
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
   : {
       type: process.env.FIREBASE_type,
       project_id: process.env.FIREBASE_project_id,
