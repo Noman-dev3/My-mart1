@@ -69,7 +69,7 @@ export default function LoginPage() {
         </div>
        
         <div className="w-full max-w-4xl grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl z-20 bg-transparent lg:bg-card">
-          <div className="p-8 sm:p-12 flex flex-col justify-center bg-card/80 backdrop-blur-sm lg:bg-card lg:backdrop-blur-none rounded-t-2xl lg:rounded-l-2xl lg:rounded-tr-none">
+          <div className="p-8 sm:p-12 flex flex-col justify-center bg-card/80 backdrop-blur-md lg:bg-card lg:backdrop-blur-none rounded-t-2xl lg:rounded-l-2xl lg:rounded-tr-none">
             <Link href="/" className="w-fit">
               <Button variant="outline" className="rounded-full px-4 mb-8 text-muted-foreground group">
                  <Icons.logo className="h-5 w-5 mr-2 text-primary group-hover:text-primary transition-colors"/> My Mart
@@ -156,5 +156,3 @@ export default function LoginPage() {
     </main>
   );
 }
-
-    
