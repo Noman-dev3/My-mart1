@@ -2,13 +2,10 @@
 'use server';
 
 import { getAllProducts } from './product-actions';
-
-// Re-export the Product type to be used across the application.
-export type { Product } from './product-actions';
 import type { Product } from './product-actions';
 
-// This function now simply acts as a passthrough to the main data-fetching function.
-// This avoids complex caching issues within a single request.
+export type { Product };
+
 export async function getProducts(): Promise<Product[]> {
   return getAllProducts();
 }

@@ -1,10 +1,10 @@
 
 'use server';
 
-import { promises as fs } from 'fs';
-import path from 'path';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { db } from './firebase';
+import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 
 // We define the Product type here as this file is the source of truth for product data structures.
 export type Product = {
@@ -25,39 +25,22 @@ export type Product = {
       comment: string;
       date: string;
     }[];
+    createdAt: any;
 };
 
-
-const productsFilePath = path.join(process.cwd(), 'src', 'lib', 'products.json');
-
-async function readProducts(): Promise<Product[]> {
-    try {
-        const fileContent = await fs.readFile(productsFilePath, 'utf-8');
-        return JSON.parse(fileContent);
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return []; // File doesn't exist, return empty array
-        }
-        console.error("Error reading products.json:", error);
-        throw new Error("Could not read products data.");
-    }
-}
-
-async function writeProducts(products: Product[]): Promise<void> {
-    await fs.writeFile(productsFilePath, JSON.stringify(products, null, 2));
-    // Revalidate paths to show changes immediately across the app
-    revalidatePath('/');
-    revalidatePath('/products');
-    revalidatePath('/product/[id]');
-    revalidatePath('/admin/products');
-}
+const productsCollection = collection(db, 'products');
 
 export async function getAllProducts(): Promise<Product[]> {
-    return await readProducts();
+    const q = query(productsCollection, orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+        return [];
+    }
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 }
 
 export async function getProductById(productId: string): Promise<Product | undefined> {
-    const products = await readProducts();
+    const products = await getAllProducts();
     return products.find(p => p.id === productId);
 }
 
@@ -72,46 +55,36 @@ const productSchema = z.object({
 });
 
 export async function addProduct(data: z.infer<typeof productSchema>) {
-    const products = await readProducts();
-    const newProduct: Product = {
-        id: `prod_${new Date().getTime()}`,
+    const newProduct = {
         ...data,
-        rating: 0,
-        reviews: 0,
-        specifications: {}, // Placeholder for now
-        reviewsData: [], // Placeholder for now
+        rating: Math.floor(Math.random() * 5) + 1,
+        reviews: Math.floor(Math.random() * 100),
+        specifications: {}, // Placeholder
+        reviewsData: [], // Placeholder
+        createdAt: serverTimestamp(),
     };
-    products.unshift(newProduct);
-    await writeProducts(products);
-    return newProduct;
+    const docRef = await addDoc(productsCollection, newProduct);
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/admin/products');
+    return { ...newProduct, id: docRef.id };
 }
 
 export async function updateProduct(productId: string, data: z.infer<typeof productSchema>) {
-    const products = await readProducts();
-    const productIndex = products.findIndex(p => p.id === productId);
-
-    if (productIndex === -1) {
-        throw new Error('Product not found');
-    }
-
-    const updatedProduct = {
-        ...products[productIndex],
-        ...data,
-    };
-    products[productIndex] = updatedProduct;
-    await writeProducts(products);
-    return updatedProduct;
+    const productRef = doc(db, 'products', productId);
+    await updateDoc(productRef, data);
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath(`/product/${productId}`);
+    revalidatePath('/admin/products');
+    return { id: productId, ...data };
 }
 
 export async function deleteProduct(productId: string) {
-    let products = await readProducts();
-    const initialLength = products.length;
-    products = products.filter(p => p.id !== productId);
-
-    if (products.length === initialLength) {
-        throw new Error('Product not found');
-    }
-
-    await writeProducts(products);
+    const productRef = doc(db, 'products', productId);
+    await deleteDoc(productRef);
+    revalidatePath('/');
+    revalidatePath('/products');
+    revalidatePath('/admin/products');
     return { success: true };
 }

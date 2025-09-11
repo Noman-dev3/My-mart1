@@ -1,9 +1,9 @@
 
 'use server';
 
-import { promises as fs } from 'fs';
-import path from 'path';
 import { type CartItem } from '@/context/cart-context';
+import { db } from './firebase';
+import { collection, getDocs, doc, addDoc, updateDoc, query, orderBy, serverTimestamp, limit } from 'firebase/firestore';
 
 export type Order = {
     id: string;
@@ -16,32 +16,12 @@ export type Order = {
     items: CartItem[];
     total: number;
     status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
-    date: string;
+    date: any; // Using `any` for serverTimestamp flexibility
 };
 
-const ordersFilePath = path.join(process.cwd(), 'src', 'lib', 'orders.json');
+const ordersCollection = collection(db, 'orders');
 
-// Helper function to read orders from the file
-async function readOrders(): Promise<Order[]> {
-    try {
-        const fileContent = await fs.readFile(ordersFilePath, 'utf-8');
-        return JSON.parse(fileContent);
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return []; // File doesn't exist, return empty array
-        }
-        throw error;
-    }
-}
-
-// Helper function to write orders to the file
-async function writeOrders(orders: Order[]): Promise<void> {
-    await fs.writeFile(ordersFilePath, JSON.stringify(orders, null, 2));
-}
-
-
-// Simulate a notification service
-async function sendAdminNotification(order: Order) {
+async function sendAdminNotification(order: Omit<Order, 'id' | 'date'>) {
     const adminEmail = 'noman.dev3@gmail.com';
     const adminWhatsApp = '+923119991972';
 
@@ -49,7 +29,7 @@ async function sendAdminNotification(order: Order) {
     ---
     SIMULATING NOTIFICATION
     ---
-    New Order Received: #${order.id}
+    New Order Received!
     Total: $${order.total.toFixed(2)}
     Customer: ${order.customer.name}
 
@@ -57,41 +37,62 @@ async function sendAdminNotification(order: Order) {
     Sending WhatsApp to: ${adminWhatsApp}
     ---
     `);
-    // In a real app, you would integrate with an email service (e.g., SendGrid)
-    // and a WhatsApp API provider here.
     return Promise.resolve();
 }
-
 
 export async function placeOrder(data: {
   customer: { name: string; email: string; phone: string; address: string; };
   items: CartItem[];
   total: number;
 }) {
-  const orders = await readOrders();
-  
-  const newOrder: Order = {
-    id: `ORD${(orders.length + 1).toString().padStart(3, '0')}`,
+  const newOrder: Omit<Order, 'id'> = {
     customer: data.customer,
     items: data.items,
     total: data.total,
     status: 'Processing',
-    date: new Date().toISOString(),
+    date: serverTimestamp(),
   };
 
-  orders.unshift(newOrder); // Add new order to the beginning
-
-  await writeOrders(orders);
+  const docRef = await addDoc(ordersCollection, newOrder);
 
   // Send notifications after successfully saving the order
   await sendAdminNotification(newOrder);
 
-  return newOrder;
+  return { ...newOrder, id: docRef.id };
 }
 
+async function readOrders(): Promise<Order[]> {
+    const q = query(ordersCollection, orderBy("date", "desc"));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+        return [];
+    }
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            // Convert Firestore Timestamp to ISO string for client-side compatibility
+            date: data.date.toDate().toISOString(),
+        } as Order;
+    });
+}
+
+
 export async function getRecentOrders(): Promise<Order[]> {
-    const orders = await readOrders();
-    return orders.slice(0, 5); // Return the 5 most recent orders
+    const q = query(ordersCollection, orderBy("date", "desc"), limit(5));
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+        return [];
+    }
+    return snapshot.docs.map(doc => {
+         const data = doc.data();
+         return {
+            id: doc.id,
+            ...data,
+            date: data.date.toDate().toISOString(),
+         } as Order
+    });
 }
 
 export async function getAllOrders(): Promise<Order[]> {
@@ -104,16 +105,12 @@ export async function getOrderById(orderId: string): Promise<Order | undefined> 
 }
 
 export async function updateOrderStatus(orderId: string, status: Order['status']): Promise<Order> {
+    const orderRef = doc(db, 'orders', orderId);
+    await updateDoc(orderRef, { status });
+
     const orders = await readOrders();
-    const orderIndex = orders.findIndex(order => order.id === orderId);
-
-    if (orderIndex === -1) {
-        throw new Error('Order not found');
-    }
-
-    orders[orderIndex].status = status;
-
-    await writeOrders(orders);
-
-    return orders[orderIndex];
+    const updatedOrder = orders.find(o => o.id === orderId);
+    if (!updatedOrder) throw new Error('Order not found after update');
+    
+    return updatedOrder;
 }
