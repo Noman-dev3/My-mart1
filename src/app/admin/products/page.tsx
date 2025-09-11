@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -28,14 +27,12 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog"
 import {
     ColumnDef,
@@ -64,6 +61,7 @@ export default function ProductsPage() {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { toast } = useToast();
@@ -91,6 +89,7 @@ export default function ProductsPage() {
 
   const handleDeleteTrigger = (product: Product) => {
     setProductToDelete(product);
+    setIsAlertOpen(true);
   }
 
   const handleDeleteConfirm = async () => {
@@ -102,6 +101,7 @@ export default function ProductsPage() {
         toast({ title: "Error", description: "Failed to delete product.", variant: "destructive" });
     } finally {
         setProductToDelete(null);
+        setIsAlertOpen(false);
     }
   }
   
@@ -181,42 +181,26 @@ export default function ProductsPage() {
             const product = row.original;
 
             return (
-                <AlertDialog>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleEdit(product)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit Product
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDeleteTrigger(product)}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Product
-                                </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the product &quot;{productToDelete?.name}&quot;.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setProductToDelete(null)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteConfirm}>Continue</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handleEdit(product)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit Product
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDeleteTrigger(product)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Product
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             )
         },
     },
@@ -240,17 +224,18 @@ export default function ProductsPage() {
   return (
     <>
       <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                   <h1 className="text-3xl font-bold font-headline">Products</h1>
                   <p className="text-muted-foreground">Manage your store's products.</p>
               </div>
-              <DialogTrigger asChild>
-                  <Button className="self-start sm:self-center" onClick={() => setIsFormOpen(true)}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Product
-                  </Button>
-              </DialogTrigger>
+              <Button className="self-start sm:self-center" onClick={() => {
+                  setSelectedProduct(undefined);
+                  setIsFormOpen(true);
+              }}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add Product
+              </Button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -262,87 +247,87 @@ export default function ProductsPage() {
               />
           </div>
 
-      <div className="rounded-lg border overflow-x-auto">
-          <Table>
-          <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                  return (
-                      <TableHead key={header.id}>
-                      {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                          )}
-                      </TableHead>
-                  )
-                  })}
-              </TableRow>
-              ))}
-          </TableHeader>
-          <TableBody>
-              {isLoading ? (
-                  <TableRow>
-                      <TableCell colSpan={columns.length} className="h-24 text-center">
-                          Loading products...
-                      </TableCell>
-                  </TableRow>
-              ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                  <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  className="hover:bg-muted/50"
-                  >
-                  {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                      {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                      )}
-                      </TableCell>
-                  ))}
-                  </TableRow>
-              ))
-              ) : (
-              <TableRow>
-                  <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                  >
-                  No results.
-                  </TableCell>
-              </TableRow>
-              )}
-          </TableBody>
-          </Table>
-      </div>
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
-          <div className="text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} of{" "}
-          {products.length} product(s) displayed.
-          </div>
-          <div className="flex items-center space-x-2">
-          <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-          >
-              Previous
-          </Button>
-          <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-          >
-              Next
-          </Button>
-          </div>
-      </div>
+        <div className="rounded-lg border overflow-x-auto">
+            <Table>
+            <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                    return (
+                        <TableHead key={header.id}>
+                        {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                            )}
+                        </TableHead>
+                    )
+                    })}
+                </TableRow>
+                ))}
+            </TableHeader>
+            <TableBody>
+                {isLoading ? (
+                    <TableRow>
+                        <TableCell colSpan={columns.length} className="h-24 text-center">
+                            Loading products...
+                        </TableCell>
+                    </TableRow>
+                ) : table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                    <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className="hover:bg-muted/50"
+                    >
+                    {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                        {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                        )}
+                        </TableCell>
+                    ))}
+                    </TableRow>
+                ))
+                ) : (
+                <TableRow>
+                    <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                    >
+                    No results.
+                    </TableCell>
+                </TableRow>
+                )}
+            </TableBody>
+            </Table>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
+            <div className="text-sm text-muted-foreground">
+            {table.getFilteredRowModel().rows.length} of{" "}
+            {products.length} product(s) displayed.
+            </div>
+            <div className="flex items-center space-x-2">
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+            >
+                Previous
+            </Button>
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+            >
+                Next
+            </Button>
+            </div>
+        </div>
       </div>
       
       {/* Product Form Dialog */}
@@ -364,8 +349,24 @@ export default function ProductsPage() {
               />
           </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Alert */}
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the product &quot;{productToDelete?.name}&quot;.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setProductToDelete(null)}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteConfirm}>Continue</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
 
-
+    
