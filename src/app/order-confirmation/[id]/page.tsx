@@ -52,7 +52,7 @@ export default function OrderConfirmationPage() {
 
     setIsSubmitting(true);
     try {
-      // In a real app, you'd verify the transaction ID with SafePay's API.
+      // In a real app, you'd verify the transaction ID with Foree Pay's API.
       // Here, we'll just simulate success and update the order status.
       await updateOrderStatus(order.id, 'Processing');
       toast({
@@ -124,17 +124,17 @@ export default function OrderConfirmationPage() {
             </div>
             
             <div className="p-6 border border-dashed rounded-lg">
-                <h3 className="font-headline font-semibold text-xl text-center">Complete with SafePay</h3>
+                <h3 className="font-headline font-semibold text-xl text-center">Complete with Foree Pay</h3>
                 <div className="text-center text-muted-foreground mt-2 text-sm">
-                    <p>1. Open your SafePay app.</p>
+                    <p>1. Open your Foree Pay app.</p>
                     <p>2. Send <span className="font-bold text-foreground">${order.total.toFixed(2)}</span> to the merchant account: <span className="font-bold text-primary">mymart-store</span></p>
                     <p>3. Enter the transaction ID below to confirm your order.</p>
                 </div>
 
                 <form onSubmit={handlePaymentSubmit} className="mt-6 space-y-4">
                     <div className="grid w-full items-center gap-1.5">
-                        <Label htmlFor="transactionId">SafePay Transaction ID</Label>
-                        <Input type="text" id="transactionId" placeholder="e.g., SP12345678" required />
+                        <Label htmlFor="transactionId">Foree Pay Transaction ID</Label>
+                        <Input type="text" id="transactionId" placeholder="e.g., FP12345678" required />
                     </div>
                     <Button type="submit" className="w-full font-bold" disabled={isSubmitting}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
