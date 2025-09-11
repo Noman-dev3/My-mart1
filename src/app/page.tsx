@@ -4,63 +4,74 @@
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ShoppingBag, Zap } from 'lucide-react';
+import { ArrowRight, ShoppingBag, Zap, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import ProductCard from '@/components/product-card';
 import { type Product } from '@/lib/product-actions';
 import { useMemo, useRef, useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
+type HeroSlide = {
+  image: string;
+  hint: string;
+  headline: string;
+  subtext: string;
+};
 
-const heroContent = [
-  {
-    image: 'https://picsum.photos/1600/900?random=13',
-    hint: 'fashion store',
-    headline: 'Style Meets Simplicity',
-    subtext: 'Discover curated collections of the finest products, delivered with speed and care. Your next favorite thing is just a click away.',
-  },
-  {
-    image: 'https://picsum.photos/1600/900?random=14',
-    hint: 'electronics gadgets',
-    headline: 'Tech for a Better Life',
-    subtext: 'Explore the latest in cutting-edge technology. High-performance gadgets to simplify and enhance your world.',
-  },
-  {
-    image: 'https://picsum.photos/1600/900?random=15',
-    hint: 'modern furniture',
-    headline: 'Elegance in Every Detail',
-    subtext: 'Transform your space with our beautifully crafted home goods. Where design and comfort live in perfect harmony.',
-  },
-];
 
 export default function LandingPage() {
+  const [heroContent, setHeroContent] = useState<HeroSlide[] | null>(null);
   const [heroIndex, setHeroIndex] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
-    }, (error) => console.error("Failed to listen to products:", error));
-    return () => unsubscribe();
+      const fetchPageContent = async () => {
+        setIsLoading(true);
+        const contentDocRef = doc(db, 'siteContent', 'homepage');
+        const contentSnap = await getDoc(contentDocRef);
+        if(contentSnap.exists()) {
+            const data = contentSnap.data();
+            if (data.heroSlides && data.heroSlides.length > 0) {
+              setHeroContent(data.heroSlides);
+            }
+        } else {
+           // Fallback to some default content if nothing is in the database
+           setHeroContent([
+              { image: 'https://picsum.photos/1600/900?random=13', hint: 'fashion store', headline: 'Style Meets Simplicity', subtext: 'Discover curated collections of the finest products, delivered with speed and care. Your next favorite thing is just a click away.' },
+              { image: 'https://picsum.photos/1600/900?random=14', hint: 'electronics gadgets', headline: 'Tech for a Better Life', subtext: 'Explore the latest in cutting-edge technology. High-performance gadgets to simplify and enhance your world.' },
+              { image: 'https://picsum.photos/1600/900?random=15', hint: 'modern furniture', headline: 'Elegance in Every Detail', subtext: 'Transform your space with our beautifully crafted home goods. Where design and comfort live in perfect harmony.' },
+            ]);
+        }
+
+        const q = query(collection(db, 'products'), orderBy("createdAt", "desc"));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+          setIsLoading(false);
+        }, (error) => {
+            console.error("Failed to listen to products:", error);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    };
+
+    fetchPageContent();
+
   }, []);
 
 
   useEffect(() => {
+    if(!heroContent) return;
     const interval = setInterval(() => {
-      setHeroIndex((prevIndex) => {
-        let nextIndex;
-        do {
-          nextIndex = Math.floor(Math.random() * heroContent.length);
-        } while (nextIndex === prevIndex);
-        return nextIndex;
-      });
+      setHeroIndex((prevIndex) => (prevIndex + 1) % heroContent.length);
     }, 7000); // Change hero content every 7 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [heroContent]);
   
   const featuredProducts = useMemo(() => products.slice(0, 3), [products]);
 
@@ -110,7 +121,21 @@ export default function LandingPage() {
     },
   };
 
-  const currentHero = heroContent[heroIndex];
+  const currentHero = heroContent?.[heroIndex];
+  
+  const HeroSkeleton = () => (
+    <section className="relative h-screen min-h-[600px] flex items-center justify-center text-center text-white overflow-hidden">
+        <Skeleton className="absolute inset-0" />
+        <div className="relative z-10 flex flex-col items-center">
+            <Skeleton className="h-16 w-96 mb-4" />
+            <Skeleton className="h-6 w-80" />
+            <div className="flex gap-4 mt-8">
+                <Skeleton className="h-12 w-32" />
+                <Skeleton className="h-12 w-32" />
+            </div>
+        </div>
+    </section>
+  );
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -118,6 +143,7 @@ export default function LandingPage() {
 
       <main className="flex-grow">
         {/* Hero Section */}
+        {isLoading || !currentHero ? <HeroSkeleton /> : (
         <motion.section
           ref={heroRef}
           className="relative h-screen min-h-[600px] flex items-center justify-center text-center text-white overflow-hidden"
@@ -194,7 +220,7 @@ export default function LandingPage() {
             </AnimatePresence>
           </motion.div>
         </motion.section>
-
+        )}
         {/* Features Section */}
         <motion.section
           className="py-16 sm:py-24 bg-muted/30"
@@ -238,7 +264,8 @@ export default function LandingPage() {
               Featured Products
             </motion.h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredProducts.map((product) => (
+              {isLoading ? Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-[450px] w-full" />) 
+              : featuredProducts.map((product) => (
                 <motion.div key={product.id} variants={itemVariants}>
                   <ProductCard product={product} />
                 </motion.div>

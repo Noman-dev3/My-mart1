@@ -13,7 +13,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { Home, Package, ShoppingCart, Users, LineChart, Settings, Bell, Search } from 'lucide-react';
+import { Home, Package, ShoppingCart, Users, Settings, Bell, Search, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icons } from '@/components/icons';
@@ -33,6 +33,7 @@ export default function AdminLayout({
     { href: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
     { href: '/admin/products', icon: Package, label: 'Products' },
     { href: '/admin/customers', icon: Users, label: 'Customers' },
+    { href: '/admin/content', icon: FileText, label: 'Content' },
   ];
 
   return (
@@ -74,7 +75,7 @@ export default function AdminLayout({
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-16 items-center justify-between border-b bg-card px-4 md:px-6">
+        <header className="flex h-16 items-center justify-between border-b bg-card px-4 sm:px-6">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="md:hidden" />
               <div className="hidden md:flex relative">
