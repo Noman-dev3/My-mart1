@@ -68,7 +68,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="#"
+                  href="/products?category=Electronics"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Electronics
@@ -76,7 +76,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/products?category=Groceries"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Groceries
@@ -84,7 +84,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/products?category=Fashion"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Fashion
@@ -92,7 +92,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/products?category=Home%20Goods"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Home Goods
@@ -108,7 +108,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  href="#"
+                  href="/contact"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Contact Us
@@ -116,7 +116,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/faq"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   FAQ
@@ -124,7 +124,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/shipping-returns"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Shipping & Returns
@@ -174,13 +174,13 @@ export default function Footer() {
           <p>&copy; {new Date().getFullYear()} My Mart. All rights reserved.</p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <Link
-              href="#"
+              href="/terms-of-service"
               className="hover:text-primary transition-colors"
             >
               Terms of Service
             </Link>
             <Link
-              href="#"
+              href="/privacy-policy"
               className="hover:text-primary transition-colors"
             >
               Privacy Policy

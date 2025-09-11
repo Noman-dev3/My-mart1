@@ -15,7 +15,7 @@ import { ListFilter } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from './ui/separator';
 
-export default function ProductListing({ products, searchQuery }: { products: Product[], searchQuery: string }) {
+export default function ProductListing({ products, searchQuery, initialCategory }: { products: Product[], searchQuery: string, initialCategory?: string | null }) {
   const [sortOrder, setSortOrder] = useState('newest');
   const [priceRange, setPriceRange] = useState([0, 500000]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -26,6 +26,12 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
   const [categories, setCategories] = useState<string[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState(500000);
+
+  useEffect(() => {
+    if (initialCategory) {
+      setSelectedCategories([initialCategory]);
+    }
+  }, [initialCategory]);
 
   useEffect(() => {
     const fetchFilters = async () => {
