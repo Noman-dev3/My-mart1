@@ -102,11 +102,16 @@ export default function OrdersPage() {
 
   const handleUpdateStatus = async (orderId: string, status: Order['status']) => {
     try {
-        await updateOrderStatus(orderId, status);
+        const updatedOrder = await updateOrderStatus(orderId, status);
         toast({
             title: "Success",
-            description: `Order ${orderId} has been updated to "${status}".`
+            description: `Order ${orderId.slice(0,8)}... has been updated to "${status}".`
         });
+        // Close the dialog if the selected order was updated
+        if (selectedOrder && selectedOrder.id === orderId) {
+           setSelectedOrder(prev => prev ? { ...prev, status: updatedOrder.status } : null);
+        }
+
     } catch (error) {
         toast({
             title: "Error",
@@ -137,7 +142,7 @@ export default function OrdersPage() {
     {
         accessorKey: "id",
         header: "Order ID",
-        cell: ({ row }) => <div className="font-medium">{row.getValue("id")}</div>,
+        cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("id")}</div>,
     },
     {
         accessorKey: "customer.name",
@@ -454,7 +459,13 @@ export default function OrdersPage() {
                         <h4 className="font-semibold mb-2">Payment</h4>
                         <p>Method: {selectedOrder.paymentMethod}</p>
                         {selectedOrder.paymentMethod === 'Online' && selectedOrder.status === 'Pending' && (
-                                <p className="text-yellow-600 text-xs mt-1">Awaiting payment confirmation.</p>
+                             <div className="mt-2">
+                                <p className="text-yellow-600 text-xs mb-2">Awaiting payment confirmation.</p>
+                                <Button size="sm" onClick={() => handleUpdateStatus(selectedOrder.id, 'Processing')}>
+                                    <CheckCircle className="mr-2 h-4 w-4"/>
+                                    Approve Payment
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </div>

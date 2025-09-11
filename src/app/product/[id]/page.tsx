@@ -20,12 +20,12 @@ import { AuthContext } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProductRecommendations } from '@/ai/flows/product-recommendations';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 
 const questionFormSchema = z.object({
@@ -38,6 +38,7 @@ export default function ProductDetailPage() {
   const { id } = useParams();
   const [product, setProduct] = useState<Product | undefined>(undefined);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
 
   const { addToCart } = useContext(CartContext);
   const { user, loading: userLoading } = useContext(AuthContext);
@@ -48,11 +49,18 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    const fetchProduct = async () => {
-        const currentProduct = await getProductById(id as string);
-        setProduct(currentProduct);
-    };
-    fetchProduct();
+    setIsLoadingProduct(true);
+    const productDocRef = doc(db, 'products', id as string);
+    const unsubscribe = onSnapshot(productDocRef, (doc) => {
+        if(doc.exists()){
+            setProduct({ id: doc.id, ...doc.data() } as Product);
+        } else {
+            setProduct(undefined)
+        }
+        setIsLoadingProduct(false);
+    });
+
+    return () => unsubscribe();
   }, [id]);
 
 
@@ -122,8 +130,15 @@ export default function ProductDetailPage() {
       });
     }
   };
+  
+  const handleQuestionSubmitted = () => {
+    toast({
+        title: "Question Submitted!",
+        description: "Your question has been sent and will be answered shortly."
+    });
+  }
 
-  if (!product) {
+  if (isLoadingProduct) {
     return (
       <div className="flex flex-col min-h-screen">
         <Header searchQuery="" setSearchQuery={() => {}} />
@@ -137,6 +152,24 @@ export default function ProductDetailPage() {
         <Footer />
       </div>
     );
+  }
+
+  if (!product) {
+      return (
+         <div className="flex flex-col min-h-screen">
+            <Header searchQuery="" setSearchQuery={() => {}} />
+            <main className="flex-grow flex items-center justify-center text-center">
+            <div>
+                <h1 className="text-3xl font-bold font-headline mt-4">Product Not Found</h1>
+                <p className="text-muted-foreground mt-2">We couldn't find the product you're looking for.</p>
+                <Button asChild className="mt-4">
+                    <Link href="/products">Go to Products</Link>
+                </Button>
+            </div>
+            </main>
+            <Footer />
+        </div>
+      )
   }
 
   const RecommendationsSkeleton = () => (
@@ -155,7 +188,7 @@ export default function ProductDetailPage() {
     </div>
   );
 
-  const answeredQuestions = product.questions?.filter(q => q.answer) || [];
+  const answeredQuestions = product.questions?.filter(q => q.answer).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -217,7 +250,7 @@ export default function ProductDetailPage() {
               </motion.div>
 
               <motion.div className="mt-10" variants={itemVariants}>
-                <Accordion type="single" collapsible className="w-full">
+                <Accordion type="single" collapsible className="w-full" defaultValue="specifications">
                   <AccordionItem value="specifications">
                     <AccordionTrigger>
                       <div className="flex items-center gap-2 font-headline text-lg">
@@ -229,7 +262,7 @@ export default function ProductDetailPage() {
                         {Object.entries(product.specifications).map(([key, value]) => (
                           <li key={key} className="flex justify-between">
                             <span className="font-medium text-foreground">{key}:</span>
-                            <span>{value}</span>
+                            <span>{String(value)}</span>
                           </li>
                         ))}
                       </ul>
@@ -253,6 +286,9 @@ export default function ProductDetailPage() {
                             <p className="text-muted-foreground mt-2">{review.comment}</p>
                           </div>
                         ))}
+                         {product.reviewsData.length === 0 && (
+                            <p className="text-sm text-muted-foreground">No reviews yet.</p>
+                         )}
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -268,7 +304,7 @@ export default function ProductDetailPage() {
                                 {answeredQuestions.map((qa) => (
                                     <div key={qa.id}>
                                         <p className="font-semibold text-foreground">Q: {qa.text}</p>
-                                        <p className="text-muted-foreground mt-1">A: {qa.answer}</p>
+                                        <p className="text-muted-foreground mt-1 ml-4">A: {qa.answer}</p>
                                     </div>
                                 ))}
                             </div>
@@ -280,9 +316,7 @@ export default function ProductDetailPage() {
 
                         {!userLoading && (
                             user ? (
-                                <QuestionForm productId={product.id} user={user} onQuestionSubmitted={() => {
-                                    toast({ title: "Question Submitted!", description: "Your question has been sent and will be answered shortly." });
-                                }}/>
+                                <QuestionForm productId={product.id} productName={product.name} user={user} onQuestionSubmitted={handleQuestionSubmitted}/>
                             ) : (
                                 <div className="text-center bg-muted/50 p-4 rounded-md">
                                     <p className="text-sm text-muted-foreground">You must be logged in to ask a question.</p>
@@ -324,11 +358,13 @@ export default function ProductDetailPage() {
   );
 }
 
-function QuestionForm({ productId, user, onQuestionSubmitted }: { productId: string, user: any, onQuestionSubmitted: () => void }) {
+function QuestionForm({ productId, productName, user, onQuestionSubmitted }: { productId: string, productName: string, user: any, onQuestionSubmitted: () => void }) {
     const form = useForm<QuestionFormValues>({
         resolver: zodResolver(questionFormSchema),
         defaultValues: { text: "" }
     });
+
+    const { toast } = useToast();
 
     const onSubmit = async (values: QuestionFormValues) => {
         const result = await askProductQuestion({
@@ -342,6 +378,11 @@ function QuestionForm({ productId, user, onQuestionSubmitted }: { productId: str
             form.reset();
             onQuestionSubmitted();
         } else {
+            toast({
+                title: "Submission Failed",
+                description: result.error,
+                variant: 'destructive'
+            });
             form.setError("text", { type: "server", message: result.error });
         }
     }
@@ -356,7 +397,7 @@ function QuestionForm({ productId, user, onQuestionSubmitted }: { productId: str
                     render={({ field }) => (
                         <FormItem>
                             <FormControl>
-                                <Textarea placeholder={`Ask a question about the ${name}...`} {...field} />
+                                <Textarea placeholder={`Ask a question about the ${productName}...`} {...field} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>

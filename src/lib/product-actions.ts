@@ -43,6 +43,7 @@ const processProductDoc = (doc: any) => {
     return {
         id: doc.id,
         ...data,
+        questions: data.questions || [],
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
     } as Product;
 }
@@ -130,10 +131,10 @@ export async function answerProductQuestion(productId: string, data: z.infer<typ
         throw new Error("Product not found");
     }
 
-    const product = productSnap.data() as Product;
-    const questions = product.questions || [];
+    const productData = productSnap.data();
+    const questions = productData.questions || [];
 
-    const updatedQuestions = questions.map(q => 
+    const updatedQuestions = questions.map((q: any) => 
         q.id === questionId ? { ...q, answer } : q
     );
 
@@ -147,7 +148,7 @@ export async function askProductQuestion(data: z.infer<typeof questionSchema>) {
     const productRef = doc(db, 'products', productId);
     const productSnap = await getDoc(productRef);
      if (!productSnap.exists()) {
-        throw new Error("Product not found");
+        return { success: false, error: "Product not found." };
     }
 
     const newQuestion = {

@@ -30,6 +30,8 @@ import { answerProductQuestion } from "@/lib/product-actions";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { getProductQuestionAnswer } from "@/ai/flows/answer-product-question"
+
 
 const productFormSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters long."),
@@ -71,7 +73,8 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
     try {
       await answerProductQuestion(product.id, { questionId, answer });
       toast({ title: "Success", description: "Answer submitted successfully." });
-      // Here you might want to trigger a refresh of the product data
+      // In a real app with better state management, you'd update the local product state.
+      // For now, the parent component's snapshot listener will catch the update.
     } catch (error) {
       toast({ title: "Error", description: "Failed to submit answer.", variant: "destructive" });
     }
@@ -86,7 +89,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
       
       <TabsContent value="details">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4 max-h-[70vh] overflow-y-auto pr-2">
             <FormField
               control={form.control}
               name="name"
@@ -210,14 +213,14 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
       </TabsContent>
 
       <TabsContent value="qa">
-        <div className="space-y-6 mt-4">
+        <div className="space-y-6 mt-4 max-h-[70vh] overflow-y-auto pr-2">
             <h3 className="text-lg font-medium">Product Questions</h3>
             {(product?.questions?.length || 0) === 0 ? (
                 <p className="text-sm text-muted-foreground">No questions have been asked for this product yet.</p>
             ) : (
-                <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                    {product?.questions?.map(q => (
-                        <QAndAItem key={q.id} question={q} onAnswerSubmit={handleAnswerSubmit} />
+                <div className="space-y-4">
+                    {product?.questions?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(q => (
+                        <QAndAItem key={q.id} product={product} question={q} onAnswerSubmit={handleAnswerSubmit} />
                     ))}
                 </div>
             )}
@@ -227,9 +230,11 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   )
 }
 
-const QAndAItem = ({ question, onAnswerSubmit }: { question: Product['questions'][0], onAnswerSubmit: (questionId: string, answer: string) => Promise<void> }) => {
+const QAndAItem = ({ product, question, onAnswerSubmit }: { product: Product, question: Product['questions'][0], onAnswerSubmit: (questionId: string, answer: string) => Promise<void> }) => {
     const [answer, setAnswer] = useState(question.answer || "");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const { toast } = useToast();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -238,12 +243,29 @@ const QAndAItem = ({ question, onAnswerSubmit }: { question: Product['questions'
         setIsSubmitting(false);
     }
     
+    const handleGenerateAnswer = async () => {
+        setIsGenerating(true);
+        try {
+            const { specifications, name, description, category, brand } = product;
+            const result = await getProductQuestionAnswer({
+                product: { name, description, category, brand, specifications },
+                question: question.text
+            });
+            setAnswer(result.answer);
+        } catch(e) {
+            console.error(e);
+            toast({ title: "AI Generation Failed", description: "Could not generate an answer.", variant: "destructive"});
+        } finally {
+            setIsGenerating(false);
+        }
+    }
+    
     return (
         <div className="p-4 border rounded-lg">
             <p className="text-sm font-semibold">{question.text}</p>
             <p className="text-xs text-muted-foreground">From: {question.author} on {new Date(question.date).toLocaleDateString()}</p>
             {question.answer ? (
-                <p className="text-sm mt-2 pt-2 border-t text-green-700 bg-green-50 p-2 rounded-md">
+                <p className="text-sm mt-2 pt-2 border-t text-green-700 bg-green-50 p-2 rounded-md dark:text-green-300 dark:bg-green-900/30">
                     <strong>A:</strong> {question.answer}
                 </p>
             ) : (
@@ -253,10 +275,17 @@ const QAndAItem = ({ question, onAnswerSubmit }: { question: Product['questions'
                         value={answer}
                         onChange={(e) => setAnswer(e.target.value)}
                         className="mt-2"
+                        disabled={isSubmitting}
                     />
-                    <Button type="submit" size="sm" className="mt-2" disabled={isSubmitting || !answer}>
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit Answer'}
-                    </Button>
+                    <div className="mt-2 flex justify-between items-center">
+                        <Button type="submit" size="sm" disabled={isSubmitting || isGenerating || !answer}>
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit Answer'}
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" onClick={handleGenerateAnswer} disabled={isSubmitting || isGenerating}>
+                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : '✨'}
+                            AI Assist
+                        </Button>
+                    </div>
                  </form>
             )}
         </div>
