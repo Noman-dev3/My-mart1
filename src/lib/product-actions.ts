@@ -16,7 +16,8 @@ export type Product = {
     image: string;
     category: 'Electronics' | 'Groceries' | 'Fashion' | 'Home Goods';
     brand: string;
-    inStock: boolean;
+    stockQuantity: number;
+    barcode: string;
     rating: number;
     reviews: number;
     specifications: Record<string, string>;
@@ -67,7 +68,7 @@ export async function getCategories(): Promise<string[]> {
         console.error("Error fetching categories:", error);
         return [];
     }
-    return data;
+    return data.map(item => item.category);
 }
 
 export async function getBrands(): Promise<string[]> {
@@ -79,7 +80,7 @@ export async function getBrands(): Promise<string[]> {
         console.error("Error fetching brands:", error);
         return [];
     }
-    return data;
+    return data.map(item => item.brand);
 }
 
 
@@ -90,7 +91,8 @@ const productSchema = z.object({
     image: z.string().url("Must be a valid image URL."),
     category: z.enum(['Electronics', 'Groceries', 'Fashion', 'Home Goods']),
     brand: z.string().min(2, "Brand must be at least 2 characters long."),
-    inStock: z.boolean(),
+    stockQuantity: z.coerce.number().int("Stock must be a whole number."),
+    barcode: z.string().min(8, "Barcode must be at least 8 characters long."),
 });
 
 const answerSchema = z.object({

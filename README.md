@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS products (
     image TEXT,
     category TEXT,
     brand TEXT,
-    "inStock" BOOLEAN DEFAULT TRUE,
+    "stockQuantity" INTEGER DEFAULT 0,
+    barcode TEXT UNIQUE,
     rating NUMERIC DEFAULT 0,
     reviews INT DEFAULT 0,
     specifications JSONB,
@@ -87,7 +88,7 @@ CREATE POLICY "Admins can manage site content." ON "siteContent" FOR ALL USING (
 CREATE OR REPLACE FUNCTION get_distinct_categories()
 RETURNS TABLE(category TEXT) AS $$
 BEGIN
-    RETURN QUERY SELECT DISTINCT p.category FROM products p ORDER BY p.category;
+    RETURN QUERY SELECT DISTINCT p.category FROM products p WHERE p.category IS NOT NULL ORDER BY p.category;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -95,16 +96,39 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION get_distinct_brands()
 RETURNS TABLE(brand TEXT) AS $$
 BEGIN
-    RETURN QUERY SELECT DISTINCT p.brand FROM products p ORDER BY p.brand;
+    RETURN QUERY SELECT DISTINCT p.brand FROM products p WHERE p.brand IS NOT NULL ORDER BY p.brand;
 END;
 $$ LANGUAGE plpgsql;
 
 
 -- Add tables to the publication for real-time updates
 -- This might fail if the tables are already added, which is safe to ignore.
-ALTER PUBLICATION supabase_realtime ADD TABLE IF EXISTS products;
-ALTER PUBLICATION supabase_realtime ADD TABLE IF EXISTS orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE IF EXISTS "siteContent";
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE products;
+EXCEPTION
+  WHEN duplicate_object THEN
+    -- do nothing
+END;
+$$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+EXCEPTION
+  WHEN duplicate_object THEN
+    -- do nothing
+END;
+$$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE "siteContent";
+EXCEPTION
+  WHEN duplicate_object THEN
+    -- do nothing
+END;
+$$;
 ```
 ---
 ## Creating an Admin User

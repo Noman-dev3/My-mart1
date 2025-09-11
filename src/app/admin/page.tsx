@@ -87,7 +87,7 @@ export default function AdminDashboard() {
         const { count: lowStockCount, error: productsError } = await supabase
             .from('products')
             .select('*', { count: 'exact', head: true })
-            .eq('inStock', false);
+            .lte('stockQuantity', 10);
 
         if (productsError) {
             console.error("Failed to get stock count:", productsError);
@@ -168,7 +168,7 @@ export default function AdminDashboard() {
             title="Low Stock Alerts"
             value={stats?.lowStockCount ?? 0}
             icon={AlertTriangle}
-            description="Products out of stock"
+            description="Products with <= 10 items"
             isLoading={isLoading}
             variant='destructive'
         />

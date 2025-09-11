@@ -161,8 +161,9 @@ export default function ProductsPage() {
         cell: ({ row }) => <div className="font-medium">{row.getValue("name")}</div>,
     },
     {
-        accessorKey: "category",
-        header: "Category",
+        accessorKey: "barcode",
+        header: "Barcode",
+        cell: ({ row }) => <div className="font-mono text-xs">{row.getValue("barcode")}</div>,
     },
     {
         accessorKey: "price",
@@ -177,11 +178,12 @@ export default function ProductsPage() {
         },
     },
     {
-        accessorKey: "inStock",
+        accessorKey: "stockQuantity",
         header: "Stock",
         cell: ({ row }) => {
-            return row.getValue("inStock") ? 
-                <Badge variant="default">In Stock</Badge> : 
+            const stock = row.getValue("stockQuantity") as number;
+            return stock > 0 ? 
+                <Badge variant="secondary">{stock} in Stock</Badge> : 
                 <Badge variant="destructive">Out of Stock</Badge>;
         }
     },
@@ -250,7 +252,7 @@ export default function ProductsPage() {
 
           <div className="flex items-center gap-2">
               <Input
-              placeholder="Search by name, category, or brand..."
+              placeholder="Search by name, category, or barcode..."
               value={globalFilter ?? ''}
               onChange={(event) => setGlobalFilter(event.target.value)}
               className="w-full md:max-w-sm"
@@ -340,7 +342,6 @@ export default function ProductsPage() {
         </div>
       </div>
       
-      {/* Product Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={(open) => {
           setIsFormOpen(open);
           if (!open) setSelectedProduct(undefined);
@@ -360,7 +361,6 @@ export default function ProductsPage() {
           </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Alert */}
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
           <AlertDialogContent>
               <AlertDialogHeader>
@@ -378,6 +378,3 @@ export default function ProductsPage() {
     </>
   );
 }
-
-    
-    

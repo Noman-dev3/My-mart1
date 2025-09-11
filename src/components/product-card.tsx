@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import type { Product } from '@/lib/placeholder-data';
+import { type Product } from '@/lib/product-actions';
 import ProductRating from '@/components/product-rating';
 import { cn } from '@/lib/utils';
 import { ShoppingCart } from 'lucide-react';
@@ -27,6 +27,8 @@ export default function ProductCard({ product }: ProductCardProps) {
       description: `${product.name} has been added to your cart.`,
     });
   };
+  
+  const inStock = product.stockQuantity > 0;
 
   return (
     <Card className="flex flex-col overflow-hidden h-full rounded-lg shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
@@ -41,7 +43,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             data-ai-hint="product image"
           />
         </Link>
-        {!product.inStock && (
+        {!inStock && (
           <div className="absolute top-2 right-2 bg-destructive text-destructive-foreground text-xs font-bold px-2 py-1 rounded-full">
             Out of Stock
           </div>
@@ -62,7 +64,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <p className="text-xl font-bold font-headline text-primary">
           PKR {product.price.toFixed(2)}
         </p>
-        <Button size="icon" variant="outline" disabled={!product.inStock} aria-label="Add to cart" onClick={handleAddToCart}>
+        <Button size="icon" variant="outline" disabled={!inStock} aria-label="Add to cart" onClick={handleAddToCart}>
           <ShoppingCart className="h-5 w-5" />
         </Button>
       </CardFooter>

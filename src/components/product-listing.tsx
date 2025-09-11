@@ -75,7 +75,7 @@ export default function ProductListing({ products }: { products: Product[] }) {
       .filter((p) => (selectedCategories.length > 0 ? selectedCategories.includes(p.category) : true))
       .filter((p) => (selectedBrands.length > 0 ? selectedBrands.includes(p.brand) : true))
       .filter((p) => p.rating >= selectedRating)
-      .filter((p) => (inStockOnly ? p.inStock : true));
+      .filter((p) => (inStockOnly ? p.stockQuantity > 0 : true));
 
     switch (sortOrder) {
       case 'price-asc':

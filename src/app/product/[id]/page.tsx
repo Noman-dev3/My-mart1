@@ -188,6 +188,8 @@ export default function ProductDetailPage() {
         </div>
       )
   }
+  
+  const inStock = product.stockQuantity > 0;
 
   const RecommendationsSkeleton = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -230,7 +232,7 @@ export default function ProductDetailPage() {
                   data-ai-hint="product image"
                 />
               </div>
-              {!product.inStock && (
+              {!inStock && (
                 <motion.div
                   className="absolute top-4 left-4 bg-destructive text-destructive-foreground text-sm font-bold px-3 py-1.5 rounded-full"
                   initial={{ scale: 0, opacity: 0 }}
@@ -260,7 +262,7 @@ export default function ProductDetailPage() {
 
               <motion.div className="mt-8 flex flex-wrap items-center gap-6" variants={itemVariants}>
                 <p className="text-4xl font-bold font-headline text-primary">PKR {product.price.toFixed(2)}</p>
-                <Button size="lg" disabled={!product.inStock} className="font-bold" onClick={handleAddToCart}>
+                <Button size="lg" disabled={!inStock} className="font-bold" onClick={handleAddToCart}>
                   <ShoppingCart className="mr-2 h-5 w-5" />
                   Add to Cart
                 </Button>

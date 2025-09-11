@@ -23,13 +23,12 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
 import type { Product } from "@/lib/product-actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { answerProductQuestion } from "@/lib/product-actions";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { getProductQuestionAnswer } from "@/ai/flows/answer-product-question"
 
 
@@ -40,7 +39,8 @@ const productFormSchema = z.object({
   image: z.string().url("Must be a valid image URL."),
   category: z.enum(['Electronics', 'Groceries', 'Fashion', 'Home Goods']),
   brand: z.string().min(2, "Brand must be at least 2 characters long."),
-  inStock: z.boolean(),
+  stockQuantity: z.coerce.number().int("Stock must be a whole number."),
+  barcode: z.string().min(8, "Barcode must be at least 8 characters long."),
 });
 
 type ProductFormValues = z.infer<typeof productFormSchema>
@@ -64,7 +64,8 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
         image: product?.image || "",
         category: product?.category || "Electronics",
         brand: product?.brand || "",
-        inStock: product?.inStock ?? true,
+        stockQuantity: product?.stockQuantity || 0,
+        barcode: product?.barcode || "",
     },
   });
 
@@ -73,12 +74,17 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
     try {
       await answerProductQuestion(product.id, { questionId, answer });
       toast({ title: "Success", description: "Answer submitted successfully." });
-      // In a real app with better state management, you'd update the local product state.
-      // For now, the parent component's snapshot listener will catch the update.
     } catch (error) {
       toast({ title: "Error", description: "Failed to submit answer.", variant: "destructive" });
     }
   };
+
+  const generateBarcode = () => {
+    // Generate a random 12-digit barcode number and add a checksum digit
+    const randomDigits = Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
+    form.setValue('barcode', randomDigits, { shouldValidate: true });
+    toast({ title: "Barcode Generated", description: "A new unique barcode has been generated."})
+  }
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -167,6 +173,40 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <FormField
+                control={form.control}
+                name="stockQuantity"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Stock Quantity</FormLabel>
+                    <FormControl>
+                        <Input type="number" placeholder="100" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                  control={form.control}
+                  name="barcode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Barcode</FormLabel>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input placeholder="e.g., 123456789012" {...field} />
+                        </FormControl>
+                        <Button type="button" variant="outline" size="icon" onClick={generateBarcode}>
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
+
             <FormField
               control={form.control}
               name="image"
@@ -180,26 +220,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
                 </FormItem>
               )}
             />
-            <FormField
-                control={form.control}
-                name="inStock"
-                render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                        <FormLabel>In Stock</FormLabel>
-                        <FormDescription>
-                        Is this product available for purchase?
-                        </FormDescription>
-                    </div>
-                    <FormControl>
-                        <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        />
-                    </FormControl>
-                    </FormItem>
-                )}
-            />
+            
             <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" onClick={onCancel}>
                     Cancel
@@ -248,7 +269,7 @@ const QAndAItem = ({ product, question, onAnswerSubmit }: { product: Product, qu
         try {
             const { specifications, name, description, category, brand } = product;
             const result = await getProductQuestionAnswer({
-                product: { name, description, category, brand, specifications },
+                product: { name, description, category, brand, specifications: specifications || {} },
                 question: question.text
             });
             setAnswer(result.answer);
