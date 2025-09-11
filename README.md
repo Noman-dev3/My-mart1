@@ -58,9 +58,11 @@ CREATE TABLE IF NOT EXISTS "siteContent" (
 -- RLS Policies for products table
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Products are viewable by everyone." ON products;
-CREATE POLICY "Products are viewable by everyone." ON products FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admins can manage products." ON products;
-CREATE POLICY "Admins can manage products." ON products FOR ALL USING (auth.jwt() ->> 'role' = 'admin') WITH CHECK (auth.jwt() ->> 'role' = 'admin');
+DROP POLICY IF EXISTS "Allow all access for admins" ON products;
+DROP POLICY IF EXISTS "Allow read access for all users" ON products;
+CREATE POLICY "Allow read access for all users" ON products FOR SELECT USING (true);
+CREATE POLICY "Allow all access for admins" ON products FOR ALL USING (auth.role() = 'service_role' OR (auth.jwt() ->> 'role' = 'admin'));
+
 
 -- RLS Policies for orders table
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
@@ -100,9 +102,9 @@ $$ LANGUAGE plpgsql;
 
 -- Add tables to the publication for real-time updates
 -- This might fail if the tables are already added, which is safe to ignore.
-ALTER PUBLICATION supabase_realtime ADD TABLE products;
-ALTER PUBLICATION supabase_realtime ADD TABLE orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE "siteContent";
+ALTER PUBLICATION supabase_realtime ADD TABLE IF EXISTS products;
+ALTER PUBLICATION supabase_realtime ADD TABLE IF EXISTS orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE IF EXISTS "siteContent";
 ```
 ---
 ## Creating an Admin User
@@ -120,4 +122,3 @@ To access the admin dashboard, you need to create a user and assign them an 'adm
 9.  Click **"Save"**.
 
 You can now log into the application with these credentials to access the admin dashboard.
-
