@@ -207,7 +207,7 @@ export default function ProductsPage() {
             )
         },
     },
- ], [])
+ ], [handleEdit, handleDeleteTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const table = useReactTable({
     data: products,
@@ -249,7 +249,7 @@ export default function ProductsPage() {
                     placeholder="Search by name, category, or brand..."
                     value={globalFilter ?? ''}
                     onChange={(event) => setGlobalFilter(event.target.value)}
-                    className="max-w-sm"
+                    className="w-full md:max-w-sm"
                     />
                 </div>
 
@@ -310,12 +310,12 @@ export default function ProductsPage() {
                 </TableBody>
                 </Table>
             </div>
-            <div className="flex items-center justify-end space-x-2 py-4">
-                <div className="flex-1 text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
+                <div className="text-sm text-muted-foreground">
                 {table.getFilteredRowModel().rows.length} of{" "}
                 {products.length} product(s) displayed.
                 </div>
-                <div className="space-x-2">
+                <div className="flex items-center space-x-2">
                 <Button
                     variant="outline"
                     size="sm"
@@ -337,7 +337,7 @@ export default function ProductsPage() {
             </div>
             
             {/* Product Form Dialog */}
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-md md:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{selectedProduct ? 'Edit Product' : 'Add New Product'}</DialogTitle>
                 </DialogHeader>

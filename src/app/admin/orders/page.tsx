@@ -286,7 +286,7 @@ export default function OrdersPage() {
             )
         },
     },
- ], [])
+ ], [handleUpdateStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const table = useReactTable({
     data: orders,
@@ -323,63 +323,65 @@ export default function OrdersPage() {
             </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
             <Input
               placeholder="Search by ID, name, or email..."
               value={globalFilter ?? ''}
               onChange={(event) => setGlobalFilter(event.target.value)}
-              className="max-w-sm"
+              className="w-full md:max-w-sm"
             />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="ml-auto">
-                  <ListFilter className="mr-2 h-4 w-4" /> Status <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {statusOptions.map((status) => (
-                    <DropdownMenuCheckboxItem
-                        key={status}
-                        className="capitalize"
-                        checked={(table.getColumn("status")?.getFilterValue() as string[] ?? []).includes(status)}
-                        onCheckedChange={(value) => {
-                            const currentFilter = (table.getColumn("status")?.getFilterValue() as string[] ?? []);
-                            const newFilter = value ? [...currentFilter, status] : currentFilter.filter(s => s !== status);
-                            table.getColumn("status")?.setFilterValue(newFilter.length ? newFilter : undefined);
-                        }}
-                    >
-                        {status}
-                    </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="">
-                  Columns <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {table.getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => {
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }
-                      >
-                        {column.id.replace('.', ' ')}
-                      </DropdownMenuCheckboxItem>
-                    )
-                  })}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto justify-between">
+                      <ListFilter className="mr-2 h-4 w-4" /> Status <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {statusOptions.map((status) => (
+                        <DropdownMenuCheckboxItem
+                            key={status}
+                            className="capitalize"
+                            checked={(table.getColumn("status")?.getFilterValue() as string[] ?? []).includes(status)}
+                            onCheckedChange={(value) => {
+                                const currentFilter = (table.getColumn("status")?.getFilterValue() as string[] ?? []);
+                                const newFilter = value ? [...currentFilter, status] : currentFilter.filter(s => s !== status);
+                                table.getColumn("status")?.setFilterValue(newFilter.length ? newFilter : undefined);
+                            }}
+                        >
+                            {status}
+                        </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                 <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto justify-between">
+                      Columns <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {table.getAllColumns()
+                      .filter((column) => column.getCanHide())
+                      .map((column) => {
+                        return (
+                          <DropdownMenuCheckboxItem
+                            key={column.id}
+                            className="capitalize"
+                            checked={column.getIsVisible()}
+                            onCheckedChange={(value) =>
+                              column.toggleVisibility(!!value)
+                            }
+                          >
+                            {column.id.replace('.', ' ')}
+                          </DropdownMenuCheckboxItem>
+                        )
+                      })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </div>
 
       <div className="rounded-lg border overflow-x-auto">
@@ -439,12 +441,12 @@ export default function OrdersPage() {
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
+        <div className="text-sm text-muted-foreground">
           {table.getFilteredRowModel().rows.length} of{" "}
           {orders.length} order(s) displayed.
         </div>
-        <div className="space-x-2">
+        <div className="flex items-center space-x-2">
           <Button
             variant="outline"
             size="sm"
