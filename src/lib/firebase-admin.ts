@@ -1,4 +1,6 @@
 
+'use server';
+
 import admin, { App } from 'firebase-admin';
 import { Auth } from 'firebase-admin/auth';
 import { Firestore } from 'firebase-admin/firestore';
