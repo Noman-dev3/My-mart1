@@ -28,6 +28,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
     Dialog,
@@ -64,8 +65,7 @@ export default function ProductsPage() {
   const [globalFilter, setGlobalFilter] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -89,21 +89,18 @@ export default function ProductsPage() {
     setIsFormOpen(true);
   }
 
-  const handleDeleteTrigger = (productId: string) => {
-    setProductToDelete(productId);
-    setIsAlertOpen(true);
+  const handleDeleteTrigger = (product: Product) => {
+    setProductToDelete(product);
   }
 
   const handleDeleteConfirm = async () => {
     if (!productToDelete) return;
     try {
-        await deleteProduct(productToDelete);
+        await deleteProduct(productToDelete.id);
         toast({ title: "Success", description: "Product deleted successfully." });
-        // Real-time listener will update the list
     } catch (error) {
         toast({ title: "Error", description: "Failed to delete product.", variant: "destructive" });
     } finally {
-        setIsAlertOpen(false);
         setProductToDelete(null);
     }
   }
@@ -198,16 +195,18 @@ export default function ProductsPage() {
                             Edit Product
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDeleteTrigger(product.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Product
-                        </DropdownMenuItem>
+                        <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => handleDeleteTrigger(product)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Product
+                            </DropdownMenuItem>
+                        </AlertDialogTrigger>
                     </DropdownMenuContent>
                 </DropdownMenu>
             )
         },
     },
- ], [handleEdit, handleDeleteTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
+ ], [])
 
   const table = useReactTable({
     data: products,
@@ -229,7 +228,7 @@ export default function ProductsPage() {
         setIsFormOpen(open);
         if (!open) setSelectedProduct(undefined);
     }}>
-        <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
             <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
@@ -356,7 +355,7 @@ export default function ProductsPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the product.
+                        This action cannot be undone. This will permanently delete the product &quot;{productToDelete?.name}&quot;.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -368,3 +367,4 @@ export default function ProductsPage() {
     </Dialog>
   );
 }
+
