@@ -48,6 +48,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^11.2.10",
     "genkit": "^1.14.1",
+    "jsbarcode": "^3.11.6",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",
     "patch-package": "^8.0.0",
@@ -61,6 +62,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/jsbarcode": "^3.11.4",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -70,3 +72,4 @@
     "typescript": "^5"
   }
 }
+

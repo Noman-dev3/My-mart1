@@ -13,7 +13,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { Home, Package, ShoppingCart, Users, Settings, Bell, Search, FileText } from 'lucide-react';
+import { Home, Package, ShoppingCart, Users, Settings, Bell, Search, FileText, Store } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icons } from '@/components/icons';
@@ -33,6 +33,7 @@ export default function AdminLayout({
     { href: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
     { href: '/admin/products', icon: Package, label: 'Products' },
     { href: '/admin/customers', icon: Users, label: 'Customers' },
+    { href: '/admin/store-manager', icon: Store, label: 'Store Manager' },
     { href: '/admin/content', icon: FileText, label: 'Content' },
   ];
 
@@ -107,5 +108,4 @@ export default function AdminLayout({
     </SidebarProvider>
   );
 }
-
     
