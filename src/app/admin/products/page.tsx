@@ -162,9 +162,9 @@ export default function ProductsPage() {
         header: () => <div className="text-right">Price</div>,
         cell: ({ row }) => {
             const amount = parseFloat(row.getValue("price"))
-            const formatted = new Intl.NumberFormat("en-US", {
+            const formatted = new Intl.NumberFormat("en-PK", {
                 style: "currency",
-                currency: "USD",
+                currency: "PKR",
             }).format(amount)
             return <div className="text-right font-medium">{formatted}</div>
         },

@@ -119,13 +119,13 @@ export default function PaymentFallbackPage() {
                                     <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                                 </div>
                             </div>
-                            <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                            <p className="font-medium">PKR {(item.price * item.quantity).toFixed(2)}</p>
                         </div>
                     ))}
                 </div>
                  <div className="flex justify-between text-lg font-bold pt-3">
                     <p>Total</p>
-                    <p>${order.total.toFixed(2)}</p>
+                    <p>PKR {order.total.toFixed(2)}</p>
                 </div>
             </div>
 

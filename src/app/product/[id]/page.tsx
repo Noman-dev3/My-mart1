@@ -193,7 +193,7 @@ export default function ProductDetailPage() {
               </motion.p>
 
               <motion.div className="mt-8 flex flex-wrap items-center gap-6" variants={itemVariants}>
-                <p className="text-4xl font-bold font-headline text-primary">${product.price.toFixed(2)}</p>
+                <p className="text-4xl font-bold font-headline text-primary">PKR {product.price.toFixed(2)}</p>
                 <Button size="lg" disabled={!product.inStock} className="font-bold" onClick={handleAddToCart}>
                   <ShoppingCart className="mr-2 h-5 w-5" />
                   Add to Cart

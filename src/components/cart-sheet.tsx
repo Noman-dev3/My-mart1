@@ -44,7 +44,7 @@ export function CartSheet() {
               <div className="w-full space-y-4">
                 <div className="flex justify-between font-bold text-lg">
                   <span>Subtotal</span>
-                  <span>${cartTotal.toFixed(2)}</span>
+                  <span>PKR {cartTotal.toFixed(2)}</span>
                 </div>
                 <SheetClose asChild>
                   <Button asChild size="lg" className="w-full font-bold">
@@ -90,7 +90,7 @@ function CartItemRow({ item, onUpdateQuantity, onRemove }: CartItemRowProps) {
         <h4 className="font-semibold text-base leading-tight">
             <Link href={`/product/${item.id}`} className="hover:text-primary transition-colors">{item.name}</Link>
         </h4>
-        <p className="text-sm text-muted-foreground mt-1">${item.price.toFixed(2)}</p>
+        <p className="text-sm text-muted-foreground mt-1">PKR {item.price.toFixed(2)}</p>
         <div className="flex items-center gap-2 mt-3">
           <Button
             variant="outline"
@@ -116,7 +116,7 @@ function CartItemRow({ item, onUpdateQuantity, onRemove }: CartItemRowProps) {
         <Button variant="ghost" size="icon" className="text-muted-foreground h-8 w-8" onClick={() => onRemove(item.id)}>
           <Trash2 className="h-4 w-4" />
         </Button>
-        <p className="font-bold mt-auto">${(item.price * item.quantity).toFixed(2)}</p>
+        <p className="font-bold mt-auto">PKR {(item.price * item.quantity).toFixed(2)}</p>
       </div>
     </div>
   );

@@ -93,9 +93,9 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
             name="price"
             render={({ field }) => (
                 <FormItem>
-                <FormLabel>Price (USD)</FormLabel>
+                <FormLabel>Price (PKR)</FormLabel>
                 <FormControl>
-                    <Input type="number" placeholder="249.99" {...field} />
+                    <Input type="number" placeholder="49999" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>

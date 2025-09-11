@@ -162,7 +162,7 @@ export default function CheckoutPage() {
                   )}
                 />
                 <Button type="submit" size="lg" className="w-full font-bold" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Placing Order...' : `Place Order - $${cartTotal.toFixed(2)}`}
+                  {form.formState.isSubmitting ? 'Placing Order...' : `Place Order - PKR ${cartTotal.toFixed(2)}`}
                 </Button>
               </form>
             </Form>
@@ -179,7 +179,7 @@ export default function CheckoutPage() {
                             <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                         </div>
                     </div>
-                    <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="font-medium">PKR {(item.price * item.quantity).toFixed(2)}</p>
                 </div>
               ))}
             </div>
@@ -187,7 +187,7 @@ export default function CheckoutPage() {
             <div className="space-y-2">
                 <div className="flex justify-between">
                     <p className="text-muted-foreground">Subtotal</p>
-                    <p className="font-medium">${cartTotal.toFixed(2)}</p>
+                    <p className="font-medium">PKR {cartTotal.toFixed(2)}</p>
                 </div>
                  <div className="flex justify-between">
                     <p className="text-muted-foreground">Shipping</p>
@@ -196,7 +196,7 @@ export default function CheckoutPage() {
                 <Separator className="my-2" />
                  <div className="flex justify-between text-lg font-bold">
                     <p>Total</p>
-                    <p>${cartTotal.toFixed(2)}</p>
+                    <p>PKR {cartTotal.toFixed(2)}</p>
                 </div>
             </div>
           </div>

@@ -114,9 +114,9 @@ export default function CustomersPage() {
         header: () => <div className="text-right">Total Spent</div>,
         cell: ({ row }) => {
             const amount = parseFloat(row.getValue("totalSpent"))
-            const formatted = new Intl.NumberFormat("en-US", {
+            const formatted = new Intl.NumberFormat("en-PK", {
                 style: "currency",
-                currency: "USD",
+                currency: "PKR",
             }).format(amount)
             return <div className="text-right font-medium">{formatted}</div>
         },

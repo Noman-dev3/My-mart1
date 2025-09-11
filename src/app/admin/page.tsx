@@ -131,7 +131,7 @@ export default function AdminDashboard() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard 
             title="Total Revenue"
-            value={stats ? `$${stats.totalRevenue.toFixed(2)}` : 0}
+            value={stats ? `PKR ${stats.totalRevenue.toFixed(2)}` : 0}
             icon={DollarSign}
             description="From delivered orders"
             isLoading={isLoading}
@@ -176,7 +176,7 @@ export default function AdminDashboard() {
                     </defs>
                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
                     <XAxis dataKey="date" stroke="" tickLine={false} axisLine={false} tickMargin={8} />
-                    <YAxis stroke="" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `$${Number(value) / 1000}k`} />
+                    <YAxis stroke="" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `PKR ${Number(value) / 1000}k`} />
                     <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
                     <Area type="monotone" dataKey="sales" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSales)" />
                     </AreaChart>
@@ -217,7 +217,7 @@ export default function AdminDashboard() {
                                     }
                                     >{order.status}</Badge>
                                 </TableCell>
-                                <TableCell className="text-right">${order.total.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">PKR {order.total.toFixed(2)}</TableCell>
                             </Link>
                             </TableRow>
                         ))}

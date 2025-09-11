@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -59,7 +60,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       </CardContent>
       <CardFooter className="p-4 pt-0 flex justify-between items-center">
         <p className="text-xl font-bold font-headline text-primary">
-          ${product.price.toFixed(2)}
+          PKR {product.price.toFixed(2)}
         </p>
         <Button size="icon" variant="outline" disabled={!product.inStock} aria-label="Add to cart" onClick={handleAddToCart}>
           <ShoppingCart className="h-5 w-5" />

@@ -127,7 +127,7 @@ export default function OrderConfirmationPage() {
                 <h3 className="font-headline font-semibold text-xl text-center">Complete with Foree Pay</h3>
                 <div className="text-center text-muted-foreground mt-2 text-sm">
                     <p>1. Open your Foree Pay app.</p>
-                    <p>2. Send <span className="font-bold text-foreground">${order.total.toFixed(2)}</span> to the merchant account: <span className="font-bold text-primary">mymart-store</span></p>
+                    <p>2. Send <span className="font-bold text-foreground">PKR {order.total.toFixed(2)}</span> to the merchant account: <span className="font-bold text-primary">mymart-store</span></p>
                     <p>3. Enter the transaction ID below to confirm your order.</p>
                 </div>
 

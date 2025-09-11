@@ -154,9 +154,9 @@ export default function OrdersPage() {
         header: () => <div className="text-right">Total</div>,
         cell: ({ row }) => {
             const amount = parseFloat(row.getValue("total"))
-            const formatted = new Intl.NumberFormat("en-US", {
+            const formatted = new Intl.NumberFormat("en-PK", {
                 style: "currency",
-                currency: "USD",
+                currency: "PKR",
             }).format(amount)
             return <div className="text-right font-medium">{formatted}</div>
         },
@@ -256,7 +256,7 @@ export default function OrdersPage() {
                                     order.status === 'Cancelled' ? 'destructive' :
                                     'outline'
                                 } className="capitalize">{order.status}</Badge></p>
-                                <p>Total: <span className="font-bold">${order.total.toFixed(2)}</span></p>
+                                <p>Total: <span className="font-bold">PKR {order.total.toFixed(2)}</span></p>
                             </div>
                         </div>
                         <div>
@@ -268,10 +268,10 @@ export default function OrdersPage() {
                                             <Image src={item.image} alt={item.name} width={48} height={48} className="rounded" />
                                             <div>
                                                 <p className="font-medium">{item.name}</p>
-                                                <p className="text-sm text-muted-foreground">Qty: {item.quantity} x ${item.price.toFixed(2)}</p>
+                                                <p className="text-sm text-muted-foreground">Qty: {item.quantity} x PKR {item.price.toFixed(2)}</p>
                                             </div>
                                         </div>
-                                        <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+                                        <p className="font-medium">PKR {(item.price * item.quantity).toFixed(2)}</p>
                                     </div>
                                 ))}
                             </div>
