@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2 } from 'lucide-react';
+import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2, HelpCircle } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { getProductById, type Product } from '@/lib/product-actions';
@@ -141,6 +140,8 @@ export default function ProductDetailPage() {
     </div>
   );
 
+  const answeredQuestions = product.questions?.filter(q => q.answer) || [];
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header searchQuery="" setSearchQuery={() => {}} />
@@ -240,6 +241,25 @@ export default function ProductDetailPage() {
                       </div>
                     </AccordionContent>
                   </AccordionItem>
+                   {answeredQuestions.length > 0 && (
+                    <AccordionItem value="qa">
+                        <AccordionTrigger>
+                        <div className="flex items-center gap-2 font-headline text-lg">
+                            <HelpCircle className="h-5 w-5" /> Questions &amp; Answers
+                        </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                        <div className="space-y-6 mt-2">
+                            {answeredQuestions.map((qa) => (
+                            <div key={qa.id}>
+                                <p className="font-semibold text-foreground">Q: {qa.text}</p>
+                                <p className="text-muted-foreground mt-1">A: {qa.answer}</p>
+                            </div>
+                            ))}
+                        </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                   )}
                 </Accordion>
               </motion.div>
             </div>

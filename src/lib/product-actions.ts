@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -23,6 +22,13 @@ export type Product = {
       rating: number;
       comment: string;
       date: string;
+    }[];
+    questions: {
+        id: string;
+        author: string;
+        text: string;
+        date: string;
+        answer?: string;
     }[];
     createdAt: any;
 };
@@ -67,7 +73,14 @@ const productSchema = z.object({
     category: z.enum(['Electronics', 'Groceries', 'Fashion', 'Home Goods']),
     brand: z.string().min(2, "Brand must be at least 2 characters long."),
     inStock: z.boolean(),
+    // We don't include questions in the base update schema, it's handled separately
 });
+
+const answerSchema = z.object({
+    questionId: z.string(),
+    answer: z.string().min(1, "Answer cannot be empty."),
+});
+
 
 export async function addProduct(data: z.infer<typeof productSchema>) {
     const newProduct = {
@@ -76,6 +89,7 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         reviews: Math.floor(Math.random() * 100),
         specifications: {}, // Placeholder
         reviewsData: [], // Placeholder
+        questions: [], // Initialize with empty questions
         createdAt: serverTimestamp(),
     };
     const docRef = await addDoc(productsCollection, newProduct);
@@ -87,6 +101,27 @@ export async function updateProduct(productId: string, data: z.infer<typeof prod
     await updateDoc(productRef, data);
     return { id: productId, ...data };
 }
+
+export async function answerProductQuestion(productId: string, data: z.infer<typeof answerSchema>) {
+    const { questionId, answer } = data;
+    const productRef = doc(db, 'products', productId);
+    const productSnap = await getDoc(productRef);
+
+    if (!productSnap.exists()) {
+        throw new Error("Product not found");
+    }
+
+    const product = productSnap.data() as Product;
+    const questions = product.questions || [];
+
+    const updatedQuestions = questions.map(q => 
+        q.id === questionId ? { ...q, answer } : q
+    );
+
+    await updateDoc(productRef, { questions: updatedQuestions });
+    return { success: true };
+}
+
 
 export async function deleteProduct(productId: string) {
     const productRef = doc(db, 'products', productId);
