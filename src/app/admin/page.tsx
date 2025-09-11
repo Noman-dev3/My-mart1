@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { type Order } from '@/lib/order-actions';
 import { type Product } from '@/lib/product-actions';
 import Link from 'next/link';
-import { format, startOfDay, endOfDay, getMonth, getYear } from 'date-fns';
+import { format, startOfDay, endOfDay, getMonth, getYear, isValid } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
@@ -51,13 +51,13 @@ export default function AdminDashboard() {
             return;
         }
 
-        const allOrders: Order[] = ordersData.map((o: any) => ({ ...o, date: new Date(o.date) }));
+        const allOrders: Order[] = ordersData.map((o: any) => ({ ...o, date: o.date ? new Date(o.date) : null }));
         
         const today = new Date();
         const startOfToday = startOfDay(today);
         const endOfToday = endOfDay(today);
 
-        const ordersTodayList = allOrders.filter(o => o.date >= startOfToday && o.date <= endOfToday);
+        const ordersTodayList = allOrders.filter(o => o.date && isValid(o.date) && o.date >= startOfToday && o.date <= endOfToday);
         const uniqueCustomersToday = new Set(ordersTodayList.map(o => o.customer.email)).size;
         
         const totalRevenue = allOrders
@@ -67,6 +67,9 @@ export default function AdminDashboard() {
         setRecentOrders(allOrders.slice(0, 5));
 
         const monthlySales = allOrders.reduce((acc, order) => {
+            if (!order.date || !isValid(order.date)) {
+                return acc;
+            }
             const month = getMonth(order.date);
             const year = getYear(order.date);
             const key = `${year}-${String(month + 1).padStart(2, '0')}`;
@@ -273,5 +276,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-    
