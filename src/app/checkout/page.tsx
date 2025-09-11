@@ -53,9 +53,18 @@ export default function CheckoutPage() {
     }
 
     try {
+      // Create a plain version of cart items, excluding complex objects
+      const orderItems = cartItems.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image,
+      }));
+
       const newOrder = await placeOrder({
         customer: data,
-        items: cartItems,
+        items: orderItems,
         total: cartTotal,
       });
 
@@ -66,6 +75,7 @@ export default function CheckoutPage() {
       clearCart();
       router.push(`/order-confirmation/${newOrder.id}`);
     } catch (error) {
+        console.error("Checkout error:", error);
       toast({
         title: 'Order Failed',
         description: 'There was a problem submitting your order. Please try again.',

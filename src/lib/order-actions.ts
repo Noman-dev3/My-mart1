@@ -5,6 +5,15 @@ import { type CartItem } from '@/context/cart-context';
 import { db } from './firebase';
 import { collection, getDocs, doc, addDoc, updateDoc, query, orderBy, serverTimestamp, limit, onSnapshot, getDoc } from 'firebase/firestore';
 
+// A simpler version of CartItem for Server Actions, containing only primitive types.
+export type OrderItem = {
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    image: string;
+}
+
 export type Order = {
     id: string;
     customer: {
@@ -13,7 +22,7 @@ export type Order = {
         phone: string;
         address: string;
     };
-    items: CartItem[];
+    items: OrderItem[];
     total: number;
     status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
     date: any; // Using `any` for serverTimestamp flexibility
@@ -66,7 +75,7 @@ async function sendAdminNotification(order: Omit<Order, 'id' | 'date'>) {
 
 export async function placeOrder(data: {
   customer: { name: string; email: string; phone: string; address: string; };
-  items: CartItem[];
+  items: OrderItem[];
   total: number;
 }): Promise<Order> {
   const newOrder: Omit<Order, 'id'> = {
