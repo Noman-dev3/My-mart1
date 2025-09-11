@@ -14,6 +14,8 @@ export type OrderItem = {
     image: string;
 }
 
+export type PaymentMethod = 'COD' | 'Online';
+
 export type Order = {
     id: string;
     customer: {
@@ -26,6 +28,7 @@ export type Order = {
     total: number;
     status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
     date: any; // Using `any` for serverTimestamp flexibility
+    paymentMethod: PaymentMethod;
 };
 
 const ordersCollection = collection(db, 'orders');
@@ -46,9 +49,10 @@ async function sendAdminNotification(order: Omit<Order, 'id' | 'date'>) {
         customerName: order.customer.name,
         totalAmount: order.total,
         itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
+        paymentMethod: order.paymentMethod,
     };
-
-    console.log(`
+    
+    let message = `
     ---
     SIMULATING ADMIN NOTIFICATION
     ---
@@ -56,15 +60,28 @@ async function sendAdminNotification(order: Omit<Order, 'id' | 'date'>) {
 
     Details:
     - Customer: ${notificationPayload.customerName}
-    - Total: $${notificationPayload.totalAmount.toFixed(2)}
+    - Total: PKR ${notificationPayload.totalAmount.toFixed(2)}
     - Items: ${notificationPayload.itemCount}
+    - Payment Method: ${notificationPayload.paymentMethod}
+    `;
 
-    Actions:
+    if (notificationPayload.paymentMethod === 'Online') {
+        message += `
+    Action: Awaiting payment confirmation via Foree Pay.`;
+    } else {
+        message += `
+    Action: Order to be prepared for Cash on Delivery.`;
+    }
+
+    message += `
+
     - Sending email notification to: ${adminEmail}
     - Sending WhatsApp notification to: ${adminWhatsApp}
     ---
     In a real app, API calls to SendGrid/Twilio would be made here.
-    `);
+    `
+    console.log(message);
+
 
     // Example of what a real integration might look like:
     // await sendEmail({ to: adminEmail, subject: 'New Order!', body: '...' });
@@ -77,13 +94,15 @@ export async function placeOrder(data: {
   customer: { name: string; email: string; phone: string; address: string; };
   items: OrderItem[];
   total: number;
+  paymentMethod: PaymentMethod;
 }): Promise<Order> {
   const newOrder: Omit<Order, 'id'> = {
     customer: data.customer,
     items: data.items,
     total: data.total,
-    status: 'Pending', // Changed to Pending for manual confirmation
+    status: data.paymentMethod === 'COD' ? 'Processing' : 'Pending',
     date: serverTimestamp(),
+    paymentMethod: data.paymentMethod,
   };
 
   await sendAdminNotification(newOrder);

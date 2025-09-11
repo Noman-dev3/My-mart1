@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -11,18 +11,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
-import { placeOrder } from '@/lib/order-actions';
+import { placeOrder, type PaymentMethod } from '@/lib/order-actions';
+import { CreditCard, Truck } from 'lucide-react';
 
 const checkoutSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   address: z.string().min(10, { message: 'Please enter a full address.' }),
   phone: z.string().min(10, { message: 'Please enter a valid phone number.' }),
+  paymentMethod: z.enum(['COD', 'Online'], { required_error: 'Please select a payment method.' }),
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutSchema>;
@@ -39,8 +42,11 @@ export default function CheckoutPage() {
       email: '',
       address: '',
       phone: '',
+      paymentMethod: 'COD',
     },
   });
+
+  const paymentMethod = form.watch('paymentMethod');
 
   async function onSubmit(data: CheckoutFormValues) {
     if (cartItems.length === 0) {
@@ -65,14 +71,22 @@ export default function CheckoutPage() {
         customer: data,
         items: orderItems,
         total: cartTotal,
+        paymentMethod: data.paymentMethod as PaymentMethod,
       });
 
       toast({
         title: 'Order Placed!',
-        description: 'Please complete payment to confirm your order.',
+        description: data.paymentMethod === 'COD' ? 'Your order will be delivered soon.' : 'Please complete payment to confirm your order.',
       });
+      
       clearCart();
-      router.push(`/order-confirmation/${newOrder.id}`);
+      
+      if (data.paymentMethod === 'COD') {
+        router.push(`/order-confirmation/cod/${newOrder.id}`);
+      } else {
+        router.push(`/order-confirmation/${newOrder.id}`);
+      }
+
     } catch (error) {
         console.error("Checkout error:", error);
       toast({
@@ -106,63 +120,117 @@ export default function CheckoutPage() {
         <h1 className="text-4xl font-headline font-bold text-center mb-10">Checkout</h1>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           <div>
-            <h2 className="text-2xl font-headline font-semibold mb-6">Shipping Information</h2>
-            <Form {...form}>
+             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
+                
+                <h2 className="text-2xl font-headline font-semibold">Shipping Information</h2>
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="you@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Shipping Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="123 Main St, Anytown, USA" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="03001234567" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Separator />
+                
+                <h2 className="text-2xl font-headline font-semibold">Payment Method</h2>
+                 <FormField
                   control={form.control}
-                  name="name"
+                  name="paymentMethod"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
+                    <FormItem className="space-y-3">
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} />
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex flex-col space-y-1"
+                        >
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                                <div className="flex items-center w-full p-4 rounded-lg border has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                    <RadioGroupItem value="COD" id="cod" className="translate-y-[1px]"/>
+                                    <Label htmlFor="cod" className="flex items-center gap-3 font-normal cursor-pointer text-sm flex-1 ml-3">
+                                        <Truck className="h-6 w-6 text-muted-foreground"/>
+                                        <div>
+                                            <p className="font-semibold">Cash on Delivery (COD)</p>
+                                            <p className="text-muted-foreground text-xs">Pay with cash upon delivery.</p>
+                                        </div>
+                                    </Label>
+                                </div>
+                            </FormControl>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                             <FormControl>
+                                <div className="flex items-center w-full p-4 rounded-lg border has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                    <RadioGroupItem value="Online" id="online" className="translate-y-[1px]"/>
+                                    <Label htmlFor="online" className="flex items-center gap-3 font-normal cursor-pointer text-sm flex-1 ml-3">
+                                        <CreditCard className="h-6 w-6 text-muted-foreground"/>
+                                        <div>
+                                            <p className="font-semibold">Online Payment (Foree Pay)</p>
+                                            <p className="text-muted-foreground text-xs">Pay securely with Foree Pay.</p>
+                                        </div>
+                                    </Label>
+                                </div>
+                            </FormControl>
+                          </FormItem>
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="you@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Shipping Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="123 Main St, Anytown, USA" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="(555) 123-4567" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
                 <Button type="submit" size="lg" className="w-full font-bold" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Placing Order...' : `Place Order - PKR ${cartTotal.toFixed(2)}`}
+                  {form.formState.isSubmitting ? 'Placing Order...' : 
+                   paymentMethod === 'COD' ? 'Place Order' : `Proceed to Payment - PKR ${cartTotal.toFixed(2)}`}
                 </Button>
               </form>
             </Form>
