@@ -2,39 +2,26 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, Package, Users, Download, Activity, ShoppingCart } from 'lucide-react';
+import { DollarSign, Package, Users, Download, Activity, ShoppingCart, AlertTriangle, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Area, AreaChart, Pie, PieChart, Cell } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
-import { type Order as OrderType } from '@/lib/order-actions';
+import { useEffect, useState, useMemo } from 'react';
+import { type Order } from '@/lib/order-actions';
+import { type Product } from '@/lib/product-actions';
 import Link from 'next/link';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { format, subDays, startOfDay, endOfDay, getMonth, getYear } from 'date-fns';
 
-
-const salesData = [
-  { date: '2023-01', sales: 4000 }, { date: '2023-02', sales: 3000 },
-  { date: '2023-03', sales: 5000 }, { date: '2023-04', sales: 4500 },
-  { date: '2023-05', sales: 6000 }, { date: '2023-06', sales: 7500 },
-];
-
-const topProductsData = [
-    { name: 'Headphones', sales: 450 },
-    { name: 'T-Shirt', sales: 380 },
-    { name: 'Smart TV', sales: 320 },
-    { name: 'Coffee Beans', sales: 280 },
-    { name: 'Running Shoes', sales: 240 },
-];
-
-const categoryData = [
-    { name: 'Electronics', value: 45, color: 'hsl(var(--chart-1))' },
-    { name: 'Fashion', value: 25, color: 'hsl(var(--chart-2))'},
-    { name: 'Groceries', value: 20, color: 'hsl(var(--chart-3))' },
-    { name: 'Home Goods', value: 10, color: 'hsl(var(--chart-4))' },
-];
+type Stats = {
+  totalRevenue: number;
+  ordersToday: number;
+  newCustomers: number;
+  lowStockCount: number;
+};
 
 const activityLog = [
     { user: 'Admin User', action: 'Updated product "Wireless Headphones"', time: '2h ago' },
@@ -43,26 +30,89 @@ const activityLog = [
 ];
 
 export default function AdminDashboard() {
-  const [recentOrders, setRecentOrders] = useState<OrderType[]>([]);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [salesData, setSalesData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, 'orders'), orderBy("date", "desc"), limit(5));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const orders = snapshot.docs.map(doc => {
+    const ordersQuery = query(collection(db, 'orders'), orderBy("date", "desc"));
+    const productsQuery = query(collection(db, 'products'));
+
+    const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
+        const allOrders = snapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
                 ...data,
-                date: data.date?.toDate().toISOString() || new Date().toISOString(),
-            } as OrderType;
+                date: data.date?.toDate() || new Date(),
+            } as Order;
         });
-        setRecentOrders(orders);
-    }, (error) => {
-        console.error("Failed to listen to recent orders:", error);
-    });
-    return () => unsubscribe();
-  }, [])
 
+        const today = new Date();
+        const startOfToday = startOfDay(today);
+        const endOfToday = endOfDay(today);
+
+        const ordersTodayList = allOrders.filter(o => o.date >= startOfToday && o.date <= endOfToday);
+        const uniqueCustomersToday = new Set(ordersTodayList.map(o => o.customer.email)).size;
+        
+        const totalRevenue = allOrders
+            .filter(o => o.status === 'Delivered')
+            .reduce((sum, o) => sum + o.total, 0);
+
+        setRecentOrders(allOrders.slice(0, 5));
+
+        const monthlySales = allOrders.reduce((acc, order) => {
+            const month = getMonth(order.date);
+            const year = getYear(order.date);
+            const key = `${year}-${String(month + 1).padStart(2, '0')}`;
+            if (!acc[key]) {
+                acc[key] = { date: format(new Date(year, month), 'yyyy-MM'), sales: 0 };
+            }
+            acc[key].sales += order.total;
+            return acc;
+        }, {} as Record<string, {date: string, sales: number}>);
+
+        const sortedSales = Object.values(monthlySales).sort((a,b) => a.date.localeCompare(b.date));
+        setSalesData(sortedSales);
+
+        setStats(prev => ({ ...prev, totalRevenue, ordersToday: ordersTodayList.length, newCustomers: uniqueCustomersToday } as Stats));
+        setIsLoading(false);
+    }, (error) => {
+        console.error("Failed to listen to orders:", error);
+    });
+
+    const unsubscribeProducts = onSnapshot(productsQuery, (snapshot) => {
+        const lowStockCount = snapshot.docs.filter(doc => !doc.data().inStock).length;
+        setStats(prev => ({ ...prev, lowStockCount } as Stats));
+    }, (error) => {
+        console.error("Failed to listen to products for stock count:", error);
+    });
+
+    return () => {
+        unsubscribeOrders();
+        unsubscribeProducts();
+    }
+  }, []);
+
+  const StatCard = ({ title, value, icon: Icon, description, isLoading, variant }: { title: string, value: string | number, icon: React.ElementType, description: string, isLoading: boolean, variant?: 'default' | 'destructive' }) => (
+    <Card className={variant === 'destructive' ? 'border-destructive/50' : ''}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <Skeleton className="h-8 w-24" />
+        ) : (
+          <>
+            <div className={`text-2xl font-bold ${variant === 'destructive' && value > 0 ? 'text-destructive' : ''}`}>{value}</div>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
 
   return (
     <div className="space-y-6">
@@ -78,46 +128,35 @@ export default function AdminDashboard() {
        </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$45,231.89</div>
-            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Orders Today</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+25</div>
-            <p className="text-xs text-muted-foreground">+10% from yesterday</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+120</div>
-            <p className="text-xs text-muted-foreground">+5% from last week</p>
-          </CardContent>
-        </Card>
-        <Card className='border-destructive/50'>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">5</div>
-            <p className="text-xs text-muted-foreground">Products running low</p>
-          </CardContent>
-        </Card>
+        <StatCard 
+            title="Total Revenue"
+            value={stats ? `$${stats.totalRevenue.toFixed(2)}` : 0}
+            icon={DollarSign}
+            description="From delivered orders"
+            isLoading={isLoading}
+        />
+        <StatCard 
+            title="Orders Today"
+            value={stats?.ordersToday ?? 0}
+            icon={ShoppingCart}
+            description="New orders placed today"
+            isLoading={isLoading}
+        />
+        <StatCard 
+            title="New Customers Today"
+            value={stats?.newCustomers ?? 0}
+            icon={Users}
+            description="Unique customers today"
+            isLoading={isLoading}
+        />
+        <StatCard 
+            title="Low Stock Alerts"
+            value={stats?.lowStockCount ?? 0}
+            icon={AlertTriangle}
+            description="Products out of stock"
+            isLoading={isLoading}
+            variant='destructive'
+        />
       </div>
 
       <Card>
@@ -126,96 +165,66 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <ChartContainer config={{}} className="h-[250px] w-full">
-            <AreaChart data={salesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="date" stroke="" tickLine={false} axisLine={false} tickMargin={8} />
-              <YAxis stroke="" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `$${'${value / 1000}'}k`} />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
-              <Area type="monotone" dataKey="sales" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSales)" />
-            </AreaChart>
+             {isLoading ? <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/></div> : (
+                 <AreaChart data={salesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                        <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis dataKey="date" stroke="" tickLine={false} axisLine={false} tickMargin={8} />
+                    <YAxis stroke="" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(value) => `$${value / 1000}k`} />
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dot" />} />
+                    <Area type="monotone" dataKey="sales" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorSales)" />
+                    </AreaChart>
+             )}
           </ChartContainer>
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Top Selling Products</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={{}} className="h-[300px] w-full">
-                <BarChart data={topProductsData} layout="vertical" margin={{ left: 20, right: 30 }}>
-                    <CartesianGrid horizontal={false} />
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} stroke="" width={100} />
-                    <ChartTooltip cursor={{fill: 'hsl(var(--muted))'}} content={<ChartTooltipContent />} />
-                    <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Category Performance</CardTitle>
-          </CardHeader>
-          <CardContent>
-             <ChartContainer config={{}} className="h-[300px] w-full">
-                <PieChart>
-                    <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-                    <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={60} strokeWidth={5}>
-                         {categoryData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                    </Pie>
-                </PieChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-       <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>You have {recentOrders.length} recent orders.</CardDescription>
+            <CardDescription>Your 5 most recent orders.</CardDescription>
           </CardHeader>
           <CardContent>
-             <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Order ID</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {recentOrders.map((order) => (
-                        <TableRow key={order.id} className="hover:bg-muted/50">
-                          <Link href="/admin/orders" className="contents">
-                            <TableCell className="font-medium">{order.id}</TableCell>
-                            <TableCell>{order.customer.name}</TableCell>
-                            <TableCell>
-                                <Badge 
-                                variant={
-                                    order.status === 'Delivered' ? 'default' : 
-                                    order.status === 'Processing' ? 'secondary' : 
-                                    'outline'
-                                }
-                                >{order.status}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right">${order.total.toFixed(2)}</TableCell>
-                          </Link>
+             {isLoading ? <div className="flex h-full w-full items-center justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/></div> : recentOrders.length > 0 ? (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Order ID</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+                    </TableHeader>
+                    <TableBody>
+                        {recentOrders.map((order) => (
+                            <TableRow key={order.id} className="hover:bg-muted/50">
+                            <Link href="/admin/orders" className="contents">
+                                <TableCell className="font-medium">{order.id.slice(0, 8)}...</TableCell>
+                                <TableCell>{order.customer.name}</TableCell>
+                                <TableCell>
+                                    <Badge 
+                                    variant={
+                                        order.status === 'Delivered' ? 'default' : 
+                                        order.status === 'Processing' ? 'secondary' : 
+                                        'outline'
+                                    }
+                                    >{order.status}</Badge>
+                                </TableCell>
+                                <TableCell className="text-right">${order.total.toFixed(2)}</TableCell>
+                            </Link>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+             ) : (
+                <div className="text-center text-muted-foreground py-10">No recent orders.</div>
+             )}
           </CardContent>
         </Card>
         <Card>

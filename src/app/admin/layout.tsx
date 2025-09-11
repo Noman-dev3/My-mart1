@@ -33,7 +33,6 @@ export default function AdminLayout({
     { href: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
     { href: '/admin/products', icon: Package, label: 'Products' },
     { href: '/admin/customers', icon: Users, label: 'Customers' },
-    { href: '/admin/reports', icon: LineChart, label: 'Reports' },
   ];
 
   return (
