@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -121,13 +122,13 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold font-headline">Dashboard</h1>
             <p className="text-muted-foreground">An overview of your store's performance.</p>
         </div>
-        <Button>
+        <Button className="self-start sm:self-center">
             <Download className="mr-2 h-4 w-4" />
             Download Report
         </Button>
        </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard 
             title="Total Revenue"
             value={stats ? `$${stats.totalRevenue.toFixed(2)}` : 0}
@@ -190,7 +191,7 @@ export default function AdminDashboard() {
             <CardTitle>Recent Orders</CardTitle>
             <CardDescription>Your 5 most recent orders.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="overflow-x-auto">
              {isLoading ? <div className="flex h-full w-full items-center justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/></div> : recentOrders.length > 0 ? (
                 <Table>
                     <TableHeader>

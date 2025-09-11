@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -236,7 +237,7 @@ export default function ProductsPage() {
                         <p className="text-muted-foreground">Manage your store's products.</p>
                     </div>
                     <DialogTrigger asChild>
-                        <Button>
+                        <Button className="self-start sm:self-center">
                             <PlusCircle className="mr-2 h-4 w-4" />
                             Add Product
                         </Button>
@@ -252,7 +253,7 @@ export default function ProductsPage() {
                     />
                 </div>
 
-            <div className="rounded-lg border">
+            <div className="rounded-lg border overflow-x-auto">
                 <Table>
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (

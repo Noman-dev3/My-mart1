@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -314,7 +315,7 @@ export default function OrdersPage() {
                 <h1 className="text-3xl font-bold font-headline">Orders</h1>
                 <p className="text-muted-foreground">Manage all customer orders.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 self-start sm:self-center">
                 <Button variant="outline">
                     <File className="mr-2 h-4 w-4" />
                     Export
@@ -322,7 +323,7 @@ export default function OrdersPage() {
             </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Search by ID, name, or email..."
               value={globalFilter ?? ''}
@@ -381,7 +382,7 @@ export default function OrdersPage() {
             </DropdownMenu>
         </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
