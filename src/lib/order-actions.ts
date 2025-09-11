@@ -39,12 +39,12 @@ export type Order = {
  * 
  * @param order The newly placed order details.
  */
-async function sendAdminNotification(order: Omit<Order, 'id' | 'date'>) {
+async function sendAdminNotification(order: Order) {
     const adminEmail = 'noman.dev3@gmail.com';
     const adminWhatsApp = '+923119991972';
 
     const notificationPayload = {
-        orderId: `(will be generated upon saving)`,
+        orderId: order.id,
         customerName: order.customer.name,
         totalAmount: order.total,
         itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
@@ -58,6 +58,7 @@ async function sendAdminNotification(order: Omit<Order, 'id' | 'date'>) {
     A new order has been received!
 
     Details:
+    - Order ID: ${notificationPayload.orderId}
     - Customer: ${notificationPayload.customerName}
     - Total: PKR ${notificationPayload.totalAmount.toFixed(2)}
     - Items: ${notificationPayload.itemCount}
@@ -106,8 +107,6 @@ export async function placeOrder(data: {
     date: new Date().toISOString(),
   };
 
-  await sendAdminNotification(newOrderData as Omit<Order, 'id' | 'date'>);
-
   const { data: savedOrder, error } = await supabase
     .from('orders')
     .insert(newOrderData)
@@ -119,6 +118,9 @@ export async function placeOrder(data: {
     throw new Error("Could not place order.");
   }
   
+  // Send notification *after* order is successfully saved and we have an ID
+  await sendAdminNotification(savedOrder as Order);
+
   revalidatePath('/admin/orders');
   revalidatePath('/admin');
   
