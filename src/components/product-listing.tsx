@@ -78,14 +78,7 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
         break;
       case 'newest':
       default:
-        // Firestore timestamp objects can be compared directly if they exist
-        if (result.length > 0 && result[0].createdAt) {
-          result.sort((a, b) => {
-            const dateA = a.createdAt?.seconds ? (a.createdAt.seconds * 1000) : 0;
-            const dateB = b.createdAt?.seconds ? (b.createdAt.seconds * 1000) : 0;
-            return dateB - dateA;
-          });
-        }
+        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         break;
     }
 
@@ -252,7 +245,3 @@ export default function ProductListing({ products, searchQuery }: { products: Pr
     </div>
   );
 }
-
-    
-
-    

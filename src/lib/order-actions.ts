@@ -33,6 +33,16 @@ export type Order = {
 
 const ordersCollection = collection(db, 'orders');
 
+const processOrderDoc = (doc: any) => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data,
+        date: data.date?.toDate ? data.date.toDate().toISOString() : new Date().toISOString(),
+    } as Order;
+}
+
+
 /**
  * Sends a notification to the store administrator about a new order.
  * In a production environment, this would integrate with a service like SendGrid for email
@@ -110,13 +120,7 @@ export async function placeOrder(data: {
   const docRef = await addDoc(ordersCollection, newOrder);
   
   const savedOrder = await getDoc(doc(db, 'orders', docRef.id));
-  const savedData = savedOrder.data();
-
-  return { 
-    ...savedData,
-    id: docRef.id,
-    date: savedData?.date.toDate().toISOString() 
-  } as Order;
+  return processOrderDoc(savedOrder);
 }
 
 async function readOrders(): Promise<Order[]> {
@@ -125,15 +129,7 @@ async function readOrders(): Promise<Order[]> {
     if (snapshot.empty) {
         return [];
     }
-    return snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            ...data,
-            // Convert Firestore Timestamp to ISO string for client-side compatibility
-            date: data.date.toDate().toISOString(),
-        } as Order;
-    });
+    return snapshot.docs.map(processOrderDoc);
 }
 
 
@@ -143,14 +139,7 @@ export async function getRecentOrders(): Promise<Order[]> {
     if (snapshot.empty) {
         return [];
     }
-    return snapshot.docs.map(doc => {
-         const data = doc.data();
-         return {
-            id: doc.id,
-            ...data,
-            date: data.date.toDate().toISOString(),
-         } as Order
-    });
+    return snapshot.docs.map(processOrderDoc);
 }
 
 export async function getAllOrders(): Promise<Order[]> {
@@ -162,12 +151,7 @@ export async function getOrderById(orderId: string): Promise<Order | undefined> 
     if (!orderDoc.exists()) {
         return undefined;
     }
-    const data = orderDoc.data();
-    return {
-        id: orderDoc.id,
-        ...data,
-        date: data.date.toDate().toISOString(),
-    } as Order;
+    return processOrderDoc(orderDoc);
 }
 
 export async function updateOrderStatus(orderId: string, status: Order['status']) {
@@ -175,13 +159,7 @@ export async function updateOrderStatus(orderId: string, status: Order['status']
     await updateDoc(orderRef, { status });
 
     const updatedDoc = await getDoc(orderRef);
-    const updatedData = updatedDoc.data();
-
-     if (!updatedData) throw new Error('Order not found after update');
-
-    return {
-        id: updatedDoc.id,
-        ...updatedData,
-        date: updatedData.date.toDate().toISOString()
-    } as Order;
+     if (!updatedDoc) throw new Error('Order not found after update');
+    
+    return processOrderDoc(updatedDoc);
 }

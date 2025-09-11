@@ -1,3 +1,4 @@
+
 'use server';
 
 import { z } from 'zod';
@@ -35,13 +36,22 @@ export type Product = {
 
 const productsCollection = collection(db, 'products');
 
+const processProductDoc = (doc: any) => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+    } as Product;
+}
+
 export async function getAllProducts(): Promise<Product[]> {
     const q = query(productsCollection, orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
     if (snapshot.empty) {
         return [];
     }
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    return snapshot.docs.map(processProductDoc);
 }
 
 export async function getProductById(productId: string): Promise<Product | undefined> {
@@ -49,7 +59,7 @@ export async function getProductById(productId: string): Promise<Product | undef
     if (!productDoc.exists()) {
         return undefined;
     }
-    return { id: productDoc.id, ...productDoc.data() } as Product;
+    return processProductDoc(productDoc);
 }
 
 export async function getCategories(): Promise<string[]> {
@@ -93,7 +103,8 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         createdAt: serverTimestamp(),
     };
     const docRef = await addDoc(productsCollection, newProduct);
-    return { ...newProduct, id: docRef.id };
+    const savedDoc = await getDoc(docRef);
+    return processProductDoc(savedDoc);
 }
 
 export async function updateProduct(productId: string, data: z.infer<typeof productSchema>) {
