@@ -55,9 +55,21 @@ export default function LoginPage() {
   );
 
   return (
-    <main className="w-full min-h-screen flex items-center justify-center bg-muted/30 p-4">
-       <Card className="w-full max-w-4xl grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl bg-card border-border">
-          <div className="p-8 sm:p-12 flex flex-col justify-center">
+    <main className="w-full min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute inset-0 lg:hidden">
+            <Image
+              src="https://picsum.photos/seed/crextio-login/800/1200"
+              alt="Background"
+              layout="fill"
+              objectFit="cover"
+              className="z-0"
+              data-ai-hint="team meeting"
+            />
+            <div className="absolute inset-0 bg-black/60 z-10" />
+        </div>
+       
+        <div className="w-full max-w-4xl grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl z-20 bg-transparent lg:bg-card">
+          <div className="p-8 sm:p-12 flex flex-col justify-center bg-card/80 backdrop-blur-sm lg:bg-card lg:backdrop-blur-none rounded-t-2xl lg:rounded-l-2xl lg:rounded-tr-none">
             <Link href="/" className="w-fit">
               <Button variant="outline" className="rounded-full px-4 mb-8 text-muted-foreground group">
                  <Icons.logo className="h-5 w-5 mr-2 text-primary group-hover:text-primary transition-colors"/> My Mart
@@ -106,7 +118,7 @@ export default function LoginPage() {
                     <span className="w-full border-t"></span>
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                    <span className="bg-card/80 lg:bg-card px-2 text-muted-foreground">Or continue with</span>
                 </div>
             </div>
 
@@ -137,7 +149,12 @@ export default function LoginPage() {
                 <AnimatedAuthText />
              </div>
           </div>
-       </Card>
+        </div>
+         <div className="lg:hidden absolute bottom-8 z-10 text-center px-8">
+            <AnimatedAuthText />
+        </div>
     </main>
   );
 }
+
+    
