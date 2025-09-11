@@ -370,4 +370,3 @@ function QuestionForm({ productId, user, onQuestionSubmitted }: { productId: str
         </Form>
     );
 }
-
