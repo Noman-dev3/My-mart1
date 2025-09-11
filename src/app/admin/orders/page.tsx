@@ -468,7 +468,6 @@ export default function OrdersPage() {
       </div>
     </div>
     
-    {/* Order Details Dialog */}
     <Dialog open={isDetailsOpen} onOpenChange={open => {
         setIsDetailsOpen(open);
         if (!open) setSelectedOrder(null);
@@ -539,7 +538,6 @@ export default function OrdersPage() {
         )}
     </Dialog>
 
-    {/* Cancel Confirmation Alert */}
     <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -549,8 +547,7 @@ export default function OrdersPage() {
             </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSelectedOrder(null)}>Dismiss</Aler
-tDialogCancel>
+            <AlertDialogCancel onClick={() => setSelectedOrder(null)}>Dismiss</AlertDialogCancel>
             <AlertDialogAction onClick={handleCancelConfirm}>Continue</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
