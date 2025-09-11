@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth as adminAuth } from './firebase-admin';
+import { auth } from './firebase';
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -27,7 +28,6 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
     
     // We create a temporary auth instance on the server to perform the action.
     // The client SDK will pick up the resulting auth state.
-    const auth = getAuth();
     
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
@@ -62,7 +62,6 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
 export async function signInUser(values: z.infer<typeof loginSchema>) {
   try {
     const { email, password } = loginSchema.parse(values);
-    const auth = getAuth();
     await signInWithEmailAndPassword(auth, email, password);
     return { success: true };
   } catch (error: any) {
