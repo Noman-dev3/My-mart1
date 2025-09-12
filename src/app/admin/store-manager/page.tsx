@@ -109,7 +109,9 @@ export default function StoreManagerPage() {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (isCustomerDialogOpen) return;
 
+        // If 'Enter' is pressed, process the buffer immediately.
         if (e.key === 'Enter') {
+            e.preventDefault(); // Prevent form submission
             if (barcodeBuffer.current.length > 0) {
                 processBarcode(barcodeBuffer.current.join(''));
                 barcodeBuffer.current = [];
@@ -117,18 +119,23 @@ export default function StoreManagerPage() {
             return;
         }
 
-        if (e.key.length > 1) return; // Ignore control keys
+        // Ignore control keys, function keys, etc.
+        if (e.key.length > 1) return;
 
+        // Add character to buffer
         barcodeBuffer.current.push(e.key);
 
+        // Clear previous timeout
         if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
 
+        // Set a new timeout to process the buffer
         barcodeTimeout.current = setTimeout(() => {
-            if (barcodeBuffer.current.length > 3) {
+            // Only process if the buffer is a reasonable length for a barcode
+            if (barcodeBuffer.current.length > 3) { 
                 processBarcode(barcodeBuffer.current.join(''));
             }
-            barcodeBuffer.current = [];
-        }, 200);
+            barcodeBuffer.current = []; // Clear buffer after processing or timeout
+        }, 100); // A short timeout (100ms) is good for fast scanners
     };
 
     window.addEventListener('keydown', handleKeyDown);
