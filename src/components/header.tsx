@@ -55,7 +55,6 @@ export default function Header() {
   };
   
   const userInitial = user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U';
-  const isAdmin = user?.user_metadata?.role === 'admin';
 
   return (
     <header className="bg-background/80 backdrop-blur-sm sticky top-0 z-40 border-b">
@@ -118,14 +117,6 @@ export default function Header() {
                       <span>My Orders</span>
                     </Link>
                   </DropdownMenuItem>
-                  {isAdmin && (
-                    <DropdownMenuItem asChild>
-                        <Link href="/admin">
-                            <LayoutDashboard className="mr-2 h-4 w-4" />
-                            <span>Admin</span>
-                        </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuSeparator />
                   <form action={signOutUser}>
                     <button type="submit" className="w-full">

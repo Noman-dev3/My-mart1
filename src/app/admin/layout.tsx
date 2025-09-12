@@ -13,21 +13,38 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { Home, Package, ShoppingCart, Users, Settings, Bell, Search, FileText, Store } from 'lucide-react';
+import { Home, Package, ShoppingCart, Users, Settings, Bell, Search, FileText, Store, LogOut, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AdminAuthContext, AdminAuthProvider } from '@/context/admin-auth-context';
+import { useContext, useEffect } from 'react';
+import AdminLoginPage from './login/page';
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function AdminProtectedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isAdminAuthenticated, loading, logout } = useContext(AdminAuthContext);
   
+  useEffect(() => {
+    if (!loading && !isAdminAuthenticated) {
+      router.push('/admin/login');
+    }
+  }, [isAdminAuthenticated, loading, router]);
+
+  if (loading) {
+     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+  }
+
+  if (!isAdminAuthenticated) {
+    // While the effect above should redirect, this prevents flicker.
+    // We render the login page directly if not authenticated.
+    return <AdminLoginPage />;
+  }
+
   const navItems = [
     { href: '/admin', icon: Home, label: 'Dashboard' },
     { href: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
@@ -64,12 +81,10 @@ export default function AdminLayout({
         </SidebarContent>
         <SidebarFooter>
             <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={pathname === '/admin/settings'} tooltip="Settings">
-                        <Link href="#">
-                            <Settings />
-                            <span>Settings</span>
-                        </Link>
+                 <SidebarMenuItem>
+                    <SidebarMenuButton onClick={logout} tooltip="Logout">
+                        <LogOut />
+                        <span>Logout</span>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
@@ -91,12 +106,11 @@ export default function AdminLayout({
                 </Button>
                 <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
-                        <AvatarImage src="https://picsum.photos/100" alt="Admin" />
                         <AvatarFallback>A</AvatarFallback>
                     </Avatar>
                     <div className="hidden md:block">
-                        <p className="font-semibold text-sm">Admin User</p>
-                        <p className="text-xs text-muted-foreground">Super Admin</p>
+                        <p className="font-semibold text-sm">Admin</p>
+                        <p className="text-xs text-muted-foreground">Store Operator</p>
                     </div>
                 </div>
             </div>
@@ -108,4 +122,18 @@ export default function AdminLayout({
     </SidebarProvider>
   );
 }
-    
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname();
+
+    // The login page should not have the main admin layout
+    if (pathname === '/admin/login') {
+        return <>{children}</>;
+    }
+
+    return (
+        <AdminAuthProvider>
+            <AdminProtectedLayout>{children}</AdminProtectedLayout>
+        </AdminAuthProvider>
+    )
+}
