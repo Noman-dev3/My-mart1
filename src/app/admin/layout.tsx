@@ -43,9 +43,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <Sidebar>
-         <SheetHeader className="p-2 border-b">
-            <SheetTitle className="sr-only">Admin Menu</SheetTitle>
-        </SheetHeader>
         <SidebarHeader>
           <div className="flex items-center gap-2">
              <Icons.logo className="h-8 w-8 text-sidebar-primary" />
@@ -54,6 +51,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
              </span>
           </div>
         </SidebarHeader>
+        <SheetHeader className="p-2 border-b md:hidden">
+            <SheetTitle className="sr-only">Admin Menu</SheetTitle>
+        </SheetHeader>
         <SidebarContent className="p-2">
             <SidebarMenu>
                 {navItems.map((item) => (
