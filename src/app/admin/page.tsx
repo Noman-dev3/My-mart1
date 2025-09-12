@@ -51,7 +51,7 @@ export default function AdminDashboard() {
             return;
         }
 
-        const allOrders: Order[] = ordersData.map((o: any) => ({ ...o, date: o.date ? new Date(o.date) : null }));
+        const allOrders: Order[] = ordersData ? ordersData.map((o: any) => ({ ...o, date: o.date ? new Date(o.date) : null })) : [];
         
         const today = new Date();
         const startOfToday = startOfDay(today);
@@ -60,14 +60,14 @@ export default function AdminDashboard() {
         const ordersTodayList = allOrders.filter(o => o.date && isValid(o.date) && o.date >= startOfToday && o.date <= endOfToday);
         const uniqueCustomersToday = new Set(ordersTodayList.map(o => o.customer.email)).size;
         
-        const totalRevenue = allOrders
+        const totalRevenue = allOrders.length > 0 ? allOrders
             .filter(o => o.status === 'Delivered')
-            .reduce((sum, o) => sum + o.total, 0);
+            .reduce((sum, o) => sum + o.total, 0) : 0;
 
         setRecentOrders(allOrders.slice(0, 5));
 
         const monthlySales = allOrders.reduce((acc, order) => {
-            if (!order.date || !isValid(order.date)) {
+            if (!order || !order.date || !isValid(order.date)) {
                 return acc;
             }
             const month = getMonth(order.date);
@@ -276,3 +276,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+    
