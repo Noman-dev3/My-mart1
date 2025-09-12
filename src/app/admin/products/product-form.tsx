@@ -21,6 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import type { Product } from "@/lib/product-actions";
@@ -28,8 +35,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { answerProductQuestion } from "@/lib/product-actions";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, ScanLine } from "lucide-react";
 import { getProductQuestionAnswer } from "@/ai/flows/answer-product-question"
+import BarcodeScanner from "./barcode-scanner"
 
 
 const productFormSchema = z.object({
@@ -54,6 +62,7 @@ type ProductFormProps = {
 export default function ProductForm({ onSubmit, onCancel, product }: ProductFormProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("details");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
@@ -80,13 +89,19 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   };
 
   const generateBarcode = () => {
-    // Generate a random 12-digit barcode number and add a checksum digit
     const randomDigits = Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
     form.setValue('barcode', randomDigits, { shouldValidate: true });
     toast({ title: "Barcode Generated", description: "A new unique barcode has been generated."})
   }
 
+  const handleBarcodeScanned = (barcode: string) => {
+    form.setValue('barcode', barcode, { shouldValidate: true });
+    setIsScannerOpen(false);
+    toast({ title: "Barcode Scanned", description: `Barcode set to: ${barcode}`});
+  }
+
   return (
+    <>
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="details">Product Details</TabsTrigger>
@@ -197,6 +212,9 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
                         <FormControl>
                           <Input placeholder="e.g., 123456789012" {...field} />
                         </FormControl>
+                        <Button type="button" variant="outline" size="icon" onClick={() => setIsScannerOpen(true)}>
+                          <ScanLine className="h-4 w-4" />
+                        </Button>
                         <Button type="button" variant="outline" size="icon" onClick={generateBarcode}>
                           <RefreshCw className="h-4 w-4" />
                         </Button>
@@ -248,6 +266,19 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
         </div>
       </TabsContent>
     </Tabs>
+    
+    <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Scan Barcode</DialogTitle>
+                <DialogDescription>
+                    Position the barcode within the camera view to scan it.
+                </DialogDescription>
+            </DialogHeader>
+            <BarcodeScanner onScan={handleBarcodeScanned} />
+        </DialogContent>
+    </Dialog>
+    </>
   )
 }
 
