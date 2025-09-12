@@ -19,7 +19,7 @@ export const AdminAuthContext = createContext<AdminAuthContextType>({
 });
 
 const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'password';
+const ADMIN_PASSWORD = '1234';
 
 export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);

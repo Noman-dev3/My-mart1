@@ -62,7 +62,7 @@ ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow read access for all users" ON products;
 CREATE POLICY "Allow read access for all users" ON products FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Allow all access for admins" ON products;
-CREATE POLICY "Allow all access for admins" ON products FOR ALL USING (auth.uid() IN ( SELECT id FROM auth.users WHERE role = 'authenticated' ));
+CREATE POLICY "Allow all access for admins" ON products FOR ALL USING (true);
 
 
 -- RLS Policies for orders table
@@ -134,7 +134,8 @@ $$;
 
 To access the admin dashboard, navigate to `/admin` and log in with the following credentials:
 - **Username:** `admin`
-- **Password:** `password`
+- **Password:** `1234`
 
 These are hardcoded in the application. You can change them in `src/context/admin-auth-context.tsx`.
+
 
