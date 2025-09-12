@@ -21,7 +21,6 @@ type Stats = {
   totalRevenue: number;
   ordersToday: number;
   newCustomers: number;
-  lowStockCount: number;
 };
 
 const activityLog = [
@@ -83,17 +82,7 @@ export default function AdminDashboard() {
         const sortedSales = Object.values(monthlySales).sort((a,b) => a.date.localeCompare(b.date));
         setSalesData(sortedSales);
         
-        // Fetch products for stock count
-        const { count: lowStockCount, error: productsError } = await supabase
-            .from('products')
-            .select('*', { count: 'exact', head: true })
-            .lte('stockQuantity', 10);
-
-        if (productsError) {
-            console.error("Failed to get stock count:", productsError);
-        }
-
-        setStats({ totalRevenue, ordersToday: ordersTodayList.length, newCustomers: uniqueCustomersToday, lowStockCount: lowStockCount ?? 0 });
+        setStats({ totalRevenue, ordersToday: ordersTodayList.length, newCustomers: uniqueCustomersToday });
         setIsLoading(false);
     };
 
@@ -110,8 +99,8 @@ export default function AdminDashboard() {
     }
   }, [supabase]);
 
-  const StatCard = ({ title, value, icon: Icon, description, isLoading, variant }: { title: string, value: string | number, icon: React.ElementType, description: string, isLoading: boolean, variant?: 'default' | 'destructive' }) => (
-    <Card className={variant === 'destructive' ? 'border-destructive/50' : ''}>
+  const StatCard = ({ title, value, icon: Icon, description, isLoading }: { title: string, value: string | number, icon: React.ElementType, description: string, isLoading: boolean }) => (
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -121,7 +110,7 @@ export default function AdminDashboard() {
           <Skeleton className="h-8 w-24" />
         ) : (
           <>
-            <div className={`text-2xl font-bold ${variant === 'destructive' && Number(value) > 0 ? 'text-destructive' : ''}`}>{value}</div>
+            <div className='text-2xl font-bold'>{value}</div>
             <p className="text-xs text-muted-foreground">{description}</p>
           </>
         )}
@@ -142,7 +131,7 @@ export default function AdminDashboard() {
         </Button>
        </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-3">
         <StatCard 
             title="Total Revenue"
             value={stats ? `PKR ${stats.totalRevenue.toFixed(2)}` : 0}
@@ -163,14 +152,6 @@ export default function AdminDashboard() {
             icon={Users}
             description="Unique customers today"
             isLoading={isLoading}
-        />
-        <StatCard 
-            title="Low Stock Alerts"
-            value={stats?.lowStockCount ?? 0}
-            icon={AlertTriangle}
-            description="Products with <= 10 items"
-            isLoading={isLoading}
-            variant='destructive'
         />
       </div>
 
