@@ -59,6 +59,6 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AdminAuthContext.Provider value={value}>
       {children}
-    </Admin-auth-context.Provider>
+    </AdminAuthContext.Provider>
   );
 };
