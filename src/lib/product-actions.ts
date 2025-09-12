@@ -120,23 +120,8 @@ const questionSchema = z.object({
 
 export async function addProduct(data: z.infer<typeof productSchema>) {
     const supabase = createServerActionClient({ cookies });
-    const testProduct = {
-        name: "Test Scanner Product",
-        description: "A test product to validate the barcode scanner functionality.",
-        price: 150.00,
-        image: "https://picsum.photos/seed/scanner-test/600/600",
-        category: "Groceries",
-        brand: "TestBrand",
-        stockQuantity: 100,
-        barcode: "8964001026556",
-        rating: 5,
-        reviews: 1,
-        specifications: {},
-        reviewsData: [],
-        questions: [],
-    };
 
-    const newProduct = data.barcode === '8964001026556' ? testProduct : {
+    const newProduct = {
         ...data,
         rating: Math.floor(Math.random() * 5) + 1,
         reviews: Math.floor(Math.random() * 100),
@@ -145,12 +130,36 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         questions: [],
     };
     
-    // Check if test product already exists
-    const { data: existing } = await supabase.from('products').select('id').eq('barcode', '8964001026556').single();
-    if (existing) {
-        console.log("Test product already exists.");
-        // If we are trying to add the test product again, just return it.
-        if (data.barcode === '8964001026556') return existing;
+    // Special handling for the test product barcode
+    if (data.barcode === '8964001026556') {
+        const testProduct = {
+            name: "Test Scanner Product",
+            description: "A test product to validate the barcode scanner functionality.",
+            price: 150.00,
+            image: "https://picsum.photos/seed/scanner-test/600/600",
+            category: "Groceries" as const,
+            brand: "TestBrand",
+            stockQuantity: 100,
+            barcode: "8964001026556",
+            rating: 5,
+            reviews: 1,
+            specifications: {},
+            reviewsData: [],
+            questions: [],
+        };
+        
+        // Check if test product already exists to avoid duplicate errors
+        const { data: existing } = await supabase.from('products').select('id').eq('barcode', '8964001026556').single();
+        if (existing) {
+            console.log("Test product already exists. Skipping creation.");
+            return existing;
+        }
+
+        const { data: savedProduct, error } = await supabase.from('products').insert(testProduct).select().single();
+        if (error) throw error;
+        
+        revalidatePath('/admin/products');
+        return savedProduct;
     }
 
 
@@ -160,14 +169,7 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         .select()
         .single();
     
-    if (error) {
-        // If it fails due to unique constraint, it means it already exists.
-        if (error.code === '23505') {
-            console.log("Test product likely already exists, ignoring duplicate error.");
-            return;
-        }
-        throw error;
-    }
+    if (error) throw error;
     
     revalidatePath('/admin/products');
     revalidatePath('/products');
