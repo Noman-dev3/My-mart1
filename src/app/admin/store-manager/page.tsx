@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X } from 'lucide-react';
+import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X, Camera, CameraOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getProductByBarcode, type Product } from '@/lib/product-actions';
@@ -39,6 +39,7 @@ type CustomerSession = {
 
 export default function StoreManagerPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [isCameraScannerEnabled, setIsCameraScannerEnabled] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
   const [cart, setCart] = useState<ScannedProduct[]>([]);
@@ -159,6 +160,7 @@ export default function StoreManagerPage() {
         stream.getTracks().forEach(track => track.stop());
         videoRef.current.srcObject = null;
     }
+    setHasCameraPermission(null);
   }, []);
 
   const startScanner = useCallback(async () => {
@@ -194,17 +196,23 @@ export default function StoreManagerPage() {
                 description: 'Could not access the camera. It might be in use or not supported.',
              });
         }
+        setIsCameraScannerEnabled(false); // Turn off toggle if permission fails
     }
   }, [processBarcode, toast]);
 
 
-  // Effect to initialize and clean up the scanner
+  // Effect to initialize and clean up the scanner based on the toggle state
   useEffect(() => {
-    startScanner();
+    if (isCameraScannerEnabled) {
+      startScanner();
+    } else {
+      stopScanner();
+    }
+
     return () => {
       stopScanner();
     };
-  }, [startScanner, stopScanner]);
+  }, [isCameraScannerEnabled, startScanner, stopScanner]);
 
   const handleManualAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -272,29 +280,40 @@ export default function StoreManagerPage() {
         {/* Left Column: Scanner and Manual Input */}
         <Card className="flex flex-col">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><ScanLine /> Scanner</CardTitle>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center gap-2"><ScanLine /> Scanner</CardTitle>
+                    <Button variant="outline" size="sm" onClick={() => setIsCameraScannerEnabled(prev => !prev)}>
+                        {isCameraScannerEnabled ? <CameraOff className="mr-2 h-4 w-4" /> : <Camera className="mr-2 h-4 w-4" />}
+                        {isCameraScannerEnabled ? 'Stop Camera' : 'Use Camera'}
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center gap-4">
-                <div className="w-full max-w-md aspect-video bg-card-foreground/5 rounded-lg overflow-hidden relative">
-                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
-                    </div>
-                     <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                        {hasCameraPermission === null ? 'Initializing...' : hasCameraPermission ? 'Scanner Active' : 'No Camera'}
-                    </div>
-                </div>
-                 {hasCameraPermission === false && (
-                    <Alert variant="destructive">
-                      <AlertTitle>Camera Access Required</AlertTitle>
-                      <AlertDescription>
-                        Please allow camera access in your browser settings to use the scanner.
-                      </AlertDescription>
-                    </Alert>
-                )}
+                 {isCameraScannerEnabled && (
+                    <>
+                        <div className="w-full max-w-md aspect-video bg-card-foreground/5 rounded-lg overflow-hidden relative">
+                            <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
+                            </div>
+                            <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                {hasCameraPermission === null ? 'Initializing...' : hasCameraPermission ? 'Scanner Active' : 'No Camera'}
+                            </div>
+                        </div>
+                        {hasCameraPermission === false && (
+                            <Alert variant="destructive">
+                            <AlertTitle>Camera Access Denied</AlertTitle>
+                            <AlertDescription>
+                                Please allow camera access in your browser settings to use the scanner.
+                            </AlertDescription>
+                            </Alert>
+                        )}
+                    </>
+                 )}
+                 
                  <Separator />
                 <form onSubmit={handleManualAdd} className="w-full max-w-md space-y-2">
-                    <p className="text-center text-sm text-muted-foreground">Or enter barcode manually</p>
+                    <p className="text-center text-sm text-muted-foreground">Or use a hardware scanner / enter manually</p>
                     <div className="flex gap-2">
                         <Input 
                             placeholder="Enter barcode..." 
@@ -425,6 +444,5 @@ export default function StoreManagerPage() {
        </Dialog>
     </div>
   );
-}
 
     
