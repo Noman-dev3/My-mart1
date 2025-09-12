@@ -6,10 +6,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2 } from 'lucide-react';
+import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getProductByBarcode, type Product } from '@/lib/product-actions';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog"
+import { Label } from '@/components/ui/label';
 
 // A version of product for the POS cart
 type ScannedProduct = {
@@ -19,6 +28,12 @@ type ScannedProduct = {
   quantity: number;
 };
 
+type CustomerSession = {
+    id: string;
+    name: string;
+};
+
+
 export default function StoreManagerPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -26,6 +41,12 @@ export default function StoreManagerPage() {
   const [cart, setCart] = useState<ScannedProduct[]>([]);
   const [manualBarcode, setManualBarcode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Customer session state
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  const [currentCustomer, setCurrentCustomer] = useState<CustomerSession | null>(null);
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerId, setNewCustomerId] = useState('');
   
   // Barcode scanner input handling
   const barcodeBuffer = useRef<string[]>([]);
@@ -75,6 +96,9 @@ export default function StoreManagerPage() {
   // Effect for dedicated barcode scanner input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+        // Don't process scans if a dialog is open
+        if (isCustomerDialogOpen) return;
+
         if (e.key === 'Enter') {
             if (barcodeBuffer.current.length > 0) {
                 processBarcode(barcodeBuffer.current.join(''));
@@ -108,7 +132,7 @@ export default function StoreManagerPage() {
             clearTimeout(barcodeTimeout.current);
         }
     };
-  }, [processBarcode]);
+  }, [processBarcode, isCustomerDialogOpen]);
 
   // Request camera permission on component mount
   useEffect(() => {
@@ -149,6 +173,28 @@ export default function StoreManagerPage() {
 
   const removeFromCart = (productId: string) => {
     setCart(prev => prev.filter(item => item.id !== productId));
+  }
+
+  const handleNewCustomerClick = () => {
+    setNewCustomerId(`CUST-${Date.now()}`);
+    setNewCustomerName('');
+    setIsCustomerDialogOpen(true);
+  }
+
+  const handleStartSession = () => {
+    if (!newCustomerName.trim()) {
+        toast({ title: "Name required", description: "Please enter a customer name.", variant: "destructive" });
+        return;
+    }
+    setCurrentCustomer({ id: newCustomerId, name: newCustomerName });
+    setIsCustomerDialogOpen(false);
+    setCart([]); // Clear cart for new customer
+  }
+
+  const endSession = () => {
+    setCurrentCustomer(null);
+    setCart([]);
+    toast({ title: "Session Ended", description: "Ready for the next customer." });
   }
 
   const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
@@ -203,8 +249,21 @@ export default function StoreManagerPage() {
         {/* Right Column: Billing */}
         <Card className="flex flex-col">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><ShoppingCart/> Billing</CardTitle>
-                <CardDescription>Items will appear here once scanned.</CardDescription>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center gap-2"><ShoppingCart/> Billing</CardTitle>
+                    {currentCustomer ? (
+                        <Button variant="destructive" size="sm" onClick={endSession}><X className="mr-2 h-4 w-4"/> End Session</Button>
+                    ) : (
+                        <Button onClick={handleNewCustomerClick}><UserPlus className="mr-2 h-4 w-4"/> New Customer</Button>
+                    )}
+                </div>
+                {currentCustomer ? (
+                    <CardDescription>
+                        Serving: <span className="font-bold text-primary">{currentCustomer.name}</span> (ID: {currentCustomer.id})
+                    </CardDescription>
+                ) : (
+                    <CardDescription>Start a new session to begin billing.</CardDescription>
+                )}
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
                 {cart.length > 0 ? (
@@ -228,8 +287,17 @@ export default function StoreManagerPage() {
                     </div>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center border-dashed border-2 rounded-lg">
-                        <Barcode className="h-16 w-16 text-muted-foreground/30" />
-                        <p className="mt-2 text-muted-foreground">Scan a product to begin</p>
+                       {currentCustomer ? (
+                         <>
+                            <Barcode className="h-16 w-16 text-muted-foreground/30" />
+                            <p className="mt-2 text-muted-foreground">Scan a product to begin</p>
+                         </>
+                       ) : (
+                         <>
+                            <UserPlus className="h-16 w-16 text-muted-foreground/30" />
+                            <p className="mt-2 text-muted-foreground">Click "New Customer" to start a sale.</p>
+                         </>
+                       )}
                     </div>
                 )}
             </CardContent>
@@ -249,14 +317,43 @@ export default function StoreManagerPage() {
                     <span>Total</span>
                     <span>PKR {cartTotal.toFixed(2)}</span>
                 </div>
-                <Button className="w-full font-bold" size="lg" disabled={cart.length === 0}>
+                <Button className="w-full font-bold" size="lg" disabled={cart.length === 0 || !currentCustomer}>
                     Complete Sale
                 </Button>
             </div>
         </Card>
       </div>
+
+       <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Start New Customer Session</DialogTitle>
+                    <DialogDescription>
+                        Enter the customer's name to begin a new transaction.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="customer-name">Customer Name</Label>
+                        <Input 
+                            id="customer-name" 
+                            value={newCustomerName}
+                            onChange={(e) => setNewCustomerName(e.target.value)}
+                            placeholder="e.g., John Doe"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Session ID</Label>
+                        <Input value={newCustomerId} disabled />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsCustomerDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleStartSession}>Start Session</Button>
+                </DialogFooter>
+            </DialogContent>
+       </Dialog>
     </div>
   );
 }
 
-    
