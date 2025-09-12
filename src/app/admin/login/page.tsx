@@ -1,39 +1,40 @@
 
 'use client';
 
-import { useState, useContext } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { AdminAuthContext } from '@/context/admin-auth-context';
 import { Icons } from '@/components/icons';
 import { Loader2 } from 'lucide-react';
+import { login } from './actions';
 
 export default function AdminLoginPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const { login } = useContext(AdminAuthContext);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     
-    if (login(username, password)) {
+    const formData = new FormData(e.currentTarget);
+    const result = await login(formData);
+
+    if (result.success) {
       toast({
         title: 'Login Successful',
         description: 'Welcome back, Admin!',
       });
       router.push('/admin');
+      router.refresh(); // Ensure layout re-renders with new auth state
     } else {
       toast({
         title: 'Login Failed',
-        description: 'Invalid username or password.',
+        description: result.error || 'Invalid username or password.',
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -57,10 +58,9 @@ export default function AdminLoginPage() {
               <Label htmlFor="username">Username</Label>
               <Input
                 id="username"
+                name="username"
                 type="text"
                 placeholder="admin"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
                 required
               />
             </div>
@@ -68,10 +68,9 @@ export default function AdminLoginPage() {
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -15,35 +16,15 @@ import {
 } from '@/components/ui/sidebar';
 import { Home, Package, ShoppingCart, Users, Settings, Bell, Search, FileText, Store, LogOut, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AdminAuthContext, AdminAuthProvider } from '@/context/admin-auth-context';
-import { useContext, useEffect } from 'react';
-import AdminLoginPage from './login/page';
+import { logout } from './login/actions';
 
-function AdminProtectedLayout({ children }: { children: React.ReactNode }) {
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { isAdminAuthenticated, loading, logout } = useContext(AdminAuthContext);
-  
-  useEffect(() => {
-    if (!loading && !isAdminAuthenticated) {
-      router.push('/admin/login');
-    }
-  }, [isAdminAuthenticated, loading, router]);
-
-  if (loading) {
-     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
-  }
-
-  if (!isAdminAuthenticated) {
-    // While the effect above should redirect, this prevents flicker.
-    // We render the login page directly if not authenticated.
-    return <AdminLoginPage />;
-  }
 
   const navItems = [
     { href: '/admin', icon: Home, label: 'Dashboard' },
@@ -53,6 +34,10 @@ function AdminProtectedLayout({ children }: { children: React.ReactNode }) {
     { href: '/admin/store-manager', icon: Store, label: 'Store Manager' },
     { href: '/admin/content', icon: FileText, label: 'Content' },
   ];
+
+  const handleLogout = async () => {
+    await logout();
+  }
 
   return (
     <SidebarProvider>
@@ -80,14 +65,16 @@ function AdminProtectedLayout({ children }: { children: React.ReactNode }) {
             </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-            <SidebarMenu>
-                 <SidebarMenuItem>
-                    <SidebarMenuButton onClick={logout} tooltip="Logout">
-                        <LogOut />
-                        <span>Logout</span>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
+            <form action={handleLogout}>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton type="submit" tooltip="Logout">
+                            <LogOut />
+                            <span>Logout</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </form>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
@@ -126,14 +113,10 @@ function AdminProtectedLayout({ children }: { children: React.ReactNode }) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
-    // The login page should not have the main admin layout
+    // The login page does not have the admin layout
     if (pathname === '/admin/login') {
         return <>{children}</>;
     }
-
-    return (
-        <AdminAuthProvider>
-            <AdminProtectedLayout>{children}</AdminProtectedLayout>
-        </AdminAuthProvider>
-    )
+    
+    return <AdminLayoutContent>{children}</AdminLayoutContent>;
 }
