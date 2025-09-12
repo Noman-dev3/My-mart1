@@ -57,10 +57,10 @@ export default function StoreManagerPage() {
   const isScanning = useRef(true);
 
   const processBarcode = useCallback(async (barcode: string) => {
-    if (!barcode.trim()) return;
+    if (!barcode.trim() || isSubmitting) return;
+    
+    isScanning.current = false; // Pause scanning
     setIsSubmitting(true);
-    // Pause camera scanning when processing a barcode
-    isScanning.current = false;
 
     try {
         const { data: product, error } = await getProductByBarcode(barcode.trim());
@@ -95,16 +95,15 @@ export default function StoreManagerPage() {
     } finally {
         setManualBarcode('');
         setIsSubmitting(false);
-        // Resume camera scanning after a short delay
-        setTimeout(() => { isScanning.current = true; }, 1000);
+        // Resume scanning after a delay
+        setTimeout(() => { isScanning.current = !isCustomerDialogOpen; }, 1000);
     }
-  }, [toast]);
+  }, [toast, isSubmitting, isCustomerDialogOpen]);
   
 
-  // Effect for dedicated barcode scanner input
+  // Effect for dedicated barcode scanner input (e.g., a USB scanner)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        // Don't process scans if a dialog is open
         if (isCustomerDialogOpen) return;
 
         if (e.key === 'Enter') {
@@ -115,83 +114,87 @@ export default function StoreManagerPage() {
             return;
         }
 
-        // Ignore control keys, function keys, etc.
-        if (e.key.length > 1) return;
+        if (e.key.length > 1) return; // Ignore control keys
 
         barcodeBuffer.current.push(e.key);
 
-        if (barcodeTimeout.current) {
-            clearTimeout(barcodeTimeout.current);
-        }
+        if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
 
         barcodeTimeout.current = setTimeout(() => {
-            if (barcodeBuffer.current.length > 3) { // Typical barcode length check
+            if (barcodeBuffer.current.length > 3) {
                 processBarcode(barcodeBuffer.current.join(''));
             }
             barcodeBuffer.current = [];
-        }, 200); // Scanners type fast, 200ms timeout is generous
+        }, 200);
     };
 
-    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-        document.removeEventListener('keydown', handleKeyDown);
-        if (barcodeTimeout.current) {
-            clearTimeout(barcodeTimeout.current);
-        }
+        window.removeEventListener('keydown', handleKeyDown);
+        if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
     };
   }, [processBarcode, isCustomerDialogOpen]);
 
-  // Request camera permission and start scanning
-  useEffect(() => {
-    const startScanning = async () => {
-        if (!videoRef.current) return;
 
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            setHasCameraPermission(true);
-            videoRef.current.srcObject = stream;
-
-            // Start decoding from the video stream
-            codeReader.current.decodeFromStream(stream, videoRef.current, (result, err) => {
-                if (result && isScanning.current) {
-                    processBarcode(result.getText());
-                }
-                if (err && !(err instanceof NotFoundException)) {
-                    console.error('Barcode decoding error:', err);
-                }
-            });
-            
-        } catch (error) {
-            console.error('Error accessing camera:', error);
-            setHasCameraPermission(false);
-            if((error as Error).name === "NotAllowedError") {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Camera Access Denied',
-                    description: 'Please enable camera permissions in your browser settings.',
-                 });
-            } else {
-                 toast({
-                    variant: 'destructive',
-                    title: 'Camera Not Supported',
-                    description: 'Your browser does not support camera access.',
-                 });
-            }
-        }
-    };
-    
-    startScanning();
-
-    return () => {
-        codeReader.current.reset();
-    };
-  }, [toast, processBarcode]);
-
-
+  // Effect to control the scanner based on dialog state
   useEffect(() => {
     isScanning.current = !isCustomerDialogOpen;
   }, [isCustomerDialogOpen]);
+  
+  const stopScanner = useCallback(() => {
+    codeReader.current.reset();
+    if(videoRef.current && videoRef.current.srcObject){
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+    }
+  }, []);
+
+  const startScanner = useCallback(async () => {
+    if (!videoRef.current || !navigator.mediaDevices) return;
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        setHasCameraPermission(true);
+        videoRef.current.srcObject = stream;
+
+        codeReader.current.decodeFromStream(stream, videoRef.current, (result, err) => {
+            if (result && isScanning.current) {
+                processBarcode(result.getText());
+            }
+            if (err && !(err instanceof NotFoundException)) {
+                console.error('Barcode decoding error:', err);
+            }
+        });
+    } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        const errorName = (error as Error).name;
+        if (errorName === "NotAllowedError" || errorName === "PermissionDeniedError") {
+             toast({
+                variant: 'destructive',
+                title: 'Camera Access Denied',
+                description: 'Please enable camera permissions in your browser settings.',
+             });
+        } else {
+             toast({
+                variant: 'destructive',
+                title: 'Camera Not Available',
+                description: 'Could not access the camera. It might be in use or not supported.',
+             });
+        }
+    }
+  }, [processBarcode, toast]);
+
+
+  // Effect to initialize and clean up the scanner
+  useEffect(() => {
+    startScanner();
+    return () => {
+      stopScanner();
+    };
+  }, [startScanner, stopScanner]);
 
   const handleManualAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,7 +250,7 @@ export default function StoreManagerPage() {
                         <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
                     </div>
                      <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                        {hasCameraPermission ? 'Scanner Active' : 'No Camera'}
+                        {hasCameraPermission === null ? 'Initializing...' : hasCameraPermission ? 'Scanner Active' : 'No Camera'}
                     </div>
                 </div>
                  {hasCameraPermission === false && (
