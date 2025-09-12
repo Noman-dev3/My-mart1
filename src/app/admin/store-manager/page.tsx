@@ -19,6 +19,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog"
 import { Label } from '@/components/ui/label';
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 
 // A version of product for the POS cart
 type ScannedProduct = {
@@ -52,9 +53,14 @@ export default function StoreManagerPage() {
   const barcodeBuffer = useRef<string[]>([]);
   const barcodeTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  const codeReader = useRef(new BrowserMultiFormatReader());
+  const isScanning = useRef(true);
+
   const processBarcode = useCallback(async (barcode: string) => {
     if (!barcode.trim()) return;
     setIsSubmitting(true);
+    // Pause camera scanning when processing a barcode
+    isScanning.current = false;
 
     try {
         const { data: product, error } = await getProductByBarcode(barcode.trim());
@@ -89,6 +95,8 @@ export default function StoreManagerPage() {
     } finally {
         setManualBarcode('');
         setIsSubmitting(false);
+        // Resume camera scanning after a short delay
+        setTimeout(() => { isScanning.current = true; }, 1000);
     }
   }, [toast]);
   
@@ -134,37 +142,56 @@ export default function StoreManagerPage() {
     };
   }, [processBarcode, isCustomerDialogOpen]);
 
-  // Request camera permission on component mount
+  // Request camera permission and start scanning
   useEffect(() => {
-    async function getCameraPermission() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setHasCameraPermission(false);
-        toast({
-            variant: 'destructive',
-            title: 'Camera Not Supported',
-            description: 'Your browser does not support camera access.',
-        });
-        return;
-      }
+    const startScanning = async () => {
+        if (!videoRef.current) return;
 
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        setHasCameraPermission(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            setHasCameraPermission(true);
+            videoRef.current.srcObject = stream;
+
+            // Start decoding from the video stream
+            codeReader.current.decodeFromStream(stream, videoRef.current, (result, err) => {
+                if (result && isScanning.current) {
+                    processBarcode(result.getText());
+                }
+                if (err && !(err instanceof NotFoundException)) {
+                    console.error('Barcode decoding error:', err);
+                }
+            });
+            
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
+            if((error as Error).name === "NotAllowedError") {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Camera Access Denied',
+                    description: 'Please enable camera permissions in your browser settings.',
+                 });
+            } else {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Camera Not Supported',
+                    description: 'Your browser does not support camera access.',
+                 });
+            }
         }
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings.',
-        });
-      }
-    }
-    getCameraPermission();
-  }, [toast]);
+    };
+    
+    startScanning();
+
+    return () => {
+        codeReader.current.reset();
+    };
+  }, [toast, processBarcode]);
+
+
+  useEffect(() => {
+    isScanning.current = !isCustomerDialogOpen;
+  }, [isCustomerDialogOpen]);
 
   const handleManualAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,6 +245,9 @@ export default function StoreManagerPage() {
                     <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
+                    </div>
+                     <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                        {hasCameraPermission ? 'Scanner Active' : 'No Camera'}
                     </div>
                 </div>
                  {hasCameraPermission === false && (
@@ -343,8 +373,8 @@ export default function StoreManagerPage() {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label>Session ID</Label>
-                        <Input value={newCustomerId} disabled />
+                        <Label htmlFor="session-id">Session ID</Label>
+                        <Input id="session-id" value={newCustomerId} disabled />
                     </div>
                 </div>
                 <DialogFooter>
@@ -356,4 +386,3 @@ export default function StoreManagerPage() {
     </div>
   );
 }
-
