@@ -55,14 +55,21 @@ CREATE TABLE IF NOT EXISTS "siteContent" (
     content JSONB
 );
 
+-- Function to check for admin role
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS boolean AS $$
+BEGIN
+  RETURN (auth.jwt() ->> 'user_metadata' ->> 'role' = 'admin');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 -- RLS Policies for products table
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Products are viewable by everyone." ON products;
-DROP POLICY IF EXISTS "Allow all access for admins" ON products;
 DROP POLICY IF EXISTS "Allow read access for all users" ON products;
 CREATE POLICY "Allow read access for all users" ON products FOR SELECT USING (true);
-CREATE POLICY "Allow all access for admins" ON products FOR ALL USING (auth.role() = 'service_role' OR (auth.jwt() ->> 'role' = 'admin'));
+DROP POLICY IF EXISTS "Allow all access for admins" ON products;
+CREATE POLICY "Allow all access for admins" ON products FOR ALL USING (is_admin());
 
 
 -- RLS Policies for orders table
@@ -70,18 +77,18 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view their own orders." ON orders;
 CREATE POLICY "Users can view their own orders." ON orders FOR SELECT USING (auth.uid() = (customer ->> 'uid')::uuid);
 DROP POLICY IF EXISTS "Admins can view all orders." ON orders;
-CREATE POLICY "Admins can view all orders." ON orders FOR SELECT USING (auth.jwt() ->> 'role' = 'admin');
+CREATE POLICY "Admins can view all orders." ON orders FOR SELECT USING (is_admin());
 DROP POLICY IF EXISTS "Users can create orders." ON orders;
 CREATE POLICY "Users can create orders." ON orders FOR INSERT WITH CHECK (auth.uid() = (customer ->> 'uid')::uuid);
 DROP POLICY IF EXISTS "Admins can update orders." ON orders;
-CREATE POLICY "Admins can update orders." ON orders FOR UPDATE USING (auth.jwt() ->> 'role' = 'admin');
+CREATE POLICY "Admins can update orders." ON orders FOR UPDATE USING (is_admin());
 
 -- RLS Policies for siteContent table
 ALTER TABLE "siteContent" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Site content is viewable by everyone." ON "siteContent";
 CREATE POLICY "Site content is viewable by everyone." ON "siteContent" FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admins can manage site content." ON "siteContent";
-CREATE POLICY "Admins can manage site content." ON "siteContent" FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+CREATE POLICY "Admins can manage site content." ON "siteContent" FOR ALL USING (is_admin());
 
 
 -- Function to get distinct categories
