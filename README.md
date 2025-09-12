@@ -137,3 +137,4 @@ To access the admin dashboard, navigate to `/admin` and log in with the followin
 - **Password:** `password`
 
 These are hardcoded in the application. You can change them in `src/context/admin-auth-context.tsx`.
+
