@@ -24,23 +24,20 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      if (login(username, password)) {
-        toast({
-          title: 'Login Successful',
-          description: 'Welcome back, Admin!',
-        });
-        router.push('/admin');
-      } else {
-        toast({
-          title: 'Login Failed',
-          description: 'Invalid username or password.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-      }
-    }, 500);
+    if (login(username, password)) {
+      toast({
+        title: 'Login Successful',
+        description: 'Welcome back, Admin!',
+      });
+      router.push('/admin');
+    } else {
+      toast({
+        title: 'Login Failed',
+        description: 'Invalid username or password.',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+    }
   };
 
   return (
