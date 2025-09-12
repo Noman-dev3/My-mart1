@@ -10,6 +10,7 @@ import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X } from 'l
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getProductByBarcode, type Product } from '@/lib/product-actions';
+import { createStoreOrder } from '@/lib/order-actions';
 import {
     Dialog,
     DialogContent,
@@ -27,6 +28,7 @@ type ScannedProduct = {
   name: string;
   price: number;
   quantity: number;
+  image: string; // Add image to match OrderItem type
 };
 
 type CustomerSession = {
@@ -42,6 +44,7 @@ export default function StoreManagerPage() {
   const [cart, setCart] = useState<ScannedProduct[]>([]);
   const [manualBarcode, setManualBarcode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCompletingSale, setIsCompletingSale] = useState(false);
 
   // Customer session state
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
@@ -82,7 +85,7 @@ export default function StoreManagerPage() {
               );
             }
             toast({ title: "Item Added", description: `${product.name} added to cart.` });
-            return [...prevCart, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
+            return [...prevCart, { id: product.id, name: product.name, price: product.price, quantity: 1, image: product.image }];
           });
         }
     } catch(e) {
@@ -227,6 +230,27 @@ export default function StoreManagerPage() {
     toast({ title: "Session Ended", description: "Ready for the next customer." });
   }
 
+  const handleCompleteSale = async () => {
+    if (!currentCustomer || cart.length === 0) return;
+
+    setIsCompletingSale(true);
+    try {
+        await createStoreOrder({
+            customerName: currentCustomer.name,
+            customerId: currentCustomer.id,
+            items: cart,
+            total: cartTotal,
+        });
+        toast({ title: "Sale Completed!", description: "Order has been recorded successfully." });
+        endSession(); // End session on success
+    } catch (error) {
+        console.error("Failed to complete sale:", error);
+        toast({ title: "Error", description: "Failed to complete the sale. Please try again.", variant: "destructive" });
+    } finally {
+        setIsCompletingSale(false);
+    }
+  };
+
   const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
   const cartTotal = cartSubtotal; // Placeholder for taxes/discounts
 
@@ -350,7 +374,13 @@ export default function StoreManagerPage() {
                     <span>Total</span>
                     <span>PKR {cartTotal.toFixed(2)}</span>
                 </div>
-                <Button className="w-full font-bold" size="lg" disabled={cart.length === 0 || !currentCustomer}>
+                <Button 
+                    className="w-full font-bold" 
+                    size="lg" 
+                    disabled={cart.length === 0 || !currentCustomer || isCompletingSale}
+                    onClick={handleCompleteSale}
+                >
+                    {isCompletingSale ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
                     Complete Sale
                 </Button>
             </div>

@@ -15,7 +15,7 @@ export type OrderItem = {
     image: string;
 }
 
-export type PaymentMethod = 'COD' | 'Online';
+export type PaymentMethod = 'COD' | 'Online' | 'In-Store';
 
 export type Order = {
     id: string;
@@ -176,4 +176,45 @@ export async function updateOrderStatus(orderId: string, status: Order['status']
     revalidatePath('/admin/orders');
     revalidatePath(`/order-confirmation/${orderId}`);
     return data as Order;
+}
+
+export async function createStoreOrder(data: {
+  customerName: string;
+  customerId: string;
+  items: OrderItem[];
+  total: number;
+}) {
+  const supabase = createServerActionClient({ cookies });
+
+  const newOrderData = {
+    customer: {
+        name: data.customerName,
+        email: `${data.customerId}@instore.mymart.local`, // Internal email
+        phone: 'N/A',
+        address: 'In-Store Purchase'
+    },
+    items: data.items,
+    total: data.total,
+    status: 'Delivered', // In-store sales are immediately completed
+    paymentMethod: 'In-Store',
+    date: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from('orders').insert(newOrderData);
+
+  if (error) {
+    console.error('Error creating store order:', error);
+    throw new Error('Could not create store order.');
+  }
+
+  // In a real scenario, you'd also update stock quantities here.
+  // For each item in data.items, you would run:
+  // await supabase.rpc('decrement_stock', { product_id: item.id, quantity: item.quantity });
+  // This requires a stored procedure 'decrement_stock' in the database.
+
+  revalidatePath('/admin/orders');
+  revalidatePath('/admin/customers');
+  revalidatePath('/admin');
+
+  return { success: true };
 }
