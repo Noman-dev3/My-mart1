@@ -124,9 +124,9 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         ...data,
         rating: Math.floor(Math.random() * 5) + 1,
         reviews: Math.floor(Math.random() * 100),
-        specifications: {}, // Placeholder
-        reviewsData: [], // Placeholder
-        questions: [], // Initialize with empty questions
+        specifications: {}, // This was the missing field
+        reviewsData: [],
+        questions: [],
     };
     
     const { data: savedProduct, error } = await supabase
