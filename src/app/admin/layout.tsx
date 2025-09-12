@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { logout } from './login/actions';
+import { SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -42,6 +43,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <Sidebar>
+         <SheetHeader className="p-2 border-b">
+            <SheetTitle className="sr-only">Admin Menu</SheetTitle>
+        </SheetHeader>
         <SidebarHeader>
           <div className="flex items-center gap-2">
              <Icons.logo className="h-8 w-8 text-sidebar-primary" />
