@@ -52,9 +52,9 @@ export default function LandingPage() {
         } else {
             // Fallback to some default content if nothing is in the database
             setHeroContent([
-                { image: 'https://picsum.photos/1600/900?random=13', hint: 'fashion store', headline: 'Style Meets Simplicity', subtext: 'Discover curated collections of the finest products, delivered with speed and care. Your next favorite thing is just a click away.' },
-                { image: 'https://picsum.photos/1600/900?random=14', hint: 'electronics gadgets', headline: 'Tech for a Better Life', subtext: 'Explore the latest in cutting-edge technology. High-performance gadgets to simplify and enhance your world.' },
-                { image: 'https://picsum.photos/1600/900?random=15', hint: 'modern furniture', headline: 'Elegance in Every Detail', subtext: 'Transform your space with our beautifully crafted home goods. Where design and comfort live in perfect harmony.' },
+                { image: 'https://picsum.photos/seed/fashion1/1600/900', hint: 'fashion store', headline: 'Style Meets Simplicity', subtext: 'Discover curated collections of the finest products, delivered with speed and care. Your next favorite thing is just a click away.' },
+                { image: 'https://picsum.photos/seed/tech1/1600/900', hint: 'electronics gadgets', headline: 'Tech for a Better Life', subtext: 'Explore the latest in cutting-edge technology. High-performance gadgets to simplify and enhance your world.' },
+                { image: 'https://picsum.photos/seed/home1/1600/900', hint: 'modern furniture', headline: 'Elegance in Every Detail', subtext: 'Transform your space with our beautifully crafted home goods. Where design and comfort live in perfect harmony.' },
             ]);
         }
         

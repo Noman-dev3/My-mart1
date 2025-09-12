@@ -72,9 +72,9 @@ export default function ContentPage() {
 
       const homepageContent = contentMap.homepage || {
         heroSlides: [
-            { image: 'https://picsum.photos/1600/900?random=13', hint: 'fashion store', headline: 'Style Meets Simplicity', subtext: 'Discover curated collections of the finest products, delivered with speed and care.' },
-            { image: 'https://picsum.photos/1600/900?random=14', hint: 'electronics gadgets', headline: 'Tech for a Better Life', subtext: 'Explore the latest in cutting-edge technology.' },
-            { image: 'https://picsum.photos/1600/900?random=15', hint: 'modern furniture', headline: 'Elegance in Every Detail', subtext: 'Transform your space with our beautifully crafted home goods.' }
+            { image: 'https://picsum.photos/seed/fashion1/1600/900', hint: 'fashion store', headline: 'Style Meets Simplicity', subtext: 'Discover curated collections of the finest products, delivered with speed and care.' },
+            { image: 'https://picsum.photos/seed/tech1/1600/900', hint: 'electronics gadgets', headline: 'Tech for a Better Life', subtext: 'Explore the latest in cutting-edge technology.' },
+            { image: 'https://picsum.photos/seed/home1/1600/900', hint: 'modern furniture', headline: 'Elegance in Every Detail', subtext: 'Transform your space with our beautifully crafted home goods.' }
         ]
       };
 

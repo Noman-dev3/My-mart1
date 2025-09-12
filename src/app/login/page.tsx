@@ -57,7 +57,7 @@ export default function LoginPage() {
     <main className="w-full min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
         <div className="absolute inset-0 lg:hidden">
             <Image
-              src="https://picsum.photos/seed/crextio-login/800/1200"
+              src="https://picsum.photos/seed/auth/800/1200"
               alt="Background"
               fill
               className="z-0 object-cover"
@@ -140,7 +140,7 @@ export default function LoginPage() {
           </div>
           <div className="hidden lg:block relative">
             <Image
-              src="https://picsum.photos/seed/crextio-login/800/1200"
+              src="https://picsum.photos/seed/auth/800/1200"
               alt="People in a meeting"
               width="800"
               height="1200"

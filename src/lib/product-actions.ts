@@ -136,7 +136,7 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
             name: "Test Scanner Product",
             description: "A test product to validate the barcode scanner functionality.",
             price: 150.00,
-            image: "https://picsum.photos/seed/scanner-test/600/600",
+            image: "https://picsum.photos/seed/scanner-product/600/600",
             category: "Groceries" as const,
             brand: "TestBrand",
             stockQuantity: 100,
