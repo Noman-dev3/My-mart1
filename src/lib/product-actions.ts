@@ -121,8 +121,6 @@ const questionSchema = z.object({
 export async function addProduct(data: z.infer<typeof productSchema>) {
     const supabase = createServerActionClient({ cookies });
 
-    // Explicitly construct the object to ensure all fields are present and correctly typed.
-    // This is the most robust way to prevent database errors.
     const newProduct = {
         name: data.name,
         description: data.description,
@@ -132,11 +130,11 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         brand: data.brand,
         stockQuantity: data.stockQuantity,
         barcode: data.barcode,
-        specifications: {}, // Always an empty object for new products
-        reviewsData: [], // Always an empty array for new products
-        questions: [], // Always an empty array for new products
-        rating: Math.floor(Math.random() * 5) + 1, // Keep random defaults for now
-        reviews: Math.floor(Math.random() * 100),
+        specifications: {},
+        reviewsData: [],
+        questions: [],
+        rating: 0, // Explicitly set default value
+        reviews: 0,  // Explicitly set default value
     };
 
     const { data: savedProduct, error } = await supabase
@@ -160,9 +158,15 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
 export async function updateProduct(productId: string, data: z.infer<typeof productSchema> & { specifications: any, reviewsData: any, questions: any }) {
     const supabase = createServerActionClient({ cookies });
     
-    // Ensure complex JSON fields are valid before updating
     const updateData = {
-        ...data,
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        image: data.image,
+        category: data.category,
+        brand: data.brand,
+        stockQuantity: data.stockQuantity,
+        barcode: data.barcode,
         specifications: data.specifications || {},
         reviewsData: data.reviewsData || [],
         questions: data.questions || []
