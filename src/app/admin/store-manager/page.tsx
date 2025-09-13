@@ -69,7 +69,6 @@ export default function StoreManagerPage() {
   const { toast } = useToast();
   const [cart, setCart] = useState<ScannedProduct[]>([]);
   const [manualBarcode, setManualBarcode] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompletingSale, setIsCompletingSale] = useState(false);
 
   // Customer session state
@@ -105,11 +104,10 @@ export default function StoreManagerPage() {
         toast({ title: "Item Added", description: `${product.name} added to cart.` });
       }, 0);
   }, [toast]);
-
+  
   const processBarcode = useCallback(async (barcode: string) => {
-    if (!barcode.trim() || isSubmitting) return;
+    if (!barcode.trim()) return;
     
-    setIsSubmitting(true);
     toast({ title: 'Processing...', description: `Searching for barcode: ${barcode}` });
 
     try {
@@ -140,14 +138,29 @@ export default function StoreManagerPage() {
         });
     } finally {
         setManualBarcode('');
-        setIsSubmitting(false);
     }
-  }, [toast, isSubmitting, addProductToCart]);
+  }, [toast, addProductToCart]);
   
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (isCustomerDialogOpen || isTempProductDialogOpen) return;
+        
+        // Don't trigger shortcuts if typing in an input field
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+            return;
+        }
+
+        // Use Spacebar to toggle camera
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (isScanning) {
+                stopScan();
+            } else if (hasCameraPermission) {
+                startScan();
+            }
+            return;
+        }
 
         if (e.key === 'Enter') {
             e.preventDefault(); 
@@ -169,7 +182,7 @@ export default function StoreManagerPage() {
                 processBarcode(barcodeBuffer.current.join(''));
             }
             barcodeBuffer.current = [];
-        }, 100);
+        }, 120); // A bit more forgiving timeout
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -179,20 +192,23 @@ export default function StoreManagerPage() {
         if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
         codeReader.current.reset();
     };
-  }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen]);
+  }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen, isScanning, hasCameraPermission]);
   
   const startScan = useCallback(async () => {
     if (!videoRef.current) return;
     setIsScanning(true);
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       setHasCameraPermission(true);
+      if(videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
       
-      codeReader.current.decodeFromStream(stream, videoRef.current, (result, err) => {
+      codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
         if (result) {
-          setIsScanning(false);
           processBarcode(result.getText());
-          codeReader.current.reset();
+          // The scanner will be reset by the user action of stopping/starting, no need to do it here
         }
         if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
           console.error("Scanning error:", err);
@@ -212,6 +228,11 @@ export default function StoreManagerPage() {
 
   const stopScan = useCallback(() => {
     codeReader.current.reset();
+    if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+    }
     setIsScanning(false);
   }, []);
 
@@ -287,6 +308,16 @@ export default function StoreManagerPage() {
 
   const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
   const cartTotal = cartSubtotal;
+  
+  useEffect(() => {
+    // Check for camera permissions on load
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            setHasCameraPermission(true);
+            stream.getTracks().forEach(track => track.stop()); // release stream immediately
+        })
+        .catch(() => setHasCameraPermission(false));
+  }, []);
 
   return (
     <div className="space-y-6 h-full flex flex-col">
@@ -300,14 +331,14 @@ export default function StoreManagerPage() {
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <CardTitle className="flex items-center gap-2"><ScanLine /> Scanner</CardTitle>
-                     <Button onClick={isScanning ? stopScan : startScan} variant={isScanning ? 'destructive' : 'default'} size="sm">
+                     <Button onClick={isScanning ? stopScan : startScan} variant={isScanning ? 'destructive' : 'default'} size="sm" disabled={hasCameraPermission === false}>
                        {isScanning ? 'Stop Camera' : 'Start Camera'}
                     </Button>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center gap-4">
                 <div className="w-full max-w-md aspect-video bg-card-foreground/5 rounded-lg overflow-hidden relative">
-                    <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                    <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
                     {!isScanning && hasCameraPermission !== false && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                            <ScanLine className="h-16 w-16 text-muted-foreground/30" />
@@ -336,10 +367,9 @@ export default function StoreManagerPage() {
                             placeholder="Enter barcode..." 
                             value={manualBarcode} 
                             onChange={(e) => setManualBarcode(e.target.value)}
-                            disabled={isSubmitting}
                         />
-                        <Button type="submit" disabled={isSubmitting}>
-                           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
+                        <Button type="submit">
+                           Add
                         </Button>
                     </div>
                 </form>
