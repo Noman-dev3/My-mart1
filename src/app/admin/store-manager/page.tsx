@@ -19,7 +19,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog"
 import { Label } from '@/components/ui/label';
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
+import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/library';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -64,9 +64,8 @@ const saveTempProduct = (product: TempProduct) => {
 
 export default function StoreManagerPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [isCameraOn, setIsCameraOn] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
   const [cart, setCart] = useState<ScannedProduct[]>([]);
   const [manualBarcode, setManualBarcode] = useState('');
@@ -89,7 +88,6 @@ export default function StoreManagerPage() {
   const barcodeTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const codeReader = useRef(new BrowserMultiFormatReader());
-  const streamRef = useRef<MediaStream | null>(null);
   
   const addProductToCart = useCallback((product: {id: string, name: string, price: number, image?: string}) => {
       setCart(prevCart => {
@@ -142,9 +140,7 @@ export default function StoreManagerPage() {
         });
     } finally {
         setManualBarcode('');
-        setTimeout(() => { 
-            setIsSubmitting(false);
-        }, 1500); 
+        setIsSubmitting(false);
     }
   }, [toast, isSubmitting, addProductToCart]);
   
@@ -181,84 +177,43 @@ export default function StoreManagerPage() {
     return () => {
         window.removeEventListener('keydown', handleKeyDown);
         if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
+        codeReader.current.reset();
     };
   }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen]);
   
-  const tick = useCallback(() => {
-    if (isSubmitting || !isCameraOn) return;
-
-    if (videoRef.current && canvasRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-      const canvas = canvasRef.current.getContext('2d');
-      if (canvas) {
-        canvasRef.current.height = videoRef.current.videoHeight;
-        canvasRef.current.width = videoRef.current.videoWidth;
-        canvas.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
-        try {
-          const result = codeReader.current.decodeFromCanvas(canvasRef.current);
-          if (result) {
-            processBarcode(result.getText());
-          }
-        } catch (err) {
-          if (!(err instanceof NotFoundException)) {
-            // console.error('Barcode decoding error:', err);
-          }
+  const startScan = useCallback(async () => {
+    if (!videoRef.current) return;
+    setIsScanning(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setHasCameraPermission(true);
+      
+      codeReader.current.decodeFromStream(stream, videoRef.current, (result, err) => {
+        if (result) {
+          setIsScanning(false);
+          processBarcode(result.getText());
+          codeReader.current.reset();
         }
-      }
-    }
-    requestAnimationFrame(tick);
-  }, [isSubmitting, isCameraOn, processBarcode]);
-  
-  useEffect(() => {
-    let animationFrameId: number;
-    const startScanner = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-        });
-        streamRef.current = stream;
-        setHasCameraPermission(true);
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-          animationFrameId = requestAnimationFrame(tick);
+        if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
+          console.error("Scanning error:", err);
         }
-      } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        setIsCameraOn(false); // Turn off toggle if permission is denied
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description:
-            'Please enable camera permissions in your browser settings.',
-        });
-      }
-    };
-
-    const stopScanner = () => {
-      cancelAnimationFrame(animationFrameId);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-    };
-
-    if (isCameraOn) {
-      startScanner();
-    } else {
-      stopScanner();
+      });
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setHasCameraPermission(false);
+      setIsScanning(false);
+      toast({
+        variant: 'destructive',
+        title: 'Camera Access Denied',
+        description: 'Please enable camera permissions in your browser settings.',
+      });
     }
-    
-    // Cleanup function
-    return () => {
-      stopScanner();
-    };
-  }, [isCameraOn, tick, toast]);
+  }, [processBarcode, toast]);
 
+  const stopScan = useCallback(() => {
+    codeReader.current.reset();
+    setIsScanning(false);
+  }, []);
 
   const handleManualAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -345,29 +300,33 @@ export default function StoreManagerPage() {
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <CardTitle className="flex items-center gap-2"><ScanLine /> Scanner</CardTitle>
-                    <div className="flex items-center space-x-2">
-                        <Label htmlFor="camera-toggle">Use Camera</Label>
-                        <Switch id="camera-toggle" checked={isCameraOn} onCheckedChange={setIsCameraOn} />
-                    </div>
+                     <Button onClick={isScanning ? stopScan : startScan} variant={isScanning ? 'destructive' : 'default'} size="sm">
+                       {isScanning ? 'Stop Camera' : 'Start Camera'}
+                    </Button>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center gap-4">
-                 {isCameraOn && (
-                    <div className="w-full max-w-md aspect-video bg-card-foreground/5 rounded-lg overflow-hidden relative">
-                        <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-                        <canvas ref={canvasRef} className="hidden" />
+                <div className="w-full max-w-md aspect-video bg-card-foreground/5 rounded-lg overflow-hidden relative">
+                    <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                    {!isScanning && hasCameraPermission !== false && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                           <ScanLine className="h-16 w-16 text-muted-foreground/30" />
+                           <p className="mt-2 text-muted-foreground">Camera is off. Click "Start Camera" to begin scanning.</p>
+                        </div>
+                    )}
+                     {isScanning && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
                         </div>
-                         {hasCameraPermission === false && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10 text-center">
-                                <CameraOff className="h-10 w-10 text-destructive" />
-                                <p className="mt-2 text-muted-foreground">Camera access is required.</p>
-                                <p className="text-xs text-muted-foreground/80 px-4">Please allow camera permissions in your browser settings and refresh the page.</p>
-                            </div>
-                        )}
-                    </div>
-                 )}
+                     )}
+                     {hasCameraPermission === false && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10 text-center">
+                            <CameraOff className="h-10 w-10 text-destructive" />
+                            <p className="mt-2 text-muted-foreground">Camera access is required.</p>
+                            <p className="text-xs text-muted-foreground/80 px-4">Please allow camera permissions in your browser settings and refresh the page.</p>
+                        </div>
+                    )}
+                </div>
                  
                  <Separator />
                 <form onSubmit={handleManualAdd} className="w-full max-w-md space-y-2">
