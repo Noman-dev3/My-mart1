@@ -128,9 +128,6 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         ...data,
         rating: Math.floor(Math.random() * 5) + 1,
         reviews: Math.floor(Math.random() * 100),
-        specifications: data.specifications || {},
-        reviewsData: data.reviewsData || [],
-        questions: data.questions || [],
     };
     
     // Special handling for the test product barcode
