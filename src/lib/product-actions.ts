@@ -135,6 +135,7 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         questions: [],
         rating: 0,
         reviews: 0,
+        created_at: new Date().toISOString(),
     };
     
     try {
@@ -152,7 +153,7 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         revalidatePath('/products');
         revalidatePath('/');
         
-        return savedProduct;
+        return savedProduct as Product;
     } catch (error: any) {
         if (error.code === '23505') { // Unique violation error code for PostgreSQL
              throw new Error("A product with this barcode already exists.");

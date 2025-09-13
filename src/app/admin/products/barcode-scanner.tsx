@@ -7,29 +7,32 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CameraOff } from 'lucide-react';
 import { readBarcodeFromImage } from '@/ai/flows/read-barcode';
 import { Button } from '@/components/ui/button';
+import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/library';
+
 
 type BarcodeScannerProps = {
   onScan: (barcode: string) => void;
   onClose: () => void;
 };
 
-export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
+export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAiScanning, setIsAiScanning] = useState(false);
+  const codeReader = useRef(new BrowserMultiFormatReader());
+
 
   useEffect(() => {
     let isMounted = true;
-    let stream: MediaStream | null = null;
     
     const startCamera = async () => {
-        if (!videoRef.current) return;
+        if (!videoRef.current || !isMounted) return;
         setIsLoading(true);
 
         try {
-            stream = await navigator.mediaDevices.getUserMedia({
+            const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' },
             });
 
@@ -37,6 +40,21 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
                 videoRef.current.srcObject = stream;
                 videoRef.current.play();
                 setHasPermission(true);
+
+                // Start continuous scanning
+                 codeReader.current.decodeFromVideoElement(videoRef.current, (result, err) => {
+                    if (result) {
+                        onScan(result.getText());
+                    }
+                    if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
+                       console.error("Scanning error:", err);
+                       toast({
+                           title: 'Scanning Error',
+                           description: 'An unexpected error occurred during scanning.',
+                           variant: 'destructive',
+                       });
+                    }
+                });
             }
         } catch (err) {
             if (isMounted) {
@@ -59,11 +77,12 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
     return () => {
       isMounted = false;
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      codeReader.current.reset();
+      if (videoRef.current && videoRef.current.srcObject) {
+         (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
       }
     };
-  }, [toast]);
+  }, [toast, onScan]);
 
   const handleAiScan = async () => {
     if (!videoRef.current?.srcObject) {
@@ -72,7 +91,6 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     };
     
     const video = videoRef.current;
-    // Ensure the video is playing and has dimensions
     if (video.videoWidth === 0 || video.videoHeight === 0) {
         toast({ title: 'Error', description: 'Video stream not ready. Please wait a moment.', variant: 'destructive' });
         return;
@@ -138,7 +156,7 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       
       <Button onClick={handleAiScan} disabled={isAiScanning || isLoading || !hasPermission} className="w-full max-w-md">
         {isAiScanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : '✨'}
-        Scan with AI
+        Scan with AI (Fallback)
       </Button>
 
       {hasPermission === false && (
