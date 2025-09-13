@@ -127,29 +127,27 @@ const questionSchema = z.object({
 
 export async function addProduct(values: ProductFormValues) {
     const supabase = createServerActionClient({ cookies });
-    const validatedData = productSchema.parse(values);
-
-    // Explicitly construct the object to be inserted, ensuring all fields are present and correctly typed.
-    const newProduct = {
-        name: validatedData.name,
-        description: validatedData.description,
-        price: validatedData.price,
-        image: validatedData.image,
-        category: validatedData.category,
-        brand: validatedData.brand,
-        stockQuantity: validatedData.stockQuantity,
-        barcode: validatedData.barcode,
-        // Ensure non-nullable JSON fields have a default value.
-        specifications: validatedData.specifications || {},
-        reviewsData: validatedData.reviewsData || [],
-        questions: validatedData.questions || [],
-        // Ensure non-nullable numeric fields have a default value.
-        rating: 0,
-        reviews: 0,
-        created_at: new Date().toISOString(),
-    };
     
     try {
+        const validatedData = productSchema.parse(values);
+
+        const newProduct = {
+            name: validatedData.name,
+            description: validatedData.description,
+            price: validatedData.price,
+            image: validatedData.image,
+            category: validatedData.category,
+            brand: validatedData.brand,
+            stockQuantity: validatedData.stockQuantity,
+            barcode: validatedData.barcode,
+            specifications: validatedData.specifications || {},
+            reviewsData: validatedData.reviewsData || [],
+            questions: validatedData.questions || [],
+            rating: 0,
+            reviews: 0,
+            created_at: new Date().toISOString(),
+        };
+
         const { data: savedProduct, error } = await supabase
             .from('products')
             .insert(newProduct)
@@ -165,6 +163,7 @@ export async function addProduct(values: ProductFormValues) {
         revalidatePath('/');
         
         return savedProduct as Product;
+
     } catch (error: any) {
         if (error.code === '23505') { // Unique violation error code for PostgreSQL
              throw new Error("A product with this barcode already exists.");
@@ -174,24 +173,26 @@ export async function addProduct(values: ProductFormValues) {
     }
 }
 
-export async function updateProduct(productId: string, data: z.infer<typeof productSchema> & { specifications: any, reviewsData: any, questions: any }) {
+export async function updateProduct(productId: string, values: ProductFormValues) {
     const supabase = createServerActionClient({ cookies });
     
-    const updateData = {
-        name: data.name,
-        description: data.description,
-        price: data.price,
-        image: data.image,
-        category: data.category,
-        brand: data.brand,
-        stockQuantity: data.stockQuantity,
-        barcode: data.barcode,
-        specifications: data.specifications || {},
-        reviewsData: data.reviewsData || [],
-        questions: data.questions || []
-    };
-
     try {
+        const validatedData = productSchema.parse(values);
+        
+        const updateData = {
+            name: validatedData.name,
+            description: validatedData.description,
+            price: validatedData.price,
+            image: validatedData.image,
+            category: validatedData.category,
+            brand: validatedData.brand,
+            stockQuantity: validatedData.stockQuantity,
+            barcode: validatedData.barcode,
+            specifications: validatedData.specifications || {},
+            reviewsData: validatedData.reviewsData || [],
+            questions: values.questions || [] // Preserve existing questions on update
+        };
+
         const { data: updatedProduct, error } = await supabase
             .from('products')
             .update(updateData)
@@ -207,6 +208,7 @@ export async function updateProduct(productId: string, data: z.infer<typeof prod
         revalidatePath(`/product/${productId}`);
         
         return updatedProduct;
+
     } catch (error: any) {
          if (error.code === '23505') { // Unique violation error code for PostgreSQL
              throw new Error("A product with this barcode already exists.");

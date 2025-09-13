@@ -69,8 +69,8 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   });
 
   useEffect(() => {
-    // Explicitly set values to prevent uncontrolled component errors.
     if (product) {
+      // Use setValue for each field to ensure controlled components.
       form.setValue('name', product.name || "");
       form.setValue('description', product.description || "");
       form.setValue('price', product.price || 0);
@@ -83,7 +83,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
       form.setValue('reviewsData', product.reviewsData || []);
       form.setValue('questions', product.questions || []);
     } else {
-      // Set guaranteed default values for a new product to prevent uncontrolled inputs.
+      // Explicitly set all defaults for a new product to prevent uncontrolled inputs.
       form.reset({
         name: '',
         description: '',
@@ -123,14 +123,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   }
 
   const onFormSubmit = async (values: ProductFormValues) => {
-    // Final guard to ensure complex fields are correctly formatted JSON
-    const submissionValues = {
-        ...values,
-        specifications: values.specifications || {},
-        reviewsData: values.reviewsData || [],
-        questions: values.questions || [],
-    };
-    const result = await onSubmit(submissionValues);
+    const result = await onSubmit(values);
     if (result) {
       onCancel();
     }
