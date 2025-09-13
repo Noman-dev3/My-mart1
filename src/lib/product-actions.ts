@@ -133,26 +133,33 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         specifications: {},
         reviewsData: [],
         questions: [],
-        rating: 0, // Explicitly set default value
-        reviews: 0,  // Explicitly set default value
+        rating: 0,
+        reviews: 0,
     };
-
-    const { data: savedProduct, error } = await supabase
-        .from('products')
-        .insert(newProduct)
-        .select()
-        .single();
     
-    if (error) {
+    try {
+        const { data: savedProduct, error } = await supabase
+            .from('products')
+            .insert(newProduct)
+            .select()
+            .single();
+        
+        if (error) {
+            throw error;
+        }
+        
+        revalidatePath('/admin/products');
+        revalidatePath('/products');
+        revalidatePath('/');
+        
+        return savedProduct;
+    } catch (error: any) {
+        if (error.code === '23505') { // Unique violation error code for PostgreSQL
+             throw new Error("A product with this barcode already exists.");
+        }
         console.error('Database error saving product:', error);
-        throw error;
+        throw new Error("Could not save product due to a database error.");
     }
-    
-    revalidatePath('/admin/products');
-    revalidatePath('/products');
-    revalidatePath('/');
-    
-    return savedProduct;
 }
 
 export async function updateProduct(productId: string, data: z.infer<typeof productSchema> & { specifications: any, reviewsData: any, questions: any }) {
@@ -172,22 +179,29 @@ export async function updateProduct(productId: string, data: z.infer<typeof prod
         questions: data.questions || []
     };
 
-    const { data: updatedProduct, error } = await supabase
-        .from('products')
-        .update(updateData)
-        .eq('id', productId)
-        .select()
-        .single();
-    
-    if (error) {
-        console.error('Database error updating product:', error);
-        throw error;
-    };
+    try {
+        const { data: updatedProduct, error } = await supabase
+            .from('products')
+            .update(updateData)
+            .eq('id', productId)
+            .select()
+            .single();
+        
+        if (error) {
+            throw error;
+        };
 
-    revalidatePath('/admin/products');
-    revalidatePath(`/product/${productId}`);
-    
-    return updatedProduct;
+        revalidatePath('/admin/products');
+        revalidatePath(`/product/${productId}`);
+        
+        return updatedProduct;
+    } catch (error: any) {
+         if (error.code === '23505') { // Unique violation error code for PostgreSQL
+             throw new Error("A product with this barcode already exists.");
+        }
+        console.error('Database error updating product:', error);
+        throw new Error("Could not update product due to a database error.");
+    }
 }
 
 export async function answerProductQuestion(productId: string, data: z.infer<typeof answerSchema>) {

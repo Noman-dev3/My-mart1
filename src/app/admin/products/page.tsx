@@ -227,7 +227,7 @@ export default function ProductsPage() {
             )
         },
     },
- ], [productToDelete]) // eslint-disable-line react-hooks/exhaustive-deps
+ ], []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const table = useReactTable({
     data: products,
