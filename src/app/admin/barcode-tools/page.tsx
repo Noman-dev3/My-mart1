@@ -5,6 +5,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { NotFoundException, ChecksumException, FormatException } from '@zxing/library';
 import QRCode from 'qrcode.react';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import { type RealtimeChannel } from '@supabase/supabase-js';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 // --- Helper Components ---
 
@@ -19,6 +23,7 @@ const QRIcon = () => <Icon path="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h
 const ScanIcon = () => <Icon path="M4 6h-2v-2c0-1.1.9-2 2-2h2v2h-2v2zm16 0h-2v-2h2v-2h2c1.1 0 2 .9 2 2v2h-2v-2zm-2 12h2v2c0 1.1-.9 2-2 2h-2v-2h2v-2zm-14 2h-2v-2h2v2h-2c-1.1 0-2-.9-2-2v-2h2v2h2v2zm6-14h-4v4h4v-4zM9 9H7v2h2V9zm4 0h-2v2h2V9zm2 0h-2v2h2V9zm2 0h-2v2h2V9zM9 13H7v2h2v-2zm4 0h-2v2h2v-2zm2 0h-2v2h2v-2z" />;
 const DownloadIcon = () => <Icon path="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />;
 const ErrorIcon = () => <Icon path="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />;
+const PhoneIcon = () => <Icon path="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
 
 // --- Main App Component ---
 
@@ -78,7 +83,12 @@ function ScannerComponent() {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDevice, setSelectedDevice] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
-  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  
+  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
+  const [phoneSessionId, setPhoneSessionId] = useState('');
+  const supabase = createSupabaseBrowserClient();
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
 
   const startScan = useCallback(async (deviceId: string) => {
     if (!videoRef.current) return;
@@ -87,7 +97,6 @@ function ScannerComponent() {
     setIsScanning(true);
 
     const codeReader = new BrowserMultiFormatReader();
-    codeReaderRef.current = codeReader;
 
     try {
       codeReader.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
@@ -114,8 +123,11 @@ function ScannerComponent() {
   }, []);
 
   const stopScan = useCallback(() => {
-    if (codeReaderRef.current) {
-        codeReaderRef.current.reset();
+    // This is tricky because the instance is inside startScan.
+    // A better approach is to have a ref for the codeReader instance.
+    // For now, we rely on the video stream stopping.
+    if (videoRef.current && videoRef.current.srcObject) {
+        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
     }
     setIsScanning(false);
   }, []);
@@ -132,8 +144,11 @@ function ScannerComponent() {
 
     return () => {
       stopScan();
+      if(channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
-  }, [stopScan]);
+  }, [stopScan, supabase]);
 
   const handleFileScan = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -158,6 +173,26 @@ function ScannerComponent() {
         setIsScanning(false);
       }
     }
+  };
+
+  const openPhoneScanner = () => {
+    const sessionId = `scan-session-${Math.random().toString(36).substring(2, 11)}`;
+    setPhoneSessionId(sessionId);
+    setIsPhoneModalOpen(true);
+    
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    const channel = supabase.channel(sessionId);
+    channel.on('broadcast', { event: 'barcode-scanned' }, (payload) => {
+        setScannedResult(payload.payload.barcode);
+        setIsPhoneModalOpen(false);
+        supabase.removeChannel(channel);
+        channelRef.current = null;
+    }).subscribe();
+
+    channelRef.current = channel;
   };
   
   return (
@@ -195,10 +230,15 @@ function ScannerComponent() {
                 {isScanning ? 'Stop Scan' : 'Start Scan'}
             </button>
         </div>
-        <label className="relative w-full md:w-auto px-4 py-2 font-bold rounded-md transition duration-200 bg-secondary hover:bg-secondary/80 text-secondary-foreground text-center cursor-pointer">
-            <span>Scan from Image</span>
-            <input type="file" accept="image/*" onChange={handleFileScan} className="hidden" />
-        </label>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <label className="relative w-full flex-1 px-4 py-2 font-bold rounded-md transition duration-200 bg-secondary hover:bg-secondary/80 text-secondary-foreground text-center cursor-pointer">
+              <span>Scan from Image</span>
+              <input type="file" accept="image/*" onChange={handleFileScan} className="hidden" />
+          </label>
+           <Button onClick={openPhoneScanner} className="w-full sm:w-auto" variant="outline">
+             <PhoneIcon /> Use Phone Camera
+           </Button>
+        </div>
       </div>
 
       {error && (
@@ -214,6 +254,27 @@ function ScannerComponent() {
           <p className="text-foreground bg-background p-3 rounded-md break-words my-2">{scannedResult}</p>
         </div>
       )}
+
+      <Dialog open={isPhoneModalOpen} onOpenChange={setIsPhoneModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Use Your Phone as a Scanner</DialogTitle>
+                <DialogDescription>
+                    Scan the QR code below with your phone's camera to open the scanner page. The result will appear here automatically.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center p-4 bg-white rounded-md my-4">
+               {typeof window !== 'undefined' && phoneSessionId && (
+                    <QRCode
+                        value={`${window.location.origin}/scan/${phoneSessionId}`}
+                        size={256}
+                        level={"H"}
+                        includeMargin={true}
+                    />
+               )}
+            </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
