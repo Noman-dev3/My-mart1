@@ -89,7 +89,7 @@ export default function StoreManagerPage() {
   const codeReader = useRef(new BrowserMultiFormatReader());
   const isScanning = useRef(true);
 
-  const addProductToCart = (product: {id: string, name: string, price: number, image?: string}) => {
+  const addProductToCart = useCallback((product: {id: string, name: string, price: number, image?: string}) => {
       setCart(prevCart => {
         const existingItem = prevCart.find(item => item.id === product.id);
         if (existingItem) {
@@ -99,10 +99,13 @@ export default function StoreManagerPage() {
               : item
           );
         }
-        toast({ title: "Item Added", description: `${product.name} added to cart.` });
         return [...prevCart, { id: product.id, name: product.name, price: product.price, quantity: 1, image: product.image || 'https://picsum.photos/seed/placeholder/100' }];
       });
-  }
+      // Defer toast to next tick to avoid state update collision
+      setTimeout(() => {
+        toast({ title: "Item Added", description: `${product.name} added to cart.` });
+      }, 0);
+  }, [toast]);
 
   const processBarcode = useCallback(async (barcode: string) => {
     if (!barcode.trim() || isSubmitting) return;
@@ -144,7 +147,7 @@ export default function StoreManagerPage() {
         setIsSubmitting(false);
         setTimeout(() => { isScanning.current = !isCustomerDialogOpen && !isTempProductDialogOpen; }, 1500);
     }
-  }, [toast, isSubmitting, isCustomerDialogOpen, isTempProductDialogOpen]);
+  }, [toast, isSubmitting, addProductToCart, isCustomerDialogOpen, isTempProductDialogOpen]);
   
 
   useEffect(() => {
@@ -527,5 +530,7 @@ export default function StoreManagerPage() {
        </Dialog>
     </div>
   );
+
+    
 
     
