@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Table,
   TableBody,
@@ -68,19 +68,19 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const supabase = createSupabaseBrowserClient();
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-        setIsLoading(true);
-        const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-        if (error) {
-            console.error("Failed to fetch products:", error);
-            toast({ title: "Error", description: "Failed to fetch products.", variant: "destructive" });
-        } else {
-            setProducts(data as Product[]);
-        }
-        setIsLoading(false);
-    };
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    if (error) {
+        console.error("Failed to fetch products:", error);
+        toast({ title: "Error", description: "Failed to fetch products.", variant: "destructive" });
+    } else {
+        setProducts(data as Product[]);
+    }
+    setIsLoading(false);
+  }, [supabase, toast]);
 
+  useEffect(() => {
     fetchProducts();
 
     const channel = supabase
@@ -91,7 +91,7 @@ export default function ProductsPage() {
     return () => {
         supabase.removeChannel(channel);
     }
-  }, [supabase, toast]);
+  }, [fetchProducts, supabase]);
   
   const handleEdit = (product: Product) => {
     setSelectedProduct(product);
