@@ -19,9 +19,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog"
 import { Label } from '@/components/ui/label';
-import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/library';
-import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 
 
 type ScannedProduct = {
@@ -63,9 +61,6 @@ const saveTempProduct = (product: TempProduct) => {
 
 
 export default function StoreManagerPage() {
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
   const [cart, setCart] = useState<ScannedProduct[]>([]);
   const [manualBarcode, setManualBarcode] = useState('');
@@ -86,8 +81,15 @@ export default function StoreManagerPage() {
   const barcodeBuffer = useRef<string[]>([]);
   const barcodeTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // --- Camera & Scanning State ---
+  const [isCameraOn, setIsCameraOn] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Used as a cooldown flag
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const codeReader = useRef(new BrowserMultiFormatReader());
-  
+
+
   const addProductToCart = useCallback((product: {id: string, name: string, price: number, image?: string}) => {
       setCart(prevCart => {
         const existingItem = prevCart.find(item => item.id === product.id);
@@ -140,25 +142,83 @@ export default function StoreManagerPage() {
         setManualBarcode('');
     }
   }, [toast, addProductToCart]);
-  
+
+  const tick = useCallback(() => {
+    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+      try {
+        // Use the instance from the ref
+        const result = codeReader.current.decodeFromVideoElement(videoRef.current);
+        if (result) {
+          processBarcode(result.getText());
+          setIsSubmitting(true); // Start cooldown
+          setTimeout(() => setIsSubmitting(false), 1500); // End cooldown after 1.5s
+        }
+      } catch (err) {
+        if (err instanceof NotFoundException) {
+          // This is normal, just means no barcode was found in the frame.
+        } else {
+          console.error('Scanning error:', err);
+        }
+      }
+    }
+    // Continue the loop only if the camera should be on and we are not in a cooldown period
+    if (isCameraOn && !isSubmitting) {
+      requestAnimationFrame(tick);
+    }
+  }, [isCameraOn, isSubmitting, processBarcode]);
+
 
   useEffect(() => {
+    // This effect manages the camera stream and scanning loop
+    if (isCameraOn && hasPermission) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            // Start the scanning loop
+            requestAnimationFrame(tick);
+          }
+        })
+        .catch(err => {
+          console.error("Failed to start camera:", err);
+          setHasPermission(false);
+          setIsCameraOn(false);
+          toast({ variant: 'destructive', title: 'Camera Error', description: 'Could not access the camera.' });
+        });
+    } else {
+      // Cleanup logic
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    }
+    
+    // Cleanup function for when the component unmounts or isCameraOn changes
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+       if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    }
+  }, [isCameraOn, hasPermission, tick, toast]);
+
+  useEffect(() => {
+    // This effect handles keyboard events for hardware scanners and shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
         if (isCustomerDialogOpen || isTempProductDialogOpen) return;
         
-        // Don't trigger shortcuts if typing in an input field
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
             return;
         }
 
-        // Use Spacebar to toggle camera
         if (e.code === 'Space') {
             e.preventDefault();
-            if (isScanning) {
-                stopScan();
-            } else if (hasCameraPermission) {
-                startScan();
-            }
+            setIsCameraOn(prev => !prev);
             return;
         }
 
@@ -182,7 +242,7 @@ export default function StoreManagerPage() {
                 processBarcode(barcodeBuffer.current.join(''));
             }
             barcodeBuffer.current = [];
-        }, 120); // A bit more forgiving timeout
+        }, 120);
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -190,51 +250,21 @@ export default function StoreManagerPage() {
     return () => {
         window.removeEventListener('keydown', handleKeyDown);
         if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
-        codeReader.current.reset();
     };
-  }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen, isScanning, hasCameraPermission]);
+  }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen]);
   
-  const startScan = useCallback(async () => {
-    if (!videoRef.current) return;
-    setIsScanning(true);
-    
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      setHasCameraPermission(true);
-      if(videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      
-      codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
-        if (result) {
-          codeReader.current.reset();
-          setIsScanning(false);
-          processBarcode(result.getText());
-        }
-        if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
-          console.error("Scanning error:", err);
-        }
-      });
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      setHasCameraPermission(false);
-      setIsScanning(false);
-      toast({
-        variant: 'destructive',
-        title: 'Camera Access Denied',
-        description: 'Please enable camera permissions in your browser settings.',
-      });
-    }
-  }, [processBarcode, toast]);
-
-  const stopScan = useCallback(() => {
-    codeReader.current.reset();
-    if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-    }
-    setIsScanning(false);
+  useEffect(() => {
+    // Check for camera permissions on initial load
+    navigator.mediaDevices.enumerateDevices()
+      .then(devices => {
+          const hasVideo = devices.some(d => d.kind === 'videoinput');
+          if (hasVideo) {
+             setHasPermission(true);
+          } else {
+             setHasPermission(false);
+          }
+      })
+      .catch(() => setHasPermission(false));
   }, []);
 
   const handleManualAdd = async (e: React.FormEvent) => {
@@ -309,16 +339,6 @@ export default function StoreManagerPage() {
 
   const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
   const cartTotal = cartSubtotal;
-  
-  useEffect(() => {
-    // Check for camera permissions on load
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-            setHasCameraPermission(true);
-            stream.getTracks().forEach(track => track.stop()); // release stream immediately
-        })
-        .catch(() => setHasCameraPermission(false));
-  }, []);
 
   return (
     <div className="space-y-6 h-full flex flex-col">
@@ -332,26 +352,26 @@ export default function StoreManagerPage() {
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <CardTitle className="flex items-center gap-2"><ScanLine /> Scanner</CardTitle>
-                     <Button onClick={isScanning ? stopScan : startScan} variant={isScanning ? 'destructive' : 'default'} size="sm" disabled={hasCameraPermission === false}>
-                       {isScanning ? 'Stop Camera' : 'Start Camera'}
+                     <Button onClick={() => setIsCameraOn(prev => !prev)} variant={isCameraOn ? 'destructive' : 'default'} size="sm" disabled={hasPermission === false}>
+                       {isCameraOn ? 'Stop Camera' : 'Start Camera'}
                     </Button>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center gap-4">
                 <div className="w-full max-w-md aspect-video bg-card-foreground/5 rounded-lg overflow-hidden relative">
-                    <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
-                    {!isScanning && hasCameraPermission !== false && (
+                    <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay crossOrigin="anonymous"/>
+                    {!isCameraOn && hasPermission !== false && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                            <ScanLine className="h-16 w-16 text-muted-foreground/30" />
-                           <p className="mt-2 text-muted-foreground">Camera is off. Click "Start Camera" to begin scanning.</p>
+                           <p className="mt-2 text-muted-foreground">Camera is off. Click "Start Camera" or press Spacebar.</p>
                         </div>
                     )}
-                     {isScanning && (
+                     {isCameraOn && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
                         </div>
                      )}
-                     {hasCameraPermission === false && (
+                     {hasPermission === false && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10 text-center">
                             <CameraOff className="h-10 w-10 text-destructive" />
                             <p className="mt-2 text-muted-foreground">Camera access is required.</p>
@@ -531,8 +551,3 @@ export default function StoreManagerPage() {
        </Dialog>
     </div>
   );
-
-    
-
-
-    
