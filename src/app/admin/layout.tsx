@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Home, Package, ShoppingCart, Users, Settings, Bell, Search, FileText, Store, LogOut, PanelLeft, X } from 'lucide-react';
+import { Home, Package, ShoppingCart, Users, Settings, Bell, Search, FileText, Store, LogOut, PanelLeft, X, QrCode } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icons } from '@/components/icons';
@@ -24,6 +24,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     { href: '/admin/customers', icon: Users, label: 'Customers' },
     { href: '/admin/store-manager', icon: Store, label: 'Store Manager' },
     { href: '/admin/content', icon: FileText, label: 'Content' },
+    { href: '/admin/barcode-tools', icon: QrCode, label: 'Barcode Tools' },
   ];
 
   const handleLogout = async () => {
