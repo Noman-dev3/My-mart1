@@ -2,7 +2,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { MultiFormatReader, BarcodeFormat, DecodeHintType, NotFoundException } from '@zxing/library';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CameraOff } from 'lucide-react';
@@ -16,52 +15,16 @@ type BarcodeScannerProps = {
 
 export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAiScanning, setIsAiScanning] = useState(false);
 
-  const codeReader = useRef<MultiFormatReader | null>(null);
-
-  useEffect(() => {
-    // Initialize the reader
-    const hints = new Map();
-    const formats = [BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.QR_CODE];
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
-    codeReader.current = new MultiFormatReader();
-    codeReader.current.setHints(hints);
-  }, []);
-
-  const tick = useCallback(() => {
-    if (videoRef.current && canvasRef.current && codeReader.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-      const canvas = canvasRef.current.getContext('2d', { willReadFrequently: true });
-      if (canvas) {
-        canvasRef.current.height = videoRef.current.videoHeight;
-        canvasRef.current.width = videoRef.current.videoWidth;
-        canvas.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
-        try {
-          const result = codeReader.current.decode(canvasRef.current);
-          if (result) {
-            onScan(result.getText());
-            return; // Stop the loop
-          }
-        } catch (err) {
-          if (!(err instanceof NotFoundException)) {
-            // This can be noisy, so we'll comment it out unless debugging
-            // console.error('Barcode decoding error:', err);
-          }
-        }
-      }
-    }
-    requestAnimationFrame(tick);
-  }, [onScan]);
-
   useEffect(() => {
     let stream: MediaStream | null = null;
     let isMounted = true;
     
-    const startScanner = async () => {
+    const startCamera = async () => {
       setIsLoading(true);
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -80,7 +43,6 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           videoElement.onloadedmetadata = () => {
             videoElement.play();
             setIsLoading(false);
-            requestAnimationFrame(tick); // Start the scanning loop
           };
         }
       } catch (err) {
@@ -97,36 +59,35 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       }
     };
 
-    startScanner();
+    startCamera();
 
-    // Cleanup function
     return () => {
       isMounted = false;
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [tick, toast]);
+  }, [toast]);
 
   const handleAiScan = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current) return;
     
-    setIsAiScanning(true);
-    toast({ title: 'AI Scan Started', description: 'Capturing frame and analyzing with AI...' });
-
     const video = videoRef.current;
-    const canvas = canvasRef.current;
+    const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const context = canvas.getContext('2d');
+    
     if (!context) {
         toast({ title: 'Error', description: 'Could not get canvas context.', variant: 'destructive' });
-        setIsAiScanning(false);
         return;
     }
     
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageDataUri = canvas.toDataURL('image/jpeg');
+
+    setIsAiScanning(true);
+    toast({ title: 'AI Scan Started', description: 'Analyzing image with Gemini...' });
 
     try {
         const result = await readBarcodeFromImage({ imageDataUri });
@@ -165,15 +126,14 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           playsInline
           muted
         />
-        <canvas ref={canvasRef} className="hidden" />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
         </div>
       </div>
       
-      <Button onClick={handleAiScan} disabled={isAiScanning || isLoading || !hasPermission}>
+      <Button onClick={handleAiScan} disabled={isAiScanning || isLoading || !hasPermission} className="w-full max-w-md">
         {isAiScanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : '✨'}
-        AI Scan
+        Scan with AI
       </Button>
 
       {hasPermission === false && (
@@ -187,5 +147,3 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     </div>
   );
 }
-
-    
