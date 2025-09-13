@@ -14,7 +14,6 @@ import { logout } from './login/actions';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { Suspense } from 'react';
-import { AdminAuthProvider } from '@/context/admin-auth-context';
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -159,10 +158,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
     
     return (
-      <AdminAuthProvider>
         <AdminLayoutContent>
           {children}
         </AdminLayoutContent>
-      </AdminAuthProvider>
     );
 }
