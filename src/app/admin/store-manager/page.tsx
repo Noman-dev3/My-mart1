@@ -209,53 +209,53 @@ export default function StoreManagerPage() {
   }, [isSubmitting, isCameraOn, processBarcode]);
   
   useEffect(() => {
-    let isMounted = true;
-    const stopScanner = () => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-    };
-    
+    let animationFrameId: number;
     const startScanner = async () => {
-        stopScanner(); // Stop any existing stream
-        if (isCameraOn && isMounted) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                if (isMounted) {
-                    streamRef.current = stream;
-                    setHasCameraPermission(true);
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                        videoRef.current.play();
-                    }
-                    requestAnimationFrame(tick);
-                } else {
-                     stream.getTracks().forEach(track => track.stop());
-                }
-            } catch (error) {
-                 if (isMounted) {
-                    console.error('Error accessing camera:', error);
-                    setHasCameraPermission(false);
-                    setIsCameraOn(false);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Camera Access Denied',
-                        description: 'Please enable camera permissions in your browser settings.',
-                    });
-                }
-            }
-        }
-    };
-    
-    startScanner();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+        });
+        streamRef.current = stream;
+        setHasCameraPermission(true);
 
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          animationFrameId = requestAnimationFrame(tick);
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        setIsCameraOn(false); // Turn off toggle if permission is denied
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description:
+            'Please enable camera permissions in your browser settings.',
+        });
+      }
+    };
+
+    const stopScanner = () => {
+      cancelAnimationFrame(animationFrameId);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+
+    if (isCameraOn) {
+      startScanner();
+    } else {
+      stopScanner();
+    }
+    
+    // Cleanup function
     return () => {
-        isMounted = false;
-        stopScanner();
+      stopScanner();
     };
   }, [isCameraOn, tick, toast]);
 
