@@ -159,6 +159,5 @@ To access the admin dashboard, navigate to `/admin` and log in with the followin
 - **Username:** `admin`
 - **Password:** `1234`
 
-These are hardcoded in the application. You can change them in `src/context/admin-auth-context.tsx`.
+These are hardcoded in the application. You can change them in `src/app/admin/login/actions.ts`.
 
-    

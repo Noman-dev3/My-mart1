@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -12,6 +13,8 @@ import { Input } from '@/components/ui/input';
 import { logout } from './login/actions';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { Suspense } from 'react';
+import { AdminAuthProvider } from '@/context/admin-auth-context';
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -32,6 +35,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await logout();
+    router.push('/admin/login');
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -71,12 +75,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             </nav>
         </div>
         <div className="mt-auto p-4 border-t border-border/50">
-             <form action={handleLogout}>
-                <Button type="submit" variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive">
-                    <LogOut className="mr-2 h-5 w-5" />
-                    Logout
-                </Button>
-            </form>
+            <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive">
+                <LogOut className="mr-2 h-5 w-5" />
+                Logout
+            </Button>
         </div>
     </>
   );
@@ -140,7 +142,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
         </header>
         <main className="flex-1 overflow-auto bg-muted/30 p-4 sm:p-6">
-          {children}
+          <Suspense fallback={<div>Loading...</div>}>
+            {children}
+          </Suspense>
         </main>
       </div>
     </div>
@@ -150,17 +154,15 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
-    // The login page does not have the admin layout
-    if (pathname === '/admin/login' || pathname === '/admin/search') {
-        return <>{children}</>;
+    if (pathname === '/admin/login') {
+        return <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>;
     }
     
-    // For search results, we wrap with the layout but don't want to double-wrap
-    if (pathname.startsWith('/admin/search')) {
-       return <AdminLayoutContent>{children}</AdminLayoutContent>;
-    }
-    
-    return <AdminLayoutContent>{children}</AdminLayoutContent>;
+    return (
+      <AdminAuthProvider>
+        <AdminLayoutContent>
+          {children}
+        </AdminLayoutContent>
+      </AdminAuthProvider>
+    );
 }
-
-    

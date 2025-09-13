@@ -97,7 +97,10 @@ export default function AdminDashboard() {
 
     const channel = supabase
       .channel('admin-dashboard-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public' }, fetchAndProcessData)
+      .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+          console.log('Change received on dashboard, refetching data:', payload);
+          fetchAndProcessData();
+      })
       .subscribe();
 
     return () => {
@@ -207,17 +210,17 @@ export default function AdminDashboard() {
                         {recentOrders.map((order) => (
                             <TableRow key={order.id} className="hover:bg-muted/50 cursor-pointer">
                                 <TableCell className="font-medium">
-                                    <Link href="/admin/orders" className="block w-full h-full">
+                                    <Link href={`/admin/orders?highlight=${order.id}`} className="block w-full h-full">
                                         {order.id.slice(0, 8)}...
                                     </Link>
                                 </TableCell>
                                 <TableCell>
-                                    <Link href="/admin/orders" className="block w-full h-full">
+                                    <Link href={`/admin/orders?highlight=${order.id}`} className="block w-full h-full">
                                         {order.customer.name}
                                     </Link>
                                 </TableCell>
                                 <TableCell>
-                                    <Link href="/admin/orders" className="block w-full h-full">
+                                    <Link href={`/admin/orders?highlight=${order.id}`} className="block w-full h-full">
                                         <Badge 
                                         variant={
                                             order.status === 'Delivered' ? 'default' : 
@@ -228,7 +231,7 @@ export default function AdminDashboard() {
                                     </Link>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Link href="/admin/orders" className="block w-full h-full">
+                                    <Link href={`/admin/orders?highlight=${order.id}`} className="block w-full h-full">
                                         PKR {order.total.toFixed(2)}
                                     </Link>
                                 </TableCell>
@@ -258,7 +261,7 @@ export default function AdminDashboard() {
                                 {activity.details && <span className="text-muted-foreground"> - {activity.details}</span>}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                                {activity.user_agent} &middot; {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                                {activity.user_agent && activity.user_agent.length > 50 ? `${activity.user_agent.substring(0,50)}...` : activity.user_agent} &middot; {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
                             </p>
                         </div>
                     </div>
@@ -272,5 +275,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
-    
