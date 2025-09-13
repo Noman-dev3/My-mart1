@@ -190,12 +190,26 @@ export default function StoreManagerPage() {
   }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen, isAddProductFormOpen]);
 
     useEffect(() => {
+        let isMounted = true;
+        const debounceTimeout = 300; // ms
+        let debounceTimer: NodeJS.Timeout;
+
         if (isCameraOn) {
             codeReader.current.decodeFromVideoDevice(undefined, videoRef.current!, (result, err) => {
                 if (result) {
-                    processBarcode(result.getText());
-                    // Stop scanning for a bit to avoid double scans
-                    setIsCameraOn(false); 
+                    const scannedText = result.getText();
+                    if (scannedText && scannedText.trim().length > 0) {
+                        // Clear any existing timer to prevent premature shutdown
+                        clearTimeout(debounceTimer);
+                        
+                        // Process the valid barcode
+                        processBarcode(scannedText);
+                        
+                        // Set a new timer to turn off the camera
+                        debounceTimer = setTimeout(() => {
+                           if(isMounted) setIsCameraOn(false);
+                        }, debounceTimeout);
+                    }
                 }
                  if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
                     console.error("Scanning error:", err);
@@ -205,6 +219,8 @@ export default function StoreManagerPage() {
             codeReader.current.reset();
         }
         return () => {
+            isMounted = false;
+            clearTimeout(debounceTimer);
             codeReader.current.reset();
         };
     }, [isCameraOn, processBarcode]);
