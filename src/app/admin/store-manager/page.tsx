@@ -207,8 +207,9 @@ export default function StoreManagerPage() {
       
       codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
         if (result) {
+          codeReader.current.reset();
+          setIsScanning(false);
           processBarcode(result.getText());
-          // The scanner will be reset by the user action of stopping/starting, no need to do it here
         }
         if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
           console.error("Scanning error:", err);
@@ -530,5 +531,8 @@ export default function StoreManagerPage() {
        </Dialog>
     </div>
   );
+
+    
+
 
     
