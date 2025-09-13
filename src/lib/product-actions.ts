@@ -146,6 +146,7 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
             specifications: {},
             reviewsData: [],
             questions: [],
+            created_at: new Date().toISOString(),
         };
         
         // Check if test product already exists to avoid duplicate errors
