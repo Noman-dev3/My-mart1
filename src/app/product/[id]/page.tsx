@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2, HelpCircle } from 'lucide-react';
+import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2, HelpCircle, Barcode } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { getProductById, type Product, askProductQuestion } from '@/lib/product-actions';
@@ -13,7 +13,7 @@ import ProductRating from '@/components/product-rating';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import ProductCard from '@/components/product-card';
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CartContext } from '@/context/cart-context';
 import { AuthContext } from '@/context/auth-context';
@@ -26,6 +26,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import JsBarcode from 'jsbarcode';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+
 
 const questionFormSchema = z.object({
   text: z.string().min(10, "Question must be at least 10 characters.").max(500, "Question must be at most 500 characters."),
@@ -38,6 +48,8 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | undefined>(undefined);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [isLoadingProduct, setIsLoadingProduct] = useState(true);
+  const barcodeRef = useRef<SVGSVGElement>(null);
+
 
   const { addToCart } = useContext(CartContext);
   const { user, loading: userLoading } = useContext(AuthContext);
@@ -46,6 +58,22 @@ export default function ProductDetailPage() {
   const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const supabase = createSupabaseBrowserClient();
+
+  useEffect(() => {
+    if (product && product.barcode && barcodeRef.current) {
+      try {
+        JsBarcode(barcodeRef.current, product.barcode, {
+            format: "CODE128",
+            lineColor: "#000",
+            width:2,
+            height:40,
+            displayValue: true
+        });
+      } catch (e) {
+        console.error("Error generating barcode:", e);
+      }
+    }
+  }, [product]);
 
   useEffect(() => {
     if (!id) return;
@@ -231,6 +259,24 @@ export default function ProductDetailPage() {
                   priority
                   data-ai-hint="product image"
                 />
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="secondary" size="icon" className="absolute bottom-4 right-4 h-12 w-12 rounded-full shadow-lg">
+                            <Barcode className="h-6 w-6"/>
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Product Barcode</DialogTitle>
+                            <DialogDescription>
+                                Scan this barcode with the in-store scanner.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex justify-center p-4 bg-white rounded-md">
+                           <svg ref={barcodeRef}></svg>
+                        </div>
+                    </DialogContent>
+                </Dialog>
               </div>
               {!inStock && (
                 <motion.div
