@@ -103,6 +103,9 @@ const productSchema = z.object({
     brand: z.string().min(2, "Brand must be at least 2 characters long."),
     stockQuantity: z.coerce.number().int("Stock must be a whole number."),
     barcode: z.string().min(8, "Barcode must be at least 8 characters long."),
+    specifications: z.any(),
+    reviewsData: z.any(),
+    questions: z.any(),
 });
 
 const answerSchema = z.object({
@@ -125,9 +128,9 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         ...data,
         rating: Math.floor(Math.random() * 5) + 1,
         reviews: Math.floor(Math.random() * 100),
-        specifications: {},
-        reviewsData: [],
-        questions: [],
+        specifications: data.specifications || {},
+        reviewsData: data.reviewsData || [],
+        questions: data.questions || [],
     };
     
     // Special handling for the test product barcode

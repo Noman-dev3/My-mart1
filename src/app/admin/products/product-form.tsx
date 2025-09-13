@@ -50,6 +50,9 @@ const productFormSchema = z.object({
   brand: z.string().min(2, "Brand must be at least 2 characters long."),
   stockQuantity: z.coerce.number().int("Stock must be a whole number."),
   barcode: z.string().min(8, "Barcode must be at least 8 characters long."),
+  specifications: z.any(),
+  reviewsData: z.any(),
+  questions: z.any(),
 });
 
 type ProductFormValues = z.infer<typeof productFormSchema>
@@ -76,6 +79,9 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
         brand: product?.brand || "",
         stockQuantity: product?.stockQuantity || 0,
         barcode: product?.barcode || "",
+        specifications: product?.specifications || {},
+        reviewsData: product?.reviewsData || [],
+        questions: product?.questions || [],
     },
   });
 
