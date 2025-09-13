@@ -38,6 +38,24 @@ export type Product = {
     created_at: any;
 };
 
+
+// SINGLE SOURCE OF TRUTH FOR PRODUCT VALIDATION
+export const productSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters long."),
+  description: z.string().min(10, "Description must be at least 10 characters long."),
+  price: z.coerce.number().min(0, "Price must be a positive number."),
+  image: z.string().url("Must be a valid image URL."),
+  category: z.enum(['Electronics', 'Groceries', 'Fashion', 'Home Goods']),
+  brand: z.string().min(2, "Brand must be at least 2 characters long."),
+  stockQuantity: z.coerce.number().int("Stock must be a whole number."),
+  barcode: z.string().min(8, "Barcode must be at least 8 characters long."),
+  specifications: z.any().optional(),
+  reviewsData: z.any().optional(),
+  questions: z.any().optional(),
+});
+export type ProductFormValues = z.infer<typeof productSchema>;
+
+
 export async function getAllProducts(): Promise<{data: Product[] | null, error: any }> {
     const supabase = createServerActionClient({ cookies });
     const { data, error } = await supabase
@@ -94,17 +112,6 @@ export async function getBrands(): Promise<string[]> {
 }
 
 
-const productSchema = z.object({
-    name: z.string().min(3, "Name must be at least 3 characters long."),
-    description: z.string().min(10, "Description must be at least 10 characters long."),
-    price: z.coerce.number().min(0, "Price must be a positive number."),
-    image: z.string().url("Must be a valid image URL."),
-    category: z.enum(['Electronics', 'Groceries', 'Fashion', 'Home Goods']),
-    brand: z.string().min(2, "Brand must be at least 2 characters long."),
-    stockQuantity: z.coerce.number().int("Stock must be a whole number."),
-    barcode: z.string().min(8, "Barcode must be at least 8 characters long."),
-});
-
 const answerSchema = z.object({
     questionId: z.string(),
     answer: z.string().min(1, "Answer cannot be empty."),
@@ -118,21 +125,25 @@ const questionSchema = z.object({
 });
 
 
-export async function addProduct(data: z.infer<typeof productSchema>) {
+export async function addProduct(values: ProductFormValues) {
     const supabase = createServerActionClient({ cookies });
+    const validatedData = productSchema.parse(values);
 
+    // Explicitly construct the object to be inserted, ensuring all fields are present and correctly typed.
     const newProduct = {
-        name: data.name,
-        description: data.description,
-        price: data.price,
-        image: data.image,
-        category: data.category,
-        brand: data.brand,
-        stockQuantity: data.stockQuantity,
-        barcode: data.barcode,
-        specifications: {},
-        reviewsData: [],
-        questions: [],
+        name: validatedData.name,
+        description: validatedData.description,
+        price: validatedData.price,
+        image: validatedData.image,
+        category: validatedData.category,
+        brand: validatedData.brand,
+        stockQuantity: validatedData.stockQuantity,
+        barcode: validatedData.barcode,
+        // Ensure non-nullable JSON fields have a default value.
+        specifications: validatedData.specifications || {},
+        reviewsData: validatedData.reviewsData || [],
+        questions: validatedData.questions || [],
+        // Ensure non-nullable numeric fields have a default value.
         rating: 0,
         reviews: 0,
         created_at: new Date().toISOString(),
@@ -292,5 +303,3 @@ export async function deleteProduct(productId: string) {
     
     return { success: true };
 }
-
-    

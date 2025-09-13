@@ -3,7 +3,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -31,7 +30,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import type { Product } from "@/lib/product-actions";
+import type { Product, ProductFormValues } from "@/lib/product-actions";
+import { productSchema } from "@/lib/product-actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { answerProductQuestion } from "@/lib/product-actions";
 import { useToast } from "@/hooks/use-toast";
@@ -39,23 +39,6 @@ import { useState, useEffect } from "react";
 import { Loader2, RefreshCw, ScanLine } from "lucide-react";
 import { getProductQuestionAnswer } from "@/ai/flows/answer-product-question"
 import BarcodeScanner from "./barcode-scanner"
-
-
-const productFormSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters long."),
-  description: z.string().min(10, "Description must be at least 10 characters long."),
-  price: z.coerce.number().min(0, "Price must be a positive number."),
-  image: z.string().url("Must be a valid image URL."),
-  category: z.enum(['Electronics', 'Groceries', 'Fashion', 'Home Goods']),
-  brand: z.string().min(2, "Brand must be at least 2 characters long."),
-  stockQuantity: z.coerce.number().int("Stock must be a whole number."),
-  barcode: z.string().min(8, "Barcode must be at least 8 characters long."),
-  specifications: z.any(),
-  reviewsData: z.any(),
-  questions: z.any(),
-});
-
-type ProductFormValues = z.infer<typeof productFormSchema>
 
 type ProductFormProps = {
     onSubmit: (values: ProductFormValues) => Promise<any>;
@@ -69,7 +52,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productFormSchema),
+    resolver: zodResolver(productSchema),
     defaultValues: {
         name: "",
         description: "",
@@ -87,7 +70,6 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
 
   useEffect(() => {
     // Explicitly set values to prevent uncontrolled component errors.
-    // This is more robust than form.reset().
     if (product) {
       form.setValue('name', product.name || "");
       form.setValue('description', product.description || "");
@@ -101,18 +83,20 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
       form.setValue('reviewsData', product.reviewsData || []);
       form.setValue('questions', product.questions || []);
     } else {
-      // Set guaranteed default values for a new product
-      form.setValue('name', '');
-      form.setValue('description', '');
-      form.setValue('price', 0);
-      form.setValue('image', 'https://picsum.photos/seed/product/600/600');
-      form.setValue('category', 'Electronics');
-      form.setValue('brand', '');
-      form.setValue('stockQuantity', 0);
-      form.setValue('barcode', '');
-      form.setValue('specifications', {});
-      form.setValue('reviewsData', []);
-      form.setValue('questions', []);
+      // Set guaranteed default values for a new product to prevent uncontrolled inputs.
+      form.reset({
+        name: '',
+        description: '',
+        price: 0,
+        image: 'https://picsum.photos/seed/product/600/600',
+        category: 'Electronics',
+        brand: '',
+        stockQuantity: 0,
+        barcode: '',
+        specifications: {},
+        reviewsData: [],
+        questions: [],
+      });
     }
   }, [product, form]);
 
@@ -398,5 +382,3 @@ const QAndAItem = ({ product, question, onAnswerSubmit }: { product: Product, qu
         </div>
     )
 }
-
-    
