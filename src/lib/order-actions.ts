@@ -183,7 +183,7 @@ export async function createStoreOrder(data: {
   customerId: string;
   items: OrderItem[];
   total: number;
-}) {
+}): Promise<Order> {
   const supabase = createServerActionClient({ cookies });
 
   const newOrderData = {
@@ -200,7 +200,7 @@ export async function createStoreOrder(data: {
     date: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from('orders').insert(newOrderData);
+  const { data: savedOrder, error } = await supabase.from('orders').insert(newOrderData).select().single();
 
   if (error) {
     console.error('Error creating store order:', error);
@@ -216,5 +216,7 @@ export async function createStoreOrder(data: {
   revalidatePath('/admin/customers');
   revalidatePath('/admin');
 
-  return { success: true };
+  return savedOrder as Order;
 }
+
+    

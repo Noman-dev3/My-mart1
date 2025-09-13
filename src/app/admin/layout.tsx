@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Home, Package, ShoppingCart, Users, Settings, Bell, Search, FileText, Store, LogOut, PanelLeft, X, QrCode } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,10 @@ import { cn } from '@/lib/utils';
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
 
   const navItems = [
     { href: '/admin', icon: Home, label: 'Dashboard' },
@@ -29,6 +32,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/admin/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
   };
   
   const SidebarContent = () => (
@@ -100,12 +110,14 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             <span className="sr-only">Toggle navigation menu</span>
           </Button>
           <div className="w-full flex-1">
-            <form>
+            <form onSubmit={handleSearch}>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Search..."
+                  placeholder="Search products, orders, customers..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full appearance-none bg-background pl-8 shadow-none md:w-2/3 lg:w-1/3"
                 />
               </div>
@@ -139,9 +151,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const pathname = usePathname();
 
     // The login page does not have the admin layout
-    if (pathname === '/admin/login') {
+    if (pathname === '/admin/login' || pathname === '/admin/search') {
         return <>{children}</>;
+    }
+    
+    // For search results, we wrap with the layout but don't want to double-wrap
+    if (pathname.startsWith('/admin/search')) {
+       return <AdminLayoutContent>{children}</AdminLayoutContent>;
     }
     
     return <AdminLayoutContent>{children}</AdminLayoutContent>;
 }
+
+    

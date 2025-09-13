@@ -65,6 +65,7 @@ import Image from 'next/image';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 import InvoiceTemplate from '@/components/invoice-template';
 import './invoice.css';
+import { logAdminActivity } from '@/lib/admin-actions';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -129,8 +130,15 @@ export default function OrdersPage() {
   }
 
   const handleUpdateStatus = async (orderId: string, status: Order['status']) => {
+    const originalOrder = orders.find(o => o.id === orderId);
+    if (!originalOrder) return;
+    
     try {
         const updatedOrder = await updateOrderStatus(orderId, status);
+        await logAdminActivity({
+            action: 'Updated order status',
+            details: `Order ${orderId.slice(0,8)} from "${originalOrder.status}" to "${status}"`
+        });
         toast({
             title: "Success",
             description: `Order ${orderId.slice(0,8)}... has been updated to "${status}".`
@@ -585,3 +593,5 @@ export default function OrdersPage() {
     </>
   );
 }
+
+    

@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X, CameraOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getProductByBarcode, type Product } from '@/lib/product-actions';
+import { getProductByBarcode, type Product, addProduct } from '@/lib/product-actions';
 import { createStoreOrder } from '@/lib/order-actions';
 import {
     Dialog,
@@ -19,11 +19,13 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog"
 import { Label } from '@/components/ui/label';
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
+import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/library';
+import ProductForm from '../products/product-form';
+import { logAdminActivity } from '@/lib/admin-actions';
 
 
 type ScannedProduct = {
-  id: string;
+  id: string; // Can be product UUID or barcode for temp items
   name: string;
   price: number;
   quantity: number;
@@ -77,19 +79,18 @@ export default function StoreManagerPage() {
   const [tempProductBarcode, setTempProductBarcode] = useState('');
   const [tempProductName, setTempProductName] = useState('');
   const [tempProductPrice, setTempProductPrice] = useState('');
+
+  // Add Product Form state
+  const [isAddProductFormOpen, setIsAddProductFormOpen] = useState(false);
+  const [newProductToCreate, setNewProductToCreate] = useState<Partial<Product> | undefined>(undefined);
   
   const barcodeBuffer = useRef<string[]>([]);
   const barcodeTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  // --- Camera & Scanning State ---
-  const [isCameraOn, setIsCameraOn] = useState(false);
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Used as a cooldown flag
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  
   const codeReader = useRef(new BrowserMultiFormatReader());
-
-
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isCameraOn, setIsCameraOn] = useState(false);
+  
   const addProductToCart = useCallback((product: {id: string, name: string, price: number, image?: string}) => {
       setCart(prevCart => {
         const existingItem = prevCart.find(item => item.id === product.id);
@@ -143,74 +144,9 @@ export default function StoreManagerPage() {
     }
   }, [toast, addProductToCart]);
 
-  const tick = useCallback(() => {
-    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
-      try {
-        // Use the instance from the ref
-        const result = codeReader.current.decodeFromVideoElement(videoRef.current);
-        if (result) {
-          processBarcode(result.getText());
-          setIsSubmitting(true); // Start cooldown
-          setTimeout(() => setIsSubmitting(false), 1500); // End cooldown after 1.5s
-        }
-      } catch (err) {
-        if (err instanceof NotFoundException) {
-          // This is normal, just means no barcode was found in the frame.
-        } else {
-          console.error('Scanning error:', err);
-        }
-      }
-    }
-    // Continue the loop only if the camera should be on and we are not in a cooldown period
-    if (isCameraOn && !isSubmitting) {
-      requestAnimationFrame(tick);
-    }
-  }, [isCameraOn, isSubmitting, processBarcode]);
-
-
   useEffect(() => {
-    // This effect manages the camera stream and scanning loop
-    if (isCameraOn && hasPermission) {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(stream => {
-          streamRef.current = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            // Start the scanning loop
-            requestAnimationFrame(tick);
-          }
-        })
-        .catch(err => {
-          console.error("Failed to start camera:", err);
-          setHasPermission(false);
-          setIsCameraOn(false);
-          toast({ variant: 'destructive', title: 'Camera Error', description: 'Could not access the camera.' });
-        });
-    } else {
-      // Cleanup logic
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-    }
-    
-    // Cleanup function for when the component unmounts or isCameraOn changes
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-       if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-    }
-  }, [isCameraOn, hasPermission, tick, toast]);
-
-  useEffect(() => {
-    // This effect handles keyboard events for hardware scanners and shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (isCustomerDialogOpen || isTempProductDialogOpen) return;
+        if (isCustomerDialogOpen || isTempProductDialogOpen || isAddProductFormOpen) return;
         
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
             return;
@@ -251,21 +187,28 @@ export default function StoreManagerPage() {
         window.removeEventListener('keydown', handleKeyDown);
         if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
     };
-  }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen]);
-  
-  useEffect(() => {
-    // Check for camera permissions on initial load
-    navigator.mediaDevices.enumerateDevices()
-      .then(devices => {
-          const hasVideo = devices.some(d => d.kind === 'videoinput');
-          if (hasVideo) {
-             setHasPermission(true);
-          } else {
-             setHasPermission(false);
-          }
-      })
-      .catch(() => setHasPermission(false));
-  }, []);
+  }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen, isAddProductFormOpen]);
+
+    useEffect(() => {
+        if (isCameraOn) {
+            codeReader.current.decodeFromVideoDevice(undefined, videoRef.current!, (result, err) => {
+                if (result) {
+                    processBarcode(result.getText());
+                    // Stop scanning for a bit to avoid double scans
+                    setIsCameraOn(false); 
+                }
+                 if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
+                    console.error("Scanning error:", err);
+                 }
+            });
+        } else {
+            codeReader.current.reset();
+        }
+        return () => {
+            codeReader.current.reset();
+        };
+    }, [isCameraOn, processBarcode]);
+
 
   const handleManualAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -303,11 +246,15 @@ export default function StoreManagerPage() {
 
     setIsCompletingSale(true);
     try {
-        await createStoreOrder({
+        const order = await createStoreOrder({
             customerName: currentCustomer.name,
             customerId: currentCustomer.id,
             items: cart,
             total: cartTotal,
+        });
+        await logAdminActivity({
+            action: 'Completed in-store sale',
+            details: `Order ID: ${order.id.slice(0,8)}, Total: PKR ${order.total.toFixed(2)}`
         });
         toast({ title: "Sale Completed!", description: "Order has been recorded successfully." });
         endSession();
@@ -337,6 +284,30 @@ export default function StoreManagerPage() {
     setIsTempProductDialogOpen(false);
   }
 
+  const handleCreateNewProduct = () => {
+      setNewProductToCreate({ barcode: tempProductBarcode });
+      setIsTempProductDialogOpen(false);
+      setIsAddProductFormOpen(true);
+  }
+
+  const onProductFormSubmit = async (values: any) => {
+    try {
+      const newProduct = await addProduct(values);
+      if (newProduct) {
+        toast({ title: "Success", description: "Product added to inventory." });
+        addProductToCart(newProduct);
+        setIsAddProductFormOpen(false);
+        setNewProductToCreate(undefined);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to save product.", variant: "destructive" });
+      return false;
+    }
+  }
+
+
   const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
   const cartTotal = cartSubtotal;
 
@@ -352,30 +323,18 @@ export default function StoreManagerPage() {
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <CardTitle className="flex items-center gap-2"><ScanLine /> Scanner</CardTitle>
-                     <Button onClick={() => setIsCameraOn(prev => !prev)} variant={isCameraOn ? 'destructive' : 'default'} size="sm" disabled={hasPermission === false}>
+                     <Button onClick={() => setIsCameraOn(prev => !prev)} variant={isCameraOn ? 'destructive' : 'default'} size="sm">
                        {isCameraOn ? 'Stop Camera' : 'Start Camera'}
                     </Button>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center gap-4">
                 <div className="w-full max-w-md aspect-video bg-card-foreground/5 rounded-lg overflow-hidden relative">
-                    <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay crossOrigin="anonymous"/>
-                    {!isCameraOn && hasPermission !== false && (
+                    <video ref={videoRef} className={`w-full h-full object-cover ${isCameraOn ? '' : 'hidden'}`} playsInline muted crossOrigin="anonymous"/>
+                    {!isCameraOn && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                            <ScanLine className="h-16 w-16 text-muted-foreground/30" />
                            <p className="mt-2 text-muted-foreground">Camera is off. Click "Start Camera" or press Spacebar.</p>
-                        </div>
-                    )}
-                     {isCameraOn && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
-                        </div>
-                     )}
-                     {hasPermission === false && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10 text-center">
-                            <CameraOff className="h-10 w-10 text-destructive" />
-                            <p className="mt-2 text-muted-foreground">Camera access is required.</p>
-                            <p className="text-xs text-muted-foreground/80 px-4">Please allow camera permissions in your browser settings and refresh the page.</p>
                         </div>
                     )}
                 </div>
@@ -513,16 +472,16 @@ export default function StoreManagerPage() {
        <Dialog open={isTempProductDialogOpen} onOpenChange={setIsTempProductDialogOpen}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Add Temporary Product</DialogTitle>
+                    <DialogTitle>Product Not Found</DialogTitle>
                     <DialogDescription>
-                        This barcode was not found. Add a temporary name and price to sell it now.
+                        Barcode <span className="font-bold text-primary">{tempProductBarcode}</span> was not found in the inventory.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="temp-barcode">Barcode</Label>
-                        <Input id="temp-barcode" value={tempProductBarcode} disabled />
-                    </div>
+                     <div>
+                        <h3 className="font-semibold">Option 1: Add as Temporary Product</h3>
+                        <p className="text-sm text-muted-foreground">Add a temporary name and price to sell it now. This item will not be saved to the main inventory.</p>
+                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="temp-name">Product Name</Label>
                         <Input 
@@ -542,12 +501,39 @@ export default function StoreManagerPage() {
                             placeholder="e.g., 150"
                         />
                     </div>
+                    <Button onClick={handleAddTempProduct} className="w-full">Add to Cart as Temporary</Button>
                 </div>
+                 <Separator />
+                 <div className="space-y-4 pt-2">
+                    <h3 className="font-semibold">Option 2: Add to Main Inventory</h3>
+                    <p className="text-sm text-muted-foreground">Open the full product form to add this item permanently to your store's inventory.</p>
+                    <Button onClick={handleCreateNewProduct} variant="secondary" className="w-full">Open "Add Product" Form</Button>
+                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsTempProductDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={handleAddTempProduct}>Add to Cart</Button>
                 </DialogFooter>
             </DialogContent>
        </Dialog>
+
+       <Dialog open={isAddProductFormOpen} onOpenChange={(open) => {
+          setIsAddProductFormOpen(open);
+          if (!open) setNewProductToCreate(undefined);
+      }}>
+          <DialogContent className="sm:max-w-md md:max-w-lg">
+              <DialogHeader>
+                  <DialogTitle>Add New Product</DialogTitle>
+              </DialogHeader>
+              <ProductForm 
+                  onSubmit={onProductFormSubmit}
+                  product={newProductToCreate as Product | undefined}
+                  onCancel={() => {
+                      setIsAddProductFormOpen(false);
+                      setNewProductToCreate(undefined);
+                  }}
+              />
+          </DialogContent>
+      </Dialog>
     </div>
   );
+
+    

@@ -54,6 +54,7 @@ import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import ProductForm from './product-form';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import { logAdminActivity } from '@/lib/admin-actions';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -106,6 +107,10 @@ export default function ProductsPage() {
     if (!productToDelete) return;
     try {
         await deleteProduct(productToDelete.id);
+        await logAdminActivity({
+            action: 'Deleted product',
+            details: `Product: ${productToDelete.name}`
+        });
         toast({ title: "Success", description: "Product deleted successfully." });
     } catch (error) {
         toast({ title: "Error", description: "Failed to delete product.", variant: "destructive" });
@@ -119,9 +124,17 @@ export default function ProductsPage() {
     try {
         if(selectedProduct) {
             await updateProduct(selectedProduct.id, values);
+            await logAdminActivity({
+                action: 'Updated product',
+                details: `Product: ${values.name}`
+            });
             toast({ title: "Success", description: "Product updated successfully." });
         } else {
             await addProduct(values);
+             await logAdminActivity({
+                action: 'Added new product',
+                details: `Product: ${values.name}`
+            });
             toast({ title: "Success", description: "Product added successfully." });
         }
         return true; // Indicate success
@@ -378,3 +391,5 @@ export default function ProductsPage() {
     </>
   );
 }
+
+    

@@ -11,9 +11,9 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { type Order } from '@/lib/order-actions';
-import { type Product } from '@/lib/product-actions';
+import type { AdminActivity } from '@/lib/admin-actions';
 import Link from 'next/link';
-import { format, startOfDay, endOfDay, getMonth, getYear, isValid } from 'date-fns';
+import { format, startOfDay, endOfDay, getMonth, getYear, isValid, formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
@@ -23,14 +23,9 @@ type Stats = {
   newCustomers: number;
 };
 
-const activityLog = [
-    { user: 'Admin User', action: 'Updated product "Wireless Headphones"', time: '2h ago' },
-    { user: 'Manager Alex', action: 'Changed order ORD002 status to "Processing"', time: '3h ago' },
-    { user: 'Admin User', action: 'Added new product "Leather Wallet"', time: '5h ago' },
-];
-
 export default function AdminDashboard() {
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [activityLog, setActivityLog] = useState<AdminActivity[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [salesData, setSalesData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,6 +33,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchAndProcessData = async () => {
+        setIsLoading(true);
         // Fetch orders
         const { data: ordersData, error: ordersError } = await supabase
             .from('orders')
@@ -45,9 +41,19 @@ export default function AdminDashboard() {
             .order('date', { ascending: false });
 
         if (ordersError) {
-            console.error("Failed to listen to orders:", ordersError);
-            setIsLoading(false);
-            return;
+            console.error("Failed to fetch orders:", ordersError);
+        }
+        
+        const { data: activityData, error: activityError } = await supabase
+            .from('admin_activity')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(5);
+        
+        if (activityError) {
+             console.error("Failed to fetch activity:", activityError);
+        } else {
+            setActivityLog(activityData as AdminActivity[]);
         }
 
         const allOrders: Order[] = ordersData ? ordersData.map((o: any) => ({ ...o, date: o.date ? new Date(o.date) : null })) : [];
@@ -240,24 +246,31 @@ export default function AdminDashboard() {
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-             {activityLog.map((activity, index) => (
-                <div key={index} className="flex items-start gap-3">
-                    <div className="bg-muted rounded-full p-2">
-                        <Activity className="h-4 w-4 text-muted-foreground" />
+             {isLoading ? <div className="flex h-full w-full items-center justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/></div> : activityLog.length > 0 ? (
+                activityLog.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3">
+                        <div className="bg-muted rounded-full p-2 mt-1">
+                            <Activity className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                            <p className="text-sm">
+                                <span className="font-semibold">{activity.action}</span>
+                                {activity.details && <span className="text-muted-foreground"> - {activity.details}</span>}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                {activity.user_agent} &middot; {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-sm" dangerouslySetInnerHTML={{ __html: activity.action.replace(/"(.*?)"/g, '<span class="font-semibold text-foreground">"$1"</span>') }} />
-                        <p className="text-xs text-muted-foreground">{activity.user} &middot; {activity.time}</p>
-                    </div>
-                </div>
-             ))}
+                 ))
+             ) : (
+                 <div className="text-center text-muted-foreground py-10">No recent activity.</div>
+             )}
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-
-    
 
     

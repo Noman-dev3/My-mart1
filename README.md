@@ -56,6 +56,15 @@ CREATE TABLE IF NOT EXISTS "siteContent" (
     content JSONB
 );
 
+-- Create the admin activity table
+CREATE TABLE IF NOT EXISTS admin_activity (
+    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    user_agent TEXT,
+    action TEXT,
+    details TEXT
+);
+
 
 -- RLS Policies for products table
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
@@ -81,6 +90,11 @@ DROP POLICY IF EXISTS "Site content is viewable by everyone." ON "siteContent";
 CREATE POLICY "Site content is viewable by everyone." ON "siteContent" FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admins can manage site content." ON "siteContent";
 CREATE POLICY "Admins can manage site content." ON "siteContent" FOR ALL USING (true); -- Simplified for admin panel
+
+-- RLS Policies for admin_activity table
+ALTER TABLE admin_activity ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admins can manage admin activity." ON admin_activity;
+CREATE POLICY "Admins can manage admin activity." ON admin_activity FOR ALL USING (true);
 
 
 -- Function to get distinct categories
@@ -128,6 +142,15 @@ EXCEPTION
     -- do nothing
 END;
 $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE admin_activity;
+EXCEPTION
+  WHEN duplicate_object THEN
+    -- do nothing
+END;
+$$;
 ```
 ---
 ## Admin Panel Access
@@ -138,4 +161,4 @@ To access the admin dashboard, navigate to `/admin` and log in with the followin
 
 These are hardcoded in the application. You can change them in `src/context/admin-auth-context.tsx`.
 
-
+    
