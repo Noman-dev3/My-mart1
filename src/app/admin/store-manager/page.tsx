@@ -87,8 +87,7 @@ export default function StoreManagerPage() {
   const barcodeTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const codeReader = useRef(new BrowserMultiFormatReader());
-  const isScanning = useRef(true);
-
+  
   const addProductToCart = useCallback((product: {id: string, name: string, price: number, image?: string}) => {
       setCart(prevCart => {
         const existingItem = prevCart.find(item => item.id === product.id);
@@ -110,12 +109,10 @@ export default function StoreManagerPage() {
   const processBarcode = useCallback(async (barcode: string) => {
     if (!barcode.trim() || isSubmitting) return;
     
-    isScanning.current = false;
     setIsSubmitting(true);
     toast({ title: 'Processing...', description: `Searching for barcode: ${barcode}` });
 
     try {
-        // First, check local storage for a temporary product
         const tempProducts = getTempProducts();
         const tempProduct = tempProducts.find(p => p.id === barcode.trim());
 
@@ -127,7 +124,6 @@ export default function StoreManagerPage() {
         const { data: product, error } = await getProductByBarcode(barcode.trim());
 
         if (error || !product) {
-            // Product not found in DB, open the dialog to add a temporary one
             setTempProductBarcode(barcode.trim());
             setTempProductName('');
             setTempProductPrice('');
@@ -144,10 +140,12 @@ export default function StoreManagerPage() {
         });
     } finally {
         setManualBarcode('');
-        setIsSubmitting(false);
-        setTimeout(() => { isScanning.current = !isCustomerDialogOpen && !isTempProductDialogOpen; }, 1500);
+        // Pause before re-enabling scanner to prevent double scans
+        setTimeout(() => { 
+            setIsSubmitting(false);
+        }, 1500); 
     }
-  }, [toast, isSubmitting, addProductToCart, isCustomerDialogOpen, isTempProductDialogOpen]);
+  }, [toast, isSubmitting, addProductToCart]);
   
 
   useEffect(() => {
@@ -184,45 +182,38 @@ export default function StoreManagerPage() {
         if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
     };
   }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen]);
-
-
-  useEffect(() => {
-    isScanning.current = !isCustomerDialogOpen && !isTempProductDialogOpen;
-  }, [isCustomerDialogOpen, isTempProductDialogOpen]);
   
-  const stopScanner = useCallback(() => {
-    codeReader.current.reset();
-    if(videoRef.current && videoRef.current.srcObject){
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-    }
-  }, []);
-
-  const startScanner = useCallback(async () => {
-    if (!videoRef.current || !navigator.mediaDevices) {
-        toast({
-            title: 'Scanner Unavailable',
-            description: 'Camera features are not supported on this device/browser.',
-            variant: 'destructive'
-        });
+  const tick = useCallback(() => {
+    if (isSubmitting || isCustomerDialogOpen || isTempProductDialogOpen) {
+        requestAnimationFrame(tick);
         return;
     };
+
+    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+        try {
+            const result = codeReader.current.decodeFromVideoElement(videoRef.current);
+            if (result) {
+                processBarcode(result.getText());
+            }
+        } catch (err) {
+            if (!(err instanceof NotFoundException)) {
+                console.error('Barcode decoding error:', err);
+            }
+        }
+    }
+    requestAnimationFrame(tick);
+  }, [processBarcode, isSubmitting, isCustomerDialogOpen, isTempProductDialogOpen]);
+  
+  const startScanner = useCallback(async () => {
+    if (!videoRef.current || !navigator.mediaDevices) return;
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
         setHasCameraPermission(true);
         if(videoRef.current) {
             videoRef.current.srcObject = stream;
-
-            codeReader.current.decodeFromStream(stream, videoRef.current, (result, err) => {
-                if (result && isScanning.current) {
-                    processBarcode(result.getText());
-                }
-                if (err && !(err instanceof NotFoundException)) {
-                    console.error('Barcode decoding error:', err);
-                }
-            });
+            videoRef.current.play();
+            requestAnimationFrame(tick);
         }
     } catch (error) {
         console.error('Error accessing camera:', error);
@@ -234,8 +225,15 @@ export default function StoreManagerPage() {
           description: 'Please enable camera permissions in your browser settings to use this app.',
         });
     }
-  }, [processBarcode, toast]);
+  }, [toast, tick]);
 
+  const stopScanner = useCallback(() => {
+    if(videoRef.current && videoRef.current.srcObject){
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+    }
+  }, []);
 
   useEffect(() => {
     if (isCameraOn) {
@@ -243,7 +241,6 @@ export default function StoreManagerPage() {
     } else {
       stopScanner();
     }
-
     return () => {
       stopScanner();
     };
@@ -347,16 +344,15 @@ export default function StoreManagerPage() {
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
                         </div>
+                         {hasCameraPermission === false && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10 text-center">
+                                <CameraOff className="h-10 w-10 text-destructive" />
+                                <p className="mt-2 text-muted-foreground">Camera access is required.</p>
+                                <p className="text-xs text-muted-foreground/80 px-4">Please allow camera permissions in your browser settings and refresh the page.</p>
+                            </div>
+                        )}
                     </div>
                  )}
-                 {hasCameraPermission === false && isCameraOn && (
-                    <Alert variant="destructive">
-                    <AlertTitle>Camera Access Required</AlertTitle>
-                    <AlertDescription>
-                        Please allow camera access in your browser settings to use this feature.
-                    </AlertDescription>
-                    </Alert>
-                )}
                  
                  <Separator />
                 <form onSubmit={handleManualAdd} className="w-full max-w-md space-y-2">
@@ -530,7 +526,5 @@ export default function StoreManagerPage() {
        </Dialog>
     </div>
   );
-
-    
 
     
