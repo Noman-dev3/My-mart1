@@ -70,22 +70,50 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
+    defaultValues: {
+        name: "",
+        description: "",
+        price: 0,
+        image: "",
+        category: "Electronics",
+        brand: "",
+        stockQuantity: 0,
+        barcode: "",
+        specifications: {},
+        reviewsData: [],
+        questions: [],
+    }
   });
 
   useEffect(() => {
-    form.reset({
-      name: product?.name || "",
-      description: product?.description || "",
-      price: product?.price || 0,
-      image: product?.image || "",
-      category: product?.category || "Electronics",
-      brand: product?.brand || "",
-      stockQuantity: product?.stockQuantity || 0,
-      barcode: product?.barcode || "",
-      specifications: product?.specifications || {},
-      reviewsData: product?.reviewsData || [],
-      questions: product?.questions || [],
-    });
+    // Explicitly set values to prevent uncontrolled component errors.
+    // This is more robust than form.reset().
+    if (product) {
+      form.setValue('name', product.name || "");
+      form.setValue('description', product.description || "");
+      form.setValue('price', product.price || 0);
+      form.setValue('image', product.image || "");
+      form.setValue('category', product.category || 'Electronics');
+      form.setValue('brand', product.brand || "");
+      form.setValue('stockQuantity', product.stockQuantity || 0);
+      form.setValue('barcode', product.barcode || "");
+      form.setValue('specifications', product.specifications || {});
+      form.setValue('reviewsData', product.reviewsData || []);
+      form.setValue('questions', product.questions || []);
+    } else {
+      // Set guaranteed default values for a new product
+      form.setValue('name', '');
+      form.setValue('description', '');
+      form.setValue('price', 0);
+      form.setValue('image', 'https://picsum.photos/seed/product/600/600');
+      form.setValue('category', 'Electronics');
+      form.setValue('brand', '');
+      form.setValue('stockQuantity', 0);
+      form.setValue('barcode', '');
+      form.setValue('specifications', {});
+      form.setValue('reviewsData', []);
+      form.setValue('questions', []);
+    }
   }, [product, form]);
 
   const handleAnswerSubmit = async (questionId: string, answer: string) => {
@@ -111,7 +139,14 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   }
 
   const onFormSubmit = async (values: ProductFormValues) => {
-    const result = await onSubmit(values);
+    // Final guard to ensure complex fields are correctly formatted JSON
+    const submissionValues = {
+        ...values,
+        specifications: values.specifications || {},
+        reviewsData: values.reviewsData || [],
+        questions: values.questions || [],
+    };
+    const result = await onSubmit(submissionValues);
     if (result) {
       onCancel();
     }
@@ -174,7 +209,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select a category" />

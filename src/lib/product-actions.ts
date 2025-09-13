@@ -121,12 +121,21 @@ const questionSchema = z.object({
 export async function addProduct(data: z.infer<typeof productSchema>) {
     const supabase = createServerActionClient({ cookies });
 
+    // Explicitly construct the object to ensure all fields are present and correctly typed.
+    // This is the most robust way to prevent database errors.
     const newProduct = {
-        ...data,
-        specifications: {},
-        reviewsData: [],
-        questions: [],
-        rating: Math.floor(Math.random() * 5) + 1,
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        image: data.image,
+        category: data.category,
+        brand: data.brand,
+        stockQuantity: data.stockQuantity,
+        barcode: data.barcode,
+        specifications: {}, // Always an empty object for new products
+        reviewsData: [], // Always an empty array for new products
+        questions: [], // Always an empty array for new products
+        rating: Math.floor(Math.random() * 5) + 1, // Keep random defaults for now
         reviews: Math.floor(Math.random() * 100),
     };
 
@@ -150,19 +159,26 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
 
 export async function updateProduct(productId: string, data: z.infer<typeof productSchema> & { specifications: any, reviewsData: any, questions: any }) {
     const supabase = createServerActionClient({ cookies });
+    
+    // Ensure complex JSON fields are valid before updating
+    const updateData = {
+        ...data,
+        specifications: data.specifications || {},
+        reviewsData: data.reviewsData || [],
+        questions: data.questions || []
+    };
+
     const { data: updatedProduct, error } = await supabase
         .from('products')
-        .update({
-             ...data,
-             specifications: data.specifications || {},
-             reviewsData: data.reviewsData || [],
-             questions: data.questions || []
-        })
+        .update(updateData)
         .eq('id', productId)
         .select()
         .single();
     
-    if (error) throw error;
+    if (error) {
+        console.error('Database error updating product:', error);
+        throw error;
+    };
 
     revalidatePath('/admin/products');
     revalidatePath(`/product/${productId}`);
