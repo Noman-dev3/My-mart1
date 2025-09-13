@@ -2,7 +2,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/browser';
+import { BrowserMultiFormatReader } from '@zxing/browser';
+import { NotFoundException, ChecksumException, FormatException } from '@zxing/library';
 import QRCode from 'qrcode.react';
 
 // --- Helper Components ---
@@ -276,3 +277,5 @@ function GeneratorComponent() {
     </div>
   );
 }
+
+    
