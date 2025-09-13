@@ -75,24 +75,26 @@ function ScannerComponent() {
   const [scannedResult, setScannedResult] = useState('');
   const [error, setError] = useState('');
   const [isScanning, setIsScanning] = useState(false);
-  const [devices, setDevices] = useState([]);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDevice, setSelectedDevice] = useState('');
-  const videoRef = useRef(null);
-  const codeReader = useRef(new BrowserMultiFormatReader());
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
 
-  const startScan = useCallback(async (deviceId) => {
+  const startScan = useCallback(async (deviceId: string) => {
     if (!videoRef.current) return;
     setError('');
     setScannedResult('');
     setIsScanning(true);
 
+    const codeReader = new BrowserMultiFormatReader();
+    codeReaderRef.current = codeReader;
+
     try {
-      await codeReader.current.reset();
-      codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
+      codeReader.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
         if (result) {
           setScannedResult(result.getText());
           setIsScanning(false);
-          codeReader.current.reset();
+          codeReader.reset();
         }
         if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
            console.error("Scanning error:", err);
@@ -100,7 +102,7 @@ function ScannerComponent() {
            setIsScanning(false);
         }
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Camera access error:", err);
       if (err.name === 'NotAllowedError') {
         setError('Camera access was denied. Please enable it in your browser settings.');
@@ -112,7 +114,9 @@ function ScannerComponent() {
   }, []);
 
   const stopScan = useCallback(() => {
-    codeReader.current.reset();
+    if (codeReaderRef.current) {
+        codeReaderRef.current.reset();
+    }
     setIsScanning(false);
   }, []);
 
@@ -131,32 +135,26 @@ function ScannerComponent() {
     };
   }, [stopScan]);
 
-  const handleFileScan = async (event) => {
+  const handleFileScan = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setError('');
       setScannedResult('');
-      setIsScanning(true);
+      setIsScanning(true); // Visually indicate activity
+      const codeReader = new BrowserMultiFormatReader();
       try {
-        const reader = new FileReader();
-        reader.onloadend = (e) => {
-          const dataUrl = e.target?.result;
-          if (typeof dataUrl === 'string') {
-            codeReader.current.decodeFromImageUrl(dataUrl)
-              .then(result => {
-                setScannedResult(result.getText());
-              })
-              .catch(err => {
-                 console.error("File scan error:", err);
-                 setError('Could not decode barcode from the image. Please try a clearer image.');
-              })
-              .finally(() => setIsScanning(false));
-          }
-        };
-        reader.readAsDataURL(file);
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+        const result = await codeReader.decodeFromImageUrl(dataUrl);
+        setScannedResult(result.getText());
       } catch (err) {
-        console.error(err);
-        setError('Failed to read the image file.');
+        console.error("File scan error:", err);
+        setError('Could not decode barcode from the image. Please try a clearer image.');
+      } finally {
         setIsScanning(false);
       }
     }
@@ -277,5 +275,3 @@ function GeneratorComponent() {
     </div>
   );
 }
-
-    
