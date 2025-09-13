@@ -2,82 +2,101 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
+import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/library';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
 
 type BarcodeScannerProps = {
     onScan: (barcode: string) => void;
+    onClose: () => void;
 }
 
-export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
+export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const { toast } = useToast();
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-    const codeReader = useRef(new BrowserMultiFormatReader());
-    const isScanning = useRef(true);
+    const [isLoading, setIsLoading] = useState(true);
+    const animationFrameId = useRef<number>();
 
-    const startScanner = useCallback(async () => {
-        if (!videoRef.current || !navigator.mediaDevices) {
-            toast({
-                title: 'Scanner Unavailable',
-                description: 'Camera features are not supported on this device/browser.',
-                variant: 'destructive'
-            });
-            setHasPermission(false);
-            return;
-        }
-        
-        isScanning.current = true;
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            setHasPermission(true);
-            
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-
-                codeReader.current.decodeFromStream(stream, videoRef.current, (result, err) => {
-                    if (result && isScanning.current) {
-                        isScanning.current = false; // Stop scanning after one successful read
-                        onScan(result.getText());
-                    }
-                    if (err && !(err instanceof NotFoundException)) {
-                        console.error('Barcode decoding error:', err);
-                        toast({
-                            title: 'Scanning Error',
-                            description: 'Could not decode barcode. Please try again.',
-                            variant: 'destructive'
-                        });
-                    }
-                });
+    // Use useCallback to memoize the tick function
+    const tick = useCallback(() => {
+        if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+            try {
+                const reader = new BrowserMultiFormatReader();
+                const result = reader.decodeFromVideoElement(videoRef.current);
+                if (result) {
+                    onScan(result.getText());
+                }
+            } catch (err) {
+                if (err instanceof NotFoundException) {
+                    // This is expected, barcode not found in this frame
+                } else if (err instanceof ChecksumException || err instanceof FormatException) {
+                   // Also common, means a partial or invalid barcode was detected
+                } else {
+                    console.error('An unexpected scanning error occurred:', err);
+                }
             }
-        } catch (error) {
-            console.error('Error accessing camera:', error);
-            setHasPermission(false);
         }
-    }, [onScan, toast]);
-
-    const stopScanner = useCallback(() => {
-        codeReader.current.reset();
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
-        }
-    }, []);
+        animationFrameId.current = requestAnimationFrame(tick);
+    }, [onScan]);
 
     useEffect(() => {
-        startScanner();
-        return () => {
-            stopScanner();
+        let stream: MediaStream | null = null;
+        
+        const startScanner = async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' },
+                });
+
+                setHasPermission(true);
+                const videoElement = videoRef.current;
+
+                if (videoElement) {
+                    videoElement.srcObject = stream;
+                    videoElement.muted = true;
+                    videoElement.play();
+                    setIsLoading(false);
+                    animationFrameId.current = requestAnimationFrame(tick);
+                }
+
+            } catch (err) {
+                console.error("Error accessing camera:", err);
+                setHasPermission(false);
+                setIsLoading(false);
+            }
         };
-    }, [startScanner, stopScanner]);
+
+        startScanner();
+
+        // Cleanup function
+        return () => {
+            if (animationFrameId.current) {
+                cancelAnimationFrame(animationFrameId.current);
+            }
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, [tick]);
 
     return (
         <div className="flex flex-col items-center justify-center gap-4">
             <div className="w-full max-w-md aspect-video bg-card-foreground/5 rounded-lg overflow-hidden relative">
-                <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                {isLoading && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                        <p className="mt-2 text-muted-foreground">🎥 Starting camera...</p>
+                    </div>
+                )}
+                <video 
+                    ref={videoRef} 
+                    className={`w-full h-full object-cover ${isLoading ? 'hidden' : 'block'}`} 
+                    autoPlay 
+                    muted 
+                    playsInline 
+                />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
                 </div>

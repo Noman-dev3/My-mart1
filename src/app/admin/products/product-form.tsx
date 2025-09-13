@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogClose,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -275,7 +276,10 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
                     Position the barcode within the camera view to scan it.
                 </DialogDescription>
             </DialogHeader>
-            <BarcodeScanner onScan={handleBarcodeScanned} />
+            <BarcodeScanner 
+                onScan={handleBarcodeScanned} 
+                onClose={() => setIsScannerOpen(false)}
+            />
         </DialogContent>
     </Dialog>
     </>
