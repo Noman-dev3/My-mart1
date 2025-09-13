@@ -23,18 +23,41 @@ import { Label } from '@/components/ui/label';
 import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import { Switch } from '@/components/ui/switch';
 
-// A version of product for the POS cart
 type ScannedProduct = {
   id: string;
   name: string;
   price: number;
   quantity: number;
-  image: string; // Add image to match OrderItem type
+  image: string;
 };
 
 type CustomerSession = {
     id: string;
     name: string;
+};
+
+type TempProduct = {
+    id: string; // The barcode
+    name: string;
+    price: number;
+}
+
+// Local storage helpers for temporary products
+const getTempProducts = (): TempProduct[] => {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('myMart-temp-products');
+    return stored ? JSON.parse(stored) : [];
+};
+
+const saveTempProduct = (product: TempProduct) => {
+    const products = getTempProducts();
+    const existingIndex = products.findIndex(p => p.id === product.id);
+    if (existingIndex > -1) {
+        products[existingIndex] = product;
+    } else {
+        products.push(product);
+    }
+    localStorage.setItem('myMart-temp-products', JSON.stringify(products));
 };
 
 
@@ -54,42 +77,60 @@ export default function StoreManagerPage() {
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerId, setNewCustomerId] = useState('');
   
-  // Barcode scanner input handling
+  // Temporary product state
+  const [isTempProductDialogOpen, setIsTempProductDialogOpen] = useState(false);
+  const [tempProductBarcode, setTempProductBarcode] = useState('');
+  const [tempProductName, setTempProductName] = useState('');
+  const [tempProductPrice, setTempProductPrice] = useState('');
+  
   const barcodeBuffer = useRef<string[]>([]);
   const barcodeTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const codeReader = useRef(new BrowserMultiFormatReader());
   const isScanning = useRef(true);
 
+  const addProductToCart = (product: {id: string, name: string, price: number, image?: string}) => {
+      setCart(prevCart => {
+        const existingItem = prevCart.find(item => item.id === product.id);
+        if (existingItem) {
+          return prevCart.map(item =>
+            item.id === product.id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          );
+        }
+        toast({ title: "Item Added", description: `${product.name} added to cart.` });
+        return [...prevCart, { id: product.id, name: product.name, price: product.price, quantity: 1, image: product.image || 'https://picsum.photos/seed/placeholder/100' }];
+      });
+  }
+
   const processBarcode = useCallback(async (barcode: string) => {
     if (!barcode.trim() || isSubmitting) return;
     
-    isScanning.current = false; // Pause scanning
+    isScanning.current = false;
     setIsSubmitting(true);
     toast({ title: 'Processing...', description: `Searching for barcode: ${barcode}` });
 
     try {
+        // First, check local storage for a temporary product
+        const tempProducts = getTempProducts();
+        const tempProduct = tempProducts.find(p => p.id === barcode.trim());
+
+        if (tempProduct) {
+            addProductToCart(tempProduct);
+            return;
+        }
+
         const { data: product, error } = await getProductByBarcode(barcode.trim());
 
         if (error || !product) {
-          toast({
-            variant: 'destructive',
-            title: 'Product Not Found',
-            description: `No product found with barcode: ${barcode}`,
-          });
+            // Product not found in DB, open the dialog to add a temporary one
+            setTempProductBarcode(barcode.trim());
+            setTempProductName('');
+            setTempProductPrice('');
+            setIsTempProductDialogOpen(true);
         } else {
-          setCart(prevCart => {
-            const existingItem = prevCart.find(item => item.id === product.id);
-            if (existingItem) {
-              return prevCart.map(item =>
-                item.id === product.id
-                  ? { ...item, quantity: item.quantity + 1 }
-                  : item
-              );
-            }
-            toast({ title: "Item Added", description: `${product.name} added to cart.` });
-            return [...prevCart, { id: product.id, name: product.name, price: product.price, quantity: 1, image: product.image }];
-          });
+            addProductToCart(product);
         }
     } catch(e) {
         console.error("Error processing barcode:", e);
@@ -101,16 +142,14 @@ export default function StoreManagerPage() {
     } finally {
         setManualBarcode('');
         setIsSubmitting(false);
-        // Resume scanning after a delay
-        setTimeout(() => { isScanning.current = !isCustomerDialogOpen; }, 1500);
+        setTimeout(() => { isScanning.current = !isCustomerDialogOpen && !isTempProductDialogOpen; }, 1500);
     }
-  }, [toast, isSubmitting, isCustomerDialogOpen]);
+  }, [toast, isSubmitting, isCustomerDialogOpen, isTempProductDialogOpen]);
   
 
-  // Effect for dedicated barcode scanner input (e.g., a USB scanner)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (isCustomerDialogOpen) return;
+        if (isCustomerDialogOpen || isTempProductDialogOpen) return;
 
         if (e.key === 'Enter') {
             e.preventDefault(); 
@@ -141,13 +180,12 @@ export default function StoreManagerPage() {
         window.removeEventListener('keydown', handleKeyDown);
         if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
     };
-  }, [processBarcode, isCustomerDialogOpen]);
+  }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen]);
 
 
-  // Effect to control the scanner based on dialog state
   useEffect(() => {
-    isScanning.current = !isCustomerDialogOpen;
-  }, [isCustomerDialogOpen]);
+    isScanning.current = !isCustomerDialogOpen && !isTempProductDialogOpen;
+  }, [isCustomerDialogOpen, isTempProductDialogOpen]);
   
   const stopScanner = useCallback(() => {
     codeReader.current.reset();
@@ -186,12 +224,16 @@ export default function StoreManagerPage() {
     } catch (error) {
         console.error('Error accessing camera:', error);
         setHasCameraPermission(false);
-        setIsCameraOn(false); // Turn off toggle if permission fails
+        setIsCameraOn(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings to use this app.',
+        });
     }
   }, [processBarcode, toast]);
 
 
-  // Effect to initialize and clean up the scanner based on the toggle state
   useEffect(() => {
     if (isCameraOn) {
       startScanner();
@@ -226,7 +268,7 @@ export default function StoreManagerPage() {
     }
     setCurrentCustomer({ id: newCustomerId, name: newCustomerName });
     setIsCustomerDialogOpen(false);
-    setCart([]); // Clear cart for new customer
+    setCart([]);
   }
 
   const endSession = () => {
@@ -247,7 +289,7 @@ export default function StoreManagerPage() {
             total: cartTotal,
         });
         toast({ title: "Sale Completed!", description: "Order has been recorded successfully." });
-        endSession(); // End session on success
+        endSession();
     } catch (error) {
         console.error("Failed to complete sale:", error);
         toast({ title: "Error", description: "Failed to complete the sale. Please try again.", variant: "destructive" });
@@ -256,8 +298,26 @@ export default function StoreManagerPage() {
     }
   };
 
+  const handleAddTempProduct = () => {
+    const price = parseFloat(tempProductPrice);
+    if (!tempProductName.trim() || isNaN(price) || price <= 0) {
+        toast({ title: "Invalid Data", description: "Please enter a valid name and price.", variant: "destructive" });
+        return;
+    }
+    
+    const newTempProduct: TempProduct = {
+        id: tempProductBarcode,
+        name: tempProductName,
+        price: price,
+    };
+    
+    saveTempProduct(newTempProduct);
+    addProductToCart(newTempProduct);
+    setIsTempProductDialogOpen(false);
+  }
+
   const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
-  const cartTotal = cartSubtotal; // Placeholder for taxes/discounts
+  const cartTotal = cartSubtotal;
 
   return (
     <div className="space-y-6 h-full flex flex-col">
@@ -267,7 +327,6 @@ export default function StoreManagerPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
-        {/* Left Column: Scanner and Manual Input */}
         <Card className="flex flex-col">
             <CardHeader>
                 <div className="flex justify-between items-center">
@@ -287,7 +346,7 @@ export default function StoreManagerPage() {
                         </div>
                     </div>
                  )}
-                 {hasCameraPermission === false && (
+                 {hasCameraPermission === false && isCameraOn && (
                     <Alert variant="destructive">
                     <AlertTitle>Camera Access Required</AlertTitle>
                     <AlertDescription>
@@ -314,7 +373,6 @@ export default function StoreManagerPage() {
             </CardContent>
         </Card>
 
-        {/* Right Column: Billing */}
         <Card className="flex flex-col">
             <CardHeader>
                 <div className="flex justify-between items-center">
@@ -427,6 +485,47 @@ export default function StoreManagerPage() {
                 </DialogFooter>
             </DialogContent>
        </Dialog>
+       
+       <Dialog open={isTempProductDialogOpen} onOpenChange={setIsTempProductDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add Temporary Product</DialogTitle>
+                    <DialogDescription>
+                        This barcode was not found. Add a temporary name and price to sell it now.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="temp-barcode">Barcode</Label>
+                        <Input id="temp-barcode" value={tempProductBarcode} disabled />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="temp-name">Product Name</Label>
+                        <Input 
+                            id="temp-name" 
+                            value={tempProductName}
+                            onChange={(e) => setTempProductName(e.target.value)}
+                            placeholder="e.g., Local Soda"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="temp-price">Price (PKR)</Label>
+                        <Input 
+                            id="temp-price" 
+                            type="number"
+                            value={tempProductPrice}
+                            onChange={(e) => setTempProductPrice(e.target.value)}
+                            placeholder="e.g., 150"
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsTempProductDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleAddTempProduct}>Add to Cart</Button>
+                </DialogFooter>
+            </DialogContent>
+       </Dialog>
     </div>
   );
+
     
