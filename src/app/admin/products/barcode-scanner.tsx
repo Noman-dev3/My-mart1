@@ -6,6 +6,8 @@ import { MultiFormatReader, BarcodeFormat, DecodeHintType, NotFoundException } f
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CameraOff } from 'lucide-react';
+import { readBarcodeFromImage } from '@/ai/flows/read-barcode';
+import { Button } from '@/components/ui/button';
 
 type BarcodeScannerProps = {
   onScan: (barcode: string) => void;
@@ -18,6 +20,7 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   const { toast } = useToast();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAiScanning, setIsAiScanning] = useState(false);
 
   const codeReader = useRef<MultiFormatReader | null>(null);
 
@@ -45,7 +48,8 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           }
         } catch (err) {
           if (!(err instanceof NotFoundException)) {
-            console.error('Barcode decoding error:', err);
+            // This can be noisy, so we'll comment it out unless debugging
+            // console.error('Barcode decoding error:', err);
           }
         }
       }
@@ -104,6 +108,42 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
     };
   }, [tick, toast]);
 
+  const handleAiScan = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    setIsAiScanning(true);
+    toast({ title: 'AI Scan Started', description: 'Capturing frame and analyzing with AI...' });
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (!context) {
+        toast({ title: 'Error', description: 'Could not get canvas context.', variant: 'destructive' });
+        setIsAiScanning(false);
+        return;
+    }
+    
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageDataUri = canvas.toDataURL('image/jpeg');
+
+    try {
+        const result = await readBarcodeFromImage({ imageDataUri });
+        if (result && result.barcode) {
+            onScan(result.barcode);
+        } else {
+            throw new Error("AI could not detect a barcode.");
+        }
+    } catch(err) {
+        console.error("AI Scan Error:", err);
+        toast({ title: 'AI Scan Failed', description: 'Could not extract a barcode from the image. Please try again.', variant: 'destructive' });
+    } finally {
+        setIsAiScanning(false);
+    }
+  };
+
+
   return (
     <div className="flex flex-col items-center justify-center gap-4">
       <div className="w-full max-w-md aspect-video bg-card-foreground/5 rounded-lg overflow-hidden relative">
@@ -130,6 +170,12 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
           <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
         </div>
       </div>
+      
+      <Button onClick={handleAiScan} disabled={isAiScanning || isLoading || !hasPermission}>
+        {isAiScanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : '✨'}
+        AI Scan
+      </Button>
+
       {hasPermission === false && (
         <Alert variant="destructive">
           <AlertTitle>Camera Access Required</AlertTitle>
