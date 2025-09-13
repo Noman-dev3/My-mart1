@@ -47,7 +47,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { addProduct, deleteProduct, updateProduct, type Product, type ProductFormValues } from '@/lib/product-actions';
+import { addProduct, deleteProduct, updateProduct, type Product } from '@/lib/product-actions';
+import type { ProductFormValues } from '@/lib/schemas';
 import { MoreHorizontal, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
@@ -180,7 +181,7 @@ export default function ProductsPage() {
         accessorKey: "price",
         header: () => <div className="text-right">Price</div>,
         cell: ({ row }) => {
-            const amount = parseFloat(row.getValue("price"))
+            const amount = parseFloat(row.original.price as any)
             const formatted = new Intl.NumberFormat("en-PK", {
                 style: "currency",
                 currency: "PKR",
@@ -389,5 +390,3 @@ export default function ProductsPage() {
     </>
   );
 }
-
-    

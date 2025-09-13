@@ -1,14 +1,13 @@
 
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CameraOff } from 'lucide-react';
 import { readBarcodeFromImage } from '@/ai/flows/read-barcode';
 import { Button } from '@/components/ui/button';
 import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/library';
-
 
 type BarcodeScannerProps = {
   onScan: (barcode: string) => void;
@@ -21,10 +20,9 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAiScanning, setIsAiScanning] = useState(false);
-  const codeReader = useRef(new BrowserMultiFormatReader());
-
 
   useEffect(() => {
+    const codeReader = new BrowserMultiFormatReader();
     let isMounted = true;
     
     const startCamera = async () => {
@@ -35,18 +33,16 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: { facingMode: 'environment' },
             });
-
             if (isMounted) {
                 videoRef.current.srcObject = stream;
-                videoRef.current.play();
                 setHasPermission(true);
-
+                
                 // Start continuous scanning
-                 codeReader.current.decodeFromVideoElement(videoRef.current, (result, err) => {
-                    if (result) {
+                 codeReader.decodeFromVideoElement(videoRef.current, (result, err) => {
+                    if (result && isMounted) {
                         onScan(result.getText());
                     }
-                    if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
+                    if (err && isMounted && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
                        console.error("Scanning error:", err);
                        toast({
                            title: 'Scanning Error',
@@ -77,12 +73,17 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
 
     return () => {
       isMounted = false;
-      codeReader.current.reset();
+      codeReader.reset();
       if (videoRef.current && videoRef.current.srcObject) {
-         (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+         try {
+            (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+         } catch (e) {
+            console.error("Error stopping video stream:", e);
+         }
       }
     };
-  }, [toast, onScan]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAiScan = async () => {
     if (!videoRef.current?.srcObject) {
@@ -148,6 +149,7 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
           className={`w-full h-full object-cover ${isLoading ? 'opacity-0' : 'opacity-100'}`}
           playsInline
           muted
+          autoPlay
         />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />

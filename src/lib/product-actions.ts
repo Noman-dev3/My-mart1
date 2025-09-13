@@ -6,7 +6,8 @@ import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { randomBytes } from 'crypto';
-import { productSchema, type ProductFormValues } from './schemas';
+import { productSchema } from './schemas';
+import type { ProductFormValues } from './schemas';
 
 // We define the Product type here as this file is the source of truth for product data structures.
 export type Product = {
@@ -36,7 +37,7 @@ export type Product = {
         date: string;
         answer?: string;
     }[];
-    created_at: any;
+    created_at: string;
 };
 
 export type { ProductFormValues };
@@ -129,9 +130,9 @@ export async function addProduct(values: ProductFormValues) {
             specifications: validatedData.specifications || {},
             reviewsData: validatedData.reviewsData || [],
             questions: validatedData.questions || [],
-            rating: 0,
-            reviews: 0,
-            created_at: new Date().toISOString(),
+            rating: 0, // Explicitly set default
+            reviews: 0, // Explicitly set default
+            created_at: new Date().toISOString(), // Explicitly set timestamp
         };
 
         const { data: savedProduct, error } = await supabase

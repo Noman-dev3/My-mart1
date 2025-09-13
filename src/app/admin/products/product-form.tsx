@@ -30,8 +30,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import type { Product, ProductFormValues } from "@/lib/product-actions";
-import { productSchema } from "@/lib/schemas";
+import type { Product } from "@/lib/product-actions";
+import { productSchema, type ProductFormValues } from "@/lib/schemas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { answerProductQuestion } from "@/lib/product-actions";
 import { useToast } from "@/hooks/use-toast";
@@ -70,20 +70,8 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
 
   useEffect(() => {
     if (product) {
-      // Use setValue for each field to ensure controlled components.
-      form.setValue('name', product.name || "");
-      form.setValue('description', product.description || "");
-      form.setValue('price', product.price || 0);
-      form.setValue('image', product.image || "");
-      form.setValue('category', product.category || 'Electronics');
-      form.setValue('brand', product.brand || "");
-      form.setValue('stockQuantity', product.stockQuantity || 0);
-      form.setValue('barcode', product.barcode || "");
-      form.setValue('specifications', product.specifications || {});
-      form.setValue('reviewsData', product.reviewsData || []);
-      form.setValue('questions', product.questions || []);
+      form.reset(product);
     } else {
-      // Explicitly set all defaults for a new product to prevent uncontrolled inputs.
       form.reset({
         name: '',
         description: '',
@@ -123,7 +111,11 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   }
 
   const onFormSubmit = async (values: ProductFormValues) => {
-    const result = await onSubmit(values);
+    const dataToSubmit = {
+      ...values,
+      specifications: values.specifications || {},
+    };
+    const result = await onSubmit(dataToSubmit);
     if (result) {
       onCancel();
     }
