@@ -103,9 +103,6 @@ const productSchema = z.object({
     brand: z.string().min(2, "Brand must be at least 2 characters long."),
     stockQuantity: z.coerce.number().int("Stock must be a whole number."),
     barcode: z.string().min(8, "Barcode must be at least 8 characters long."),
-    specifications: z.any(),
-    reviewsData: z.any(),
-    questions: z.any(),
 });
 
 const answerSchema = z.object({
@@ -128,41 +125,10 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         ...data,
         rating: Math.floor(Math.random() * 5) + 1,
         reviews: Math.floor(Math.random() * 100),
+        specifications: {},
+        reviewsData: [],
+        questions: [],
     };
-    
-    // Special handling for the test product barcode
-    if (data.barcode === '8964001026556') {
-        const testProduct = {
-            name: "Test Scanner Product",
-            description: "A test product to validate the barcode scanner functionality.",
-            price: 150.00,
-            image: "https://picsum.photos/seed/scanner-product/600/600",
-            category: "Groceries" as const,
-            brand: "TestBrand",
-            stockQuantity: 100,
-            barcode: "8964001026556",
-            rating: 5,
-            reviews: 1,
-            specifications: {},
-            reviewsData: [],
-            questions: [],
-            created_at: new Date().toISOString(),
-        };
-        
-        // Check if test product already exists to avoid duplicate errors
-        const { data: existing } = await supabase.from('products').select('id').eq('barcode', '8964001026556').single();
-        if (existing) {
-            console.log("Test product already exists. Skipping creation.");
-            return existing;
-        }
-
-        const { data: savedProduct, error } = await supabase.from('products').insert(testProduct).select().single();
-        if (error) throw error;
-        
-        revalidatePath('/admin/products');
-        return savedProduct;
-    }
-
 
     const { data: savedProduct, error } = await supabase
         .from('products')
@@ -170,7 +136,10 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
         .select()
         .single();
     
-    if (error) throw error;
+    if (error) {
+        console.error('Database error saving product:', error);
+        throw error;
+    }
     
     revalidatePath('/admin/products');
     revalidatePath('/products');
@@ -179,11 +148,16 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
     return savedProduct;
 }
 
-export async function updateProduct(productId: string, data: z.infer<typeof productSchema>) {
+export async function updateProduct(productId: string, data: z.infer<typeof productSchema> & { specifications: any, reviewsData: any, questions: any }) {
     const supabase = createServerActionClient({ cookies });
     const { data: updatedProduct, error } = await supabase
         .from('products')
-        .update(data)
+        .update({
+             ...data,
+             specifications: data.specifications || {},
+             reviewsData: data.reviewsData || [],
+             questions: data.questions || []
+        })
         .eq('id', productId)
         .select()
         .single();

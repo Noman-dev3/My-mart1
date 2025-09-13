@@ -35,7 +35,7 @@ import type { Product } from "@/lib/product-actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { answerProductQuestion } from "@/lib/product-actions";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, RefreshCw, ScanLine } from "lucide-react";
 import { getProductQuestionAnswer } from "@/ai/flows/answer-product-question"
 import BarcodeScanner from "./barcode-scanner"
@@ -70,20 +70,24 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema),
-    defaultValues: {
-        name: product?.name || "",
-        description: product?.description || "",
-        price: product?.price || 0,
-        image: product?.image || "",
-        category: product?.category || "Electronics",
-        brand: product?.brand || "",
-        stockQuantity: product?.stockQuantity || 0,
-        barcode: product?.barcode || "",
-        specifications: product?.specifications || {},
-        reviewsData: product?.reviewsData || [],
-        questions: product?.questions || [],
-    },
   });
+
+  useEffect(() => {
+    // Reset form when product prop changes
+    form.reset({
+      name: product?.name || "",
+      description: product?.description || "",
+      price: product?.price || 0,
+      image: product?.image || "",
+      category: product?.category || "Electronics",
+      brand: product?.brand || "",
+      stockQuantity: product?.stockQuantity || 0,
+      barcode: product?.barcode || "",
+      specifications: product?.specifications || {},
+      reviewsData: product?.reviewsData || [],
+      questions: product?.questions || [],
+    });
+  }, [product, form]);
 
   const handleAnswerSubmit = async (questionId: string, answer: string) => {
     if (!product) return;

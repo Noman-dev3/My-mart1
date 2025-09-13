@@ -120,35 +120,33 @@ export default function ProductsPage() {
     }
   }
   
-  const handleFormSubmit = async (values: any) => {
-    try {
-        if(selectedProduct) {
-            await updateProduct(selectedProduct.id, values);
-            await logAdminActivity({
-                action: 'Updated product',
-                details: `Product: ${values.name}`
-            });
-            toast({ title: "Success", description: "Product updated successfully." });
-        } else {
-            await addProduct(values);
-             await logAdminActivity({
-                action: 'Added new product',
-                details: `Product: ${values.name}`
-            });
-            toast({ title: "Success", description: "Product added successfully." });
-        }
-        return true; // Indicate success
-    } catch (error) {
-        toast({ title: "Error", description: "Failed to save product.", variant: "destructive" });
-        return false; // Indicate failure
-    }
-  }
-
   const onFormSubmit = async (values: any) => {
-    const success = await handleFormSubmit(values);
-    if (success) {
+    try {
+      if (selectedProduct) {
+        await updateProduct(selectedProduct.id, values);
+        await logAdminActivity({
+          action: 'Updated product',
+          details: `Product: ${values.name}`,
+        });
+        toast({ title: 'Success', description: 'Product updated successfully.' });
+      } else {
+        await addProduct(values);
+        await logAdminActivity({
+          action: 'Added new product',
+          details: `Product: ${values.name}`,
+        });
+        toast({ title: 'Success', description: 'Product added successfully.' });
+      }
       setIsFormOpen(false);
       setSelectedProduct(undefined);
+      return true; // Indicate success
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to save product.',
+        variant: 'destructive',
+      });
+      return false; // Indicate failure
     }
   };
 
