@@ -87,6 +87,7 @@ export default function StoreManagerPage() {
   const barcodeTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const codeReader = useRef(new BrowserMultiFormatReader());
+  const streamRef = useRef<MediaStream | null>(null);
   
   const addProductToCart = useCallback((product: {id: string, name: string, price: number, image?: string}) => {
       setCart(prevCart => {
@@ -184,67 +185,71 @@ export default function StoreManagerPage() {
   }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen]);
   
   const tick = useCallback(() => {
-    if (isSubmitting || isCustomerDialogOpen || isTempProductDialogOpen) {
-        requestAnimationFrame(tick);
-        return;
-    };
-
-    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+    if (videoRef.current && videoRef.current.srcObject && !isSubmitting && !isCustomerDialogOpen && !isTempProductDialogOpen) {
+      if (videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
         try {
-            const result = codeReader.current.decodeFromVideoElement(videoRef.current);
-            if (result) {
-                processBarcode(result.getText());
-            }
+          const result = codeReader.current.decodeFromVideoElement(videoRef.current);
+          if (result) {
+            processBarcode(result.getText());
+          }
         } catch (err) {
-            if (!(err instanceof NotFoundException)) {
-                console.error('Barcode decoding error:', err);
-            }
+          if (!(err instanceof NotFoundException)) {
+            console.error('Barcode decoding error:', err);
+          }
         }
+      }
     }
-    requestAnimationFrame(tick);
-  }, [processBarcode, isSubmitting, isCustomerDialogOpen, isTempProductDialogOpen]);
+    if (isCameraOn) {
+        requestAnimationFrame(tick);
+    }
+  }, [processBarcode, isSubmitting, isCustomerDialogOpen, isTempProductDialogOpen, isCameraOn]);
   
-  const startScanner = useCallback(async () => {
-    if (!videoRef.current || !navigator.mediaDevices) return;
-
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        setHasCameraPermission(true);
-        if(videoRef.current) {
+  useEffect(() => {
+    const startScanner = async () => {
+      if (isCameraOn && videoRef.current && navigator.mediaDevices) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+          streamRef.current = stream;
+          setHasCameraPermission(true);
+          if (videoRef.current) {
             videoRef.current.srcObject = stream;
             videoRef.current.play();
             requestAnimationFrame(tick);
+          }
+        } catch (error) {
+          console.error('Error accessing camera:', error);
+          setHasCameraPermission(false);
+          setIsCameraOn(false);
+          toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera permissions in your browser settings.',
+          });
         }
-    } catch (error) {
-        console.error('Error accessing camera:', error);
-        setHasCameraPermission(false);
-        setIsCameraOn(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings to use this app.',
-        });
-    }
-  }, [toast, tick]);
+      }
+    };
 
-  const stopScanner = useCallback(() => {
-    if(videoRef.current && videoRef.current.srcObject){
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
+    const stopScanner = () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
         videoRef.current.srcObject = null;
-    }
-  }, []);
-
-  useEffect(() => {
+      }
+    };
+    
     if (isCameraOn) {
       startScanner();
     } else {
       stopScanner();
     }
+
     return () => {
       stopScanner();
     };
-  }, [isCameraOn, startScanner, stopScanner]);
+  }, [isCameraOn, tick, toast]);
+
 
   const handleManualAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -526,5 +531,7 @@ export default function StoreManagerPage() {
        </Dialog>
     </div>
   );
+
+    
 
     
