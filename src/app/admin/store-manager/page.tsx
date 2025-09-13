@@ -6,9 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X, Camera, CameraOff } from 'lucide-react';
+import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X, CameraOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getProductByBarcode, type Product } from '@/lib/product-actions';
 import { createStoreOrder } from '@/lib/order-actions';
 import {
@@ -22,6 +21,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 import { Switch } from '@/components/ui/switch';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 type ScannedProduct = {
   id: string;
@@ -65,6 +66,7 @@ export default function StoreManagerPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
   const [cart, setCart] = useState<ScannedProduct[]>([]);
   const [manualBarcode, setManualBarcode] = useState('');
@@ -101,7 +103,6 @@ export default function StoreManagerPage() {
         }
         return [...prevCart, { id: product.id, name: product.name, price: product.price, quantity: 1, image: product.image || 'https://picsum.photos/seed/placeholder/100' }];
       });
-      // Defer toast to next tick to avoid state update collision
       setTimeout(() => {
         toast({ title: "Item Added", description: `${product.name} added to cart.` });
       }, 0);
@@ -141,7 +142,6 @@ export default function StoreManagerPage() {
         });
     } finally {
         setManualBarcode('');
-        // Pause before re-enabling scanner to prevent double scans
         setTimeout(() => { 
             setIsSubmitting(false);
         }, 1500); 
@@ -185,68 +185,77 @@ export default function StoreManagerPage() {
   }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen]);
   
   const tick = useCallback(() => {
-    if (videoRef.current && videoRef.current.srcObject && !isSubmitting && !isCustomerDialogOpen && !isTempProductDialogOpen) {
-      if (videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+    if (isSubmitting || !isCameraOn) return;
+
+    if (videoRef.current && canvasRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
+      const canvas = canvasRef.current.getContext('2d');
+      if (canvas) {
+        canvasRef.current.height = videoRef.current.videoHeight;
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvas.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
         try {
-          const result = codeReader.current.decodeFromVideoElement(videoRef.current);
+          const result = codeReader.current.decodeFromCanvas(canvasRef.current);
           if (result) {
             processBarcode(result.getText());
           }
         } catch (err) {
           if (!(err instanceof NotFoundException)) {
-            console.error('Barcode decoding error:', err);
+            // console.error('Barcode decoding error:', err);
           }
         }
       }
     }
-    if (isCameraOn) {
-        requestAnimationFrame(tick);
-    }
-  }, [processBarcode, isSubmitting, isCustomerDialogOpen, isTempProductDialogOpen, isCameraOn]);
+    requestAnimationFrame(tick);
+  }, [isSubmitting, isCameraOn, processBarcode]);
   
   useEffect(() => {
-    const startScanner = async () => {
-      if (isCameraOn && videoRef.current && navigator.mediaDevices) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-          streamRef.current = stream;
-          setHasCameraPermission(true);
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.play();
-            requestAnimationFrame(tick);
-          }
-        } catch (error) {
-          console.error('Error accessing camera:', error);
-          setHasCameraPermission(false);
-          setIsCameraOn(false);
-          toast({
-            variant: 'destructive',
-            title: 'Camera Access Denied',
-            description: 'Please enable camera permissions in your browser settings.',
-          });
-        }
-      }
-    };
-
+    let isMounted = true;
     const stopScanner = () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
     };
     
-    if (isCameraOn) {
-      startScanner();
-    } else {
-      stopScanner();
-    }
+    const startScanner = async () => {
+        stopScanner(); // Stop any existing stream
+        if (isCameraOn && isMounted) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                if (isMounted) {
+                    streamRef.current = stream;
+                    setHasCameraPermission(true);
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                        videoRef.current.play();
+                    }
+                    requestAnimationFrame(tick);
+                } else {
+                     stream.getTracks().forEach(track => track.stop());
+                }
+            } catch (error) {
+                 if (isMounted) {
+                    console.error('Error accessing camera:', error);
+                    setHasCameraPermission(false);
+                    setIsCameraOn(false);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Camera Access Denied',
+                        description: 'Please enable camera permissions in your browser settings.',
+                    });
+                }
+            }
+        }
+    };
+    
+    startScanner();
 
     return () => {
-      stopScanner();
+        isMounted = false;
+        stopScanner();
     };
   }, [isCameraOn, tick, toast]);
 
@@ -345,7 +354,8 @@ export default function StoreManagerPage() {
             <CardContent className="flex-1 flex flex-col items-center justify-center gap-4">
                  {isCameraOn && (
                     <div className="w-full max-w-md aspect-video bg-card-foreground/5 rounded-lg overflow-hidden relative">
-                        <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                        <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                        <canvas ref={canvasRef} className="hidden" />
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="w-4/5 h-1/2 border-4 border-dashed border-primary/50 rounded-lg" />
                         </div>
@@ -531,7 +541,5 @@ export default function StoreManagerPage() {
        </Dialog>
     </div>
   );
-
-    
 
     
