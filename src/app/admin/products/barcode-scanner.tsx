@@ -7,7 +7,6 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CameraOff } from 'lucide-react';
 import { readBarcodeFromImage } from '@/ai/flows/read-barcode';
 import { Button } from '@/components/ui/button';
-import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/library';
 
 type BarcodeScannerProps = {
   onScan: (barcode: string) => void;
@@ -20,64 +19,65 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAiScanning, setIsAiScanning] = useState(false);
-  const codeReader = useRef(new BrowserMultiFormatReader());
-
 
   useEffect(() => {
     let isMounted = true;
+    let stream: MediaStream | null = null;
     
     const startCamera = async () => {
-      if (!videoRef.current) return;
-      setIsLoading(true);
+        if (!videoRef.current) return;
+        setIsLoading(true);
 
-      try {
-        await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-        });
-
-        if (!isMounted) return;
-
-        setHasPermission(true);
-        setIsLoading(false);
-
-        codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
-            if (result) {
-              const scannedText = result.getText();
-              if (scannedText && scannedText.trim().length > 0) {
-                 onScan(scannedText);
-              }
-            }
-            if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
-              console.error("Scanning error:", err);
-              toast({ title: "Scanning Error", description: "An unexpected error occurred.", variant: 'destructive' });
-            }
-        });
-      } catch (err) {
-        if (isMounted) {
-            console.error("Error accessing camera:", err);
-            setHasPermission(false);
-            setIsLoading(false);
-            toast({
-              title: 'Camera Access Denied',
-              description: 'Please enable camera permissions in your browser settings.',
-              variant: 'destructive',
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' },
             });
+
+            if (isMounted) {
+                videoRef.current.srcObject = stream;
+                videoRef.current.play();
+                setHasPermission(true);
+            }
+        } catch (err) {
+            if (isMounted) {
+                console.error("Error accessing camera:", err);
+                setHasPermission(false);
+                toast({
+                    title: 'Camera Access Denied',
+                    description: 'Please enable camera permissions in your browser settings.',
+                    variant: 'destructive',
+                });
+            }
+        } finally {
+            if (isMounted) {
+                setIsLoading(false);
+            }
         }
-      }
     };
 
     startCamera();
 
     return () => {
       isMounted = false;
-      codeReader.current.reset();
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, [onScan, toast]);
+  }, [toast]);
 
   const handleAiScan = async () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current?.srcObject) {
+        toast({ title: 'Error', description: 'Camera is not active.', variant: 'destructive' });
+        return;
+    };
     
     const video = videoRef.current;
+    // Ensure the video is playing and has dimensions
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+        toast({ title: 'Error', description: 'Video stream not ready. Please wait a moment.', variant: 'destructive' });
+        return;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -96,14 +96,14 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
 
     try {
         const result = await readBarcodeFromImage({ imageDataUri });
-        if (result && result.barcode) {
-            onScan(result.barcode);
+        if (result && result.barcode && result.barcode.trim()) {
+            onScan(result.barcode.trim());
         } else {
-            throw new Error("AI could not detect a barcode.");
+            throw new Error("AI could not detect a valid barcode.");
         }
     } catch(err) {
         console.error("AI Scan Error:", err);
-        toast({ title: 'AI Scan Failed', description: 'Could not extract a barcode from the image. Please try again.', variant: 'destructive' });
+        toast({ title: 'AI Scan Failed', description: 'Could not extract a barcode from the image. Please try again with a clearer view.', variant: 'destructive' });
     } finally {
         setIsAiScanning(false);
     }
@@ -138,7 +138,7 @@ export default function BarcodeScanner({ onScan }: BarcodeScannerProps) {
       
       <Button onClick={handleAiScan} disabled={isAiScanning || isLoading || !hasPermission} className="w-full max-w-md">
         {isAiScanning ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : '✨'}
-        Scan with AI (for difficult barcodes)
+        Scan with AI
       </Button>
 
       {hasPermission === false && (
