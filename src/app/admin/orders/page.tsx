@@ -58,11 +58,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { updateOrderStatus, type Order } from '@/lib/order-actions';
-import { ChevronDown, File, ListFilter, MoreHorizontal, Eye, Truck, XCircle, CheckCircle } from 'lucide-react';
+import { ChevronDown, File, ListFilter, MoreHorizontal, Eye, Truck, XCircle, CheckCircle, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import InvoiceTemplate from '@/components/invoice-template';
+import './invoice.css';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -75,6 +77,7 @@ export default function OrdersPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
   
   const supabase = createSupabaseBrowserClient();
 
@@ -110,6 +113,20 @@ export default function OrdersPage() {
         supabase.removeChannel(channel);
       }
   }, [supabase, toast]);
+  
+  useEffect(() => {
+    if (orderToPrint) {
+      const timer = setTimeout(() => {
+        window.print();
+        setOrderToPrint(null);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [orderToPrint]);
+
+  const handlePrint = (order: Order) => {
+    setOrderToPrint(order);
+  }
 
   const handleUpdateStatus = async (orderId: string, status: Order['status']) => {
     try {
@@ -219,6 +236,10 @@ export default function OrdersPage() {
                         <DropdownMenuItem onClick={() => handleViewDetails(order)}>
                             <Eye className="mr-2 h-4 w-4" />
                             View Order
+                        </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => handlePrint(order)}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print Bill
                         </DropdownMenuItem>
                         {order.status === 'Pending' && (
                             <DropdownMenuItem onClick={() => handleUpdateStatus(order.id, 'Processing')}>
@@ -530,6 +551,9 @@ export default function OrdersPage() {
                     </div>
                 </div>
                 <DialogFooter>
+                     <Button type="button" variant="outline" onClick={() => handlePrint(selectedOrder)}>
+                        <Printer className="mr-2 h-4 w-4" /> Print Bill
+                    </Button>
                     <DialogClose asChild>
                         <Button type="button">Close</Button>
                     </DialogClose>
@@ -552,6 +576,12 @@ export default function OrdersPage() {
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>
+    
+    {orderToPrint && (
+        <div className="invoice-container">
+            <InvoiceTemplate order={orderToPrint} />
+        </div>
+    )}
     </>
   );
 }
