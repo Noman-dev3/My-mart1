@@ -73,7 +73,6 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   });
 
   useEffect(() => {
-    // Reset form when product prop changes
     form.reset({
       name: product?.name || "",
       description: product?.description || "",
@@ -111,6 +110,13 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
     toast({ title: "Barcode Scanned", description: `Barcode set to: ${barcode}`});
   }
 
+  const onFormSubmit = async (values: ProductFormValues) => {
+    const result = await onSubmit(values);
+    if (result) {
+      onCancel();
+    }
+  };
+
   return (
     <>
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -121,7 +127,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
       
       <TabsContent value="details">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mt-4 max-h-[70vh] overflow-y-auto pr-2">
+          <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-4 mt-4 max-h-[70vh] overflow-y-auto pr-2">
             <FormField
               control={form.control}
               name="name"
@@ -255,7 +261,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
                     Cancel
                 </Button>
                 <Button type="submit" disabled={form.formState.isSubmitting}>
-                    {form.formState.isSubmitting ? 'Saving...' : 'Save Product'}
+                    {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Save Product'}
                 </Button>
             </div>
           </form>
@@ -357,3 +363,5 @@ const QAndAItem = ({ product, question, onAnswerSubmit }: { product: Product, qu
         </div>
     )
 }
+
+    

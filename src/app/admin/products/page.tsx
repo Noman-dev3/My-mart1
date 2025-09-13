@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
@@ -140,10 +139,11 @@ export default function ProductsPage() {
       setIsFormOpen(false);
       setSelectedProduct(undefined);
       return true; // Indicate success
-    } catch (error) {
+    } catch (error: any) {
+       console.error("Save Product Error:", error);
       toast({
         title: 'Error',
-        description: 'Failed to save product.',
+        description: error.message || 'Failed to save product.',
         variant: 'destructive',
       });
       return false; // Indicate failure

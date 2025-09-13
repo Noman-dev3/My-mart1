@@ -123,11 +123,11 @@ export async function addProduct(data: z.infer<typeof productSchema>) {
 
     const newProduct = {
         ...data,
-        rating: Math.floor(Math.random() * 5) + 1,
-        reviews: Math.floor(Math.random() * 100),
         specifications: {},
         reviewsData: [],
         questions: [],
+        rating: Math.floor(Math.random() * 5) + 1,
+        reviews: Math.floor(Math.random() * 100),
     };
 
     const { data: savedProduct, error } = await supabase
@@ -257,3 +257,5 @@ export async function deleteProduct(productId: string) {
     
     return { success: true };
 }
+
+    
