@@ -170,24 +170,8 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
     toast({ title: "Barcode Scanned", description: `Barcode set to: ${barcode}`});
   }
 
-  const onFormSubmit = async (values: ProductFormValues) => {
-    // The `onSubmit` prop (which is addProduct/updateProduct) expects the DB format.
-    // So we convert specifications here before passing it on.
-    const specificationsObject = (values.specifications || []).reduce((acc, spec) => {
-      if (spec.key) {
-        acc[spec.key] = spec.value;
-      }
-      return acc;
-    }, {} as Record<string, string>);
-
-    const dataToSubmit = {
-      ...values,
-      specifications: specificationsObject,
-      reviews_data: values.reviews_data || [],
-      questions: values.questions || [],
-    };
-    
-    const result = await onSubmit(dataToSubmit as any);
+  const onFormSubmitLocal = async (values: ProductFormValues) => {
+    const result = await onSubmit(values);
     if (result) {
       onCancel();
     }
@@ -204,7 +188,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
       
       <TabsContent value="details">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-4 mt-4 max-h-[70vh] overflow-y-auto pr-2">
+          <form onSubmit={form.handleSubmit(onFormSubmitLocal)} className="space-y-4 mt-4 max-h-[70vh] overflow-y-auto pr-2">
             <FormField
               control={form.control}
               name="name"

@@ -8,7 +8,8 @@ const specificationSchema = z.object({
   value: z.string().min(1, "Specification value cannot be empty."),
 });
 
-// FOR THE CLIENT-SIDE FORM (react-hook-form)
+// This schema is for the CLIENT-SIDE FORM and what it submits.
+// It uses an array for specifications because that's how react-hook-form's useFieldArray works.
 export const productSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters long."),
   description: z.string().min(10, "Description must be at least 10 characters long."),
@@ -25,10 +26,11 @@ export const productSchema = z.object({
 
 export type ProductFormValues = z.infer<typeof productSchema>;
 
-
-// FOR THE SERVER-SIDE ACTION (what the DB expects)
+// This schema represents the data structure for the DATABASE.
+// Specifications are a JSONB object, not an array.
 export const productDbSchema = productSchema.extend({
-  specifications: z.record(z.string()).optional(), // Expects an object, not an array of objects
-});
+  specifications: z.record(z.string()).optional(),
+  // Omit fields that are not directly submitted by the form but are part of the Product type
+}).omit({ reviews_data: true, questions: true });
 
 export type ProductDbValues = z.infer<typeof productDbSchema>;

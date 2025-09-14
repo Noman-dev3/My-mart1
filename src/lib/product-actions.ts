@@ -7,8 +7,8 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { randomBytes } from 'crypto';
-import { productDbSchema, type ProductDbValues } from './schemas'; // <-- Use the new DB schema
-import type { ProductFormValues } from './schemas';
+import { productDbSchema, productSchema, type ProductFormValues } from './schemas'; // <-- Use the new DB schema
+import type { ProductDbValues } from './schemas';
 
 
 // We define the Product type here as this file is the source of truth for product data structures.
@@ -146,18 +146,21 @@ const questionSchema = z.object({
 });
 
 
-export async function addProduct(values: ProductDbValues) {
+export async function addProduct(values: ProductFormValues) {
     const supabase = createServerActionClient({ cookies });
     
     try {
-        const validatedData = productDbSchema.parse(values);
+        const validatedData = productSchema.parse(values);
 
-        const newProduct = {
+        // Convert specifications array to a JSONB object
+        const specificationsObject = (validatedData.specifications || []).reduce((acc, spec) => {
+            if (spec.key) acc[spec.key] = spec.value;
+            return acc;
+        }, {} as Record<string, string>);
+
+        const newProduct: ProductDbValues = {
             ...validatedData,
-            price: String(validatedData.price), // Ensure price is a string for NUMERIC type
-            specifications: validatedData.specifications || {},
-            reviews_data: validatedData.reviews_data || [],
-            questions: validatedData.questions || [],
+            specifications: specificationsObject,
             rating: 0,
             reviews: 0,
         };
@@ -187,18 +190,21 @@ export async function addProduct(values: ProductDbValues) {
     }
 }
 
-export async function updateProduct(productId: string, values: ProductDbValues) {
+export async function updateProduct(productId: string, values: ProductFormValues) {
     const supabase = createServerActionClient({ cookies });
     
     try {
-        const validatedData = productDbSchema.parse(values);
+        const validatedData = productSchema.parse(values);
         
-        const updateData = {
+        // Convert specifications array to a JSONB object
+        const specificationsObject = (validatedData.specifications || []).reduce((acc, spec) => {
+            if (spec.key) acc[spec.key] = spec.value;
+            return acc;
+        }, {} as Record<string, string>);
+
+        const updateData: ProductDbValues = {
             ...validatedData,
-            price: String(validatedData.price), // Ensure price is a string for NUMERIC type
-            specifications: validatedData.specifications || {},
-            reviews_data: values.reviews_data || [],
-            questions: values.questions || []
+            specifications: specificationsObject,
         };
 
         const { data: updatedProduct, error } = await supabase
