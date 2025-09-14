@@ -180,23 +180,23 @@ export async function updateOrderStatus(orderId: string, status: Order['status']
 
 export async function createStoreOrder(data: {
   customerName: string;
-  customerId: string;
   items: OrderItem[];
   total: number;
 }): Promise<Order> {
   const supabase = createServerActionClient({ cookies });
+  const customerId = `instore-${Date.now()}`;
 
   const newOrderData = {
     customer: {
         name: data.customerName,
-        email: `${data.customerId}@instore.mymart.local`, // Internal email
+        email: `${customerId}@instore.mymart.local`, // Internal email
         phone: 'N/A',
         address: 'In-Store Purchase'
     },
     items: data.items,
     total: data.total,
     status: 'Delivered', // In-store sales are immediately completed
-    paymentMethod: 'In-Store',
+    paymentMethod: 'In-Store' as PaymentMethod,
     date: new Date().toISOString(),
   };
 
@@ -209,8 +209,11 @@ export async function createStoreOrder(data: {
 
   // In a real scenario, you'd also update stock quantities here.
   // For each item in data.items, you would run:
-  // await supabase.rpc('decrement_stock', { product_id: item.id, quantity: item.quantity });
-  // This requires a stored procedure 'decrement_stock' in the database.
+  // This would require a stored procedure 'decrement_stock' in the database.
+  // for (const item of data.items) {
+  //    await supabase.rpc('decrement_stock', { p_product_id: item.id, p_quantity: item.quantity });
+  // }
+
 
   revalidatePath('/admin/orders');
   revalidatePath('/admin/customers');
@@ -218,5 +221,3 @@ export async function createStoreOrder(data: {
 
   return savedOrder as Order;
 }
-
-    

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState } from 'react';
@@ -153,7 +152,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
-    if (pathname === '/admin/login') {
+    if (pathname === '/admin/login' || pathname === '/admin/store-manager/print-bill') {
         return <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>;
     }
     

@@ -6,26 +6,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X, CameraOff } from 'lucide-react';
+import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getProductByBarcode, type Product, addProduct } from '@/lib/product-actions';
 import { createStoreOrder } from '@/lib/order-actions';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
 import { BrowserMultiFormatReader, NotFoundException, ChecksumException, FormatException } from '@zxing/library';
 import ProductForm from '../products/product-form';
 import { logAdminActivity } from '@/lib/admin-actions';
+import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
+import type { ProductFormValues } from '@/lib/schemas';
 
 
-type ScannedProduct = {
-  id: string; // Can be product UUID or barcode for temp items
+type CartItem = {
+  id: string;
   name: string;
   price: number;
   quantity: number;
@@ -33,8 +29,9 @@ type ScannedProduct = {
 };
 
 type CustomerSession = {
-    id: string;
+    id: string; // Unique ID for the session/tab
     name: string;
+    cart: CartItem[];
 };
 
 type TempProduct = {
@@ -43,7 +40,7 @@ type TempProduct = {
     price: number;
 }
 
-// Local storage helpers for temporary products
+// Local storage helpers
 const getTempProducts = (): TempProduct[] => {
     if (typeof window === 'undefined') return [];
     const stored = localStorage.getItem('myMart-temp-products');
@@ -61,26 +58,36 @@ const saveTempProduct = (product: TempProduct) => {
     localStorage.setItem('myMart-temp-products', JSON.stringify(products));
 };
 
+const getActiveSessions = (): CustomerSession[] => {
+    if (typeof window === 'undefined') return [];
+    const stored = localStorage.getItem('myMart-active-sessions');
+    return stored ? JSON.parse(stored) : [];
+};
+
+const saveActiveSessions = (sessions: CustomerSession[]) => {
+    localStorage.setItem('myMart-active-sessions', JSON.stringify(sessions));
+}
+
 
 export default function StoreManagerPage() {
   const { toast } = useToast();
-  const [cart, setCart] = useState<ScannedProduct[]>([]);
+  const router = useRouter();
+  
+  const [sessions, setSessions] = useState<CustomerSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+
   const [manualBarcode, setManualBarcode] = useState('');
   const [isCompletingSale, setIsCompletingSale] = useState(false);
 
-  // Customer session state
+  // Dialog states
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [currentCustomer, setCurrentCustomer] = useState<CustomerSession | null>(null);
   const [newCustomerName, setNewCustomerName] = useState('');
-  const [newCustomerId, setNewCustomerId] = useState('');
   
-  // Temporary product state
   const [isTempProductDialogOpen, setIsTempProductDialogOpen] = useState(false);
   const [tempProductBarcode, setTempProductBarcode] = useState('');
   const [tempProductName, setTempProductName] = useState('');
   const [tempProductPrice, setTempProductPrice] = useState('');
 
-  // Add Product Form state
   const [isAddProductFormOpen, setIsAddProductFormOpen] = useState(false);
   const [newProductToCreate, setNewProductToCreate] = useState<Partial<Product> | undefined>(undefined);
   
@@ -91,25 +98,59 @@ export default function StoreManagerPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   
+  // Load sessions from local storage on initial render
+  useEffect(() => {
+    const savedSessions = getActiveSessions();
+    setSessions(savedSessions);
+    if (savedSessions.length > 0) {
+      setActiveSessionId(savedSessions[0].id);
+    }
+  }, []);
+
+  // Save sessions to local storage whenever they change
+  useEffect(() => {
+    saveActiveSessions(sessions);
+  }, [sessions]);
+
+  const updateSessionCart = (sessionId: string, newCart: CartItem[]) => {
+      setSessions(prevSessions => 
+        prevSessions.map(session => 
+            session.id === sessionId ? { ...session, cart: newCart } : session
+        )
+      );
+  }
+  
   const addProductToCart = useCallback((product: {id: string, name: string, price: number, image?: string}) => {
-      setCart(prevCart => {
-        const existingItem = prevCart.find(item => item.id === product.id);
-        if (existingItem) {
-          return prevCart.map(item =>
-            item.id === product.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          );
-        }
-        return [...prevCart, { id: product.id, name: product.name, price: product.price, quantity: 1, image: product.image || 'https://picsum.photos/seed/placeholder/100' }];
-      });
+      if (!activeSessionId) {
+        toast({ title: 'No active session', description: 'Please start a customer session first.', variant: 'destructive'});
+        return;
+      }
+      
+      const activeSession = sessions.find(s => s.id === activeSessionId);
+      if (!activeSession) return;
+
+      const existingItem = activeSession.cart.find(item => item.id === product.id);
+      let newCart: CartItem[];
+
+      if (existingItem) {
+        newCart = activeSession.cart.map(item =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        newCart = [...activeSession.cart, { id: product.id, name: product.name, price: product.price, quantity: 1, image: product.image || 'https://picsum.photos/seed/placeholder/100' }];
+      }
+      
+      updateSessionCart(activeSessionId, newCart);
+      
       setTimeout(() => {
-        toast({ title: "Item Added", description: `${product.name} added to cart.` });
+        toast({ title: "Item Added", description: `${product.name} added to cart for ${activeSession.name}.` });
       }, 0);
-  }, [toast]);
+  }, [activeSessionId, sessions, toast]);
   
   const processBarcode = useCallback(async (barcode: string) => {
-    if (!barcode.trim()) return;
+    if (!barcode.trim() || !activeSessionId) return;
     
     toast({ title: 'Processing...', description: `Searching for barcode: ${barcode}` });
 
@@ -142,21 +183,12 @@ export default function StoreManagerPage() {
     } finally {
         setManualBarcode('');
     }
-  }, [toast, addProductToCart]);
+  }, [toast, addProductToCart, activeSessionId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (isCustomerDialogOpen || isTempProductDialogOpen || isAddProductFormOpen) return;
-        
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-            return;
-        }
-
-        if (e.code === 'Space') {
-            e.preventDefault();
-            setIsCameraOn(prev => !prev);
-            return;
-        }
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
         if (e.key === 'Enter') {
             e.preventDefault(); 
@@ -168,11 +200,8 @@ export default function StoreManagerPage() {
         }
 
         if (e.key.length > 1) return;
-
         barcodeBuffer.current.push(e.key);
-
         if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
-
         barcodeTimeout.current = setTimeout(() => {
             if (barcodeBuffer.current.length > 3) { 
                 processBarcode(barcodeBuffer.current.join(''));
@@ -182,34 +211,14 @@ export default function StoreManagerPage() {
     };
 
     window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-        window.removeEventListener('keydown', handleKeyDown);
-        if (barcodeTimeout.current) clearTimeout(barcodeTimeout.current);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen, isAddProductFormOpen]);
 
     useEffect(() => {
-        let isMounted = true;
-        const debounceTimeout = 300; // ms
-        let debounceTimer: NodeJS.Timeout;
-
-        if (isCameraOn) {
-            codeReader.current.decodeFromVideoDevice(undefined, videoRef.current!, (result, err) => {
+        if (isCameraOn && videoRef.current) {
+            codeReader.current.decodeFromVideoDevice(undefined, videoRef.current, (result, err) => {
                 if (result) {
-                    const scannedText = result.getText();
-                    if (scannedText && scannedText.trim().length > 0) {
-                        // Clear any existing timer to prevent premature shutdown
-                        clearTimeout(debounceTimer);
-                        
-                        // Process the valid barcode
-                        processBarcode(scannedText);
-                        
-                        // Set a new timer to turn off the camera
-                        debounceTimer = setTimeout(() => {
-                           if(isMounted) setIsCameraOn(false);
-                        }, debounceTimeout);
-                    }
+                    processBarcode(result.getText());
                 }
                  if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
                     console.error("Scanning error:", err);
@@ -218,27 +227,21 @@ export default function StoreManagerPage() {
         } else {
             codeReader.current.reset();
         }
-        return () => {
-            isMounted = false;
-            clearTimeout(debounceTimer);
-            codeReader.current.reset();
-        };
+        return () => codeReader.current.reset();
     }, [isCameraOn, processBarcode]);
 
 
-  const handleManualAdd = async (e: React.FormEvent) => {
+  const handleManualAdd = (e: React.FormEvent) => {
     e.preventDefault();
     processBarcode(manualBarcode);
   };
 
   const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.id !== productId));
-  }
-
-  const handleNewCustomerClick = () => {
-    setNewCustomerId(`CUST-${Date.now()}`);
-    setNewCustomerName('');
-    setIsCustomerDialogOpen(true);
+    if (!activeSessionId) return;
+    const activeSession = sessions.find(s => s.id === activeSessionId);
+    if (!activeSession) return;
+    const newCart = activeSession.cart.filter(item => item.id !== productId);
+    updateSessionCart(activeSessionId, newCart);
   }
 
   const handleStartSession = () => {
@@ -246,34 +249,55 @@ export default function StoreManagerPage() {
         toast({ title: "Name required", description: "Please enter a customer name.", variant: "destructive" });
         return;
     }
-    setCurrentCustomer({ id: newCustomerId, name: newCustomerName });
+    const newSession: CustomerSession = { id: `CUST-${Date.now()}`, name: newCustomerName, cart: [] };
+    setSessions(prev => [...prev, newSession]);
+    setActiveSessionId(newSession.id);
     setIsCustomerDialogOpen(false);
-    setCart([]);
+    setNewCustomerName('');
   }
 
-  const endSession = () => {
-    setCurrentCustomer(null);
-    setCart([]);
+  const endSession = (sessionId: string) => {
+    setSessions(prev => {
+        const newSessions = prev.filter(s => s.id !== sessionId);
+        if (activeSessionId === sessionId) {
+            setActiveSessionId(newSessions.length > 0 ? newSessions[0].id : null);
+        }
+        return newSessions;
+    });
     toast({ title: "Session Ended", description: "Ready for the next customer." });
   }
 
   const handleCompleteSale = async () => {
-    if (!currentCustomer || cart.length === 0) return;
+    const activeSession = sessions.find(s => s.id === activeSessionId);
+    if (!activeSession || activeSession.cart.length === 0) return;
 
     setIsCompletingSale(true);
     try {
-        const order = await createStoreOrder({
-            customerName: currentCustomer.name,
-            customerId: currentCustomer.id,
-            items: cart,
+        const cartTotal = activeSession.cart.reduce((total, item) => total + item.price * item.quantity, 0);
+        const order = {
+            customer: { name: activeSession.name, id: activeSession.id },
+            items: activeSession.cart,
+            total: cartTotal,
+        };
+        
+        // Save to DB and log activity
+        await createStoreOrder({
+            customerName: activeSession.name,
+            items: activeSession.cart,
             total: cartTotal,
         });
         await logAdminActivity({
             action: 'Completed in-store sale',
-            details: `Order ID: ${order.id.slice(0,8)}, Total: PKR ${order.total.toFixed(2)}`
+            details: `Customer: ${activeSession.name}, Total: PKR ${cartTotal.toFixed(2)}`
         });
-        toast({ title: "Sale Completed!", description: "Order has been recorded successfully." });
-        endSession();
+        
+        // Store bill details for printing and navigate
+        localStorage.setItem('myMart-bill-to-print', JSON.stringify(order));
+        router.push('/admin/store-manager/print-bill');
+        
+        // Remove completed session
+        endSession(activeSession.id);
+
     } catch (error) {
         console.error("Failed to complete sale:", error);
         toast({ title: "Error", description: "Failed to complete the sale. Please try again.", variant: "destructive" });
@@ -281,20 +305,14 @@ export default function StoreManagerPage() {
         setIsCompletingSale(false);
     }
   };
-
+  
   const handleAddTempProduct = () => {
     const price = parseFloat(tempProductPrice);
     if (!tempProductName.trim() || isNaN(price) || price <= 0) {
         toast({ title: "Invalid Data", description: "Please enter a valid name and price.", variant: "destructive" });
         return;
     }
-    
-    const newTempProduct: TempProduct = {
-        id: tempProductBarcode,
-        name: tempProductName,
-        price: price,
-    };
-    
+    const newTempProduct: TempProduct = { id: tempProductBarcode, name: tempProductName, price: price };
     saveTempProduct(newTempProduct);
     addProductToCart(newTempProduct);
     setIsTempProductDialogOpen(false);
@@ -306,26 +324,22 @@ export default function StoreManagerPage() {
       setIsAddProductFormOpen(true);
   }
 
-  const onProductFormSubmit = async (values: any) => {
+  const onProductFormSubmit = async (values: ProductFormValues) => {
     try {
       const newProduct = await addProduct(values);
-      if (newProduct) {
-        toast({ title: "Success", description: "Product added to inventory." });
-        addProductToCart(newProduct);
-        setIsAddProductFormOpen(false);
-        setNewProductToCreate(undefined);
-        return true;
-      }
-      return false;
+      toast({ title: "Success", description: "Product added to inventory." });
+      addProductToCart(newProduct);
+      setIsAddProductFormOpen(false);
+      setNewProductToCreate(undefined);
+      return true;
     } catch (error) {
       toast({ title: "Error", description: "Failed to save product.", variant: "destructive" });
       return false;
     }
   }
 
-
-  const cartSubtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
-  const cartTotal = cartSubtotal;
+  const activeSession = sessions.find(s => s.id === activeSessionId);
+  const cartTotal = activeSession?.cart.reduce((total, item) => total + item.price * item.quantity, 0) || 0;
 
   return (
     <div className="space-y-6 h-full flex flex-col">
@@ -350,23 +364,16 @@ export default function StoreManagerPage() {
                     {!isCameraOn && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                            <ScanLine className="h-16 w-16 text-muted-foreground/30" />
-                           <p className="mt-2 text-muted-foreground">Camera is off. Click "Start Camera" or press Spacebar.</p>
+                           <p className="mt-2 text-muted-foreground">Camera is off. Click "Start Camera".</p>
                         </div>
                     )}
                 </div>
-                 
-                 <Separator />
+                <Separator />
                 <form onSubmit={handleManualAdd} className="w-full max-w-md space-y-2">
                     <p className="text-center text-sm text-muted-foreground">Or use a hardware scanner / enter manually</p>
                     <div className="flex gap-2">
-                        <Input 
-                            placeholder="Enter barcode..." 
-                            value={manualBarcode} 
-                            onChange={(e) => setManualBarcode(e.target.value)}
-                        />
-                        <Button type="submit">
-                           Add
-                        </Button>
+                        <Input placeholder="Enter barcode..." value={manualBarcode} onChange={(e) => setManualBarcode(e.target.value)} />
+                        <Button type="submit">Add</Button>
                     </div>
                 </form>
             </CardContent>
@@ -374,32 +381,30 @@ export default function StoreManagerPage() {
 
         <Card className="flex flex-col">
             <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle className="flex items-center gap-2"><ShoppingCart/> Billing</CardTitle>
-                    {currentCustomer ? (
-                        <Button variant="destructive" size="sm" onClick={endSession}><X className="mr-2 h-4 w-4"/> End Session</Button>
-                    ) : (
-                        <Button onClick={handleNewCustomerClick}><UserPlus className="mr-2 h-4 w-4"/> New Customer</Button>
-                    )}
+                <CardTitle className="flex items-center gap-2"><ShoppingCart/> Billing</CardTitle>
+                <div className="flex items-start gap-2 border-b pb-2 -mx-6 px-6">
+                    <div className="flex-1 flex items-center gap-1 overflow-x-auto">
+                        {sessions.map(session => (
+                            <Button key={session.id} variant={activeSessionId === session.id ? 'secondary' : 'ghost'} size="sm" className="shrink-0 pr-2" onClick={() => setActiveSessionId(session.id)}>
+                                {session.name}
+                                <X className="h-4 w-4 ml-2" onClick={(e) => {e.stopPropagation(); endSession(session.id);}} />
+                            </Button>
+                        ))}
+                    </div>
+                    <Button size="icon" variant="outline" className="shrink-0" onClick={() => setIsCustomerDialogOpen(true)}><Plus /></Button>
                 </div>
-                {currentCustomer ? (
-                    <CardDescription>
-                        Serving: <span className="font-bold text-primary">{currentCustomer.name}</span> (ID: {currentCustomer.id})
-                    </CardDescription>
-                ) : (
-                    <CardDescription>Start a new session to begin billing.</CardDescription>
-                )}
+                 <CardDescription className="pt-2">
+                    {activeSession ? `Serving: ${activeSession.name}` : 'No active customer. Click [+] to start.'}
+                </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
-                {cart.length > 0 ? (
+                {activeSession && activeSession.cart.length > 0 ? (
                     <div className="flex-1 space-y-3 overflow-y-auto pr-2">
-                        {cart.map(item => (
+                        {activeSession.cart.map(item => (
                             <div key={item.id} className="flex items-center justify-between gap-4 p-2 bg-muted/50 rounded-md">
                                 <div>
                                     <p className="font-semibold">{item.name}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {item.quantity} x PKR {item.price.toFixed(2)}
-                                    </p>
+                                    <p className="text-sm text-muted-foreground">{item.quantity} x PKR {item.price.toFixed(2)}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <p className="font-bold">PKR {(item.price * item.quantity).toFixed(2)}</p>
@@ -412,7 +417,7 @@ export default function StoreManagerPage() {
                     </div>
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center border-dashed border-2 rounded-lg">
-                       {currentCustomer ? (
+                       {activeSessionId ? (
                          <>
                             <Barcode className="h-16 w-16 text-muted-foreground/30" />
                             <p className="mt-2 text-muted-foreground">Scan a product to begin</p>
@@ -420,36 +425,20 @@ export default function StoreManagerPage() {
                        ) : (
                          <>
                             <UserPlus className="h-16 w-16 text-muted-foreground/30" />
-                            <p className="mt-2 text-muted-foreground">Click "New Customer" to start a sale.</p>
+                            <p className="mt-2 text-muted-foreground">Click [+] to start a new customer session.</p>
                          </>
                        )}
                     </div>
                 )}
             </CardContent>
             <div className="p-6 border-t mt-auto">
-                <div className="space-y-2 mb-4">
-                    <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>PKR {cartSubtotal.toFixed(2)}</span>
-                    </div>
-                     <div className="flex justify-between text-muted-foreground text-sm">
-                        <span>Taxes</span>
-                        <span>PKR 0.00</span>
-                    </div>
-                </div>
-                <Separator />
                 <div className="flex justify-between font-bold text-xl my-4">
                     <span>Total</span>
                     <span>PKR {cartTotal.toFixed(2)}</span>
                 </div>
-                <Button 
-                    className="w-full font-bold" 
-                    size="lg" 
-                    disabled={cart.length === 0 || !currentCustomer || isCompletingSale}
-                    onClick={handleCompleteSale}
-                >
+                <Button className="w-full font-bold" size="lg" disabled={!activeSession || activeSession.cart.length === 0 || isCompletingSale} onClick={handleCompleteSale}>
                     {isCompletingSale ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-                    Complete Sale
+                    Complete & Print Bill
                 </Button>
             </div>
         </Card>
@@ -459,23 +448,12 @@ export default function StoreManagerPage() {
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Start New Customer Session</DialogTitle>
-                    <DialogDescription>
-                        Enter the customer's name to begin a new transaction.
-                    </DialogDescription>
+                    <DialogDescription>Enter the customer's name to create a new bill tab.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="customer-name">Customer Name</Label>
-                        <Input 
-                            id="customer-name" 
-                            value={newCustomerName}
-                            onChange={(e) => setNewCustomerName(e.target.value)}
-                            placeholder="e.g., John Doe"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="session-id">Session ID</Label>
-                        <Input id="session-id" value={newCustomerId} disabled />
+                        <Input id="customer-name" value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="e.g., John Doe" />
                     </div>
                 </div>
                 <DialogFooter>
@@ -489,67 +467,41 @@ export default function StoreManagerPage() {
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Product Not Found</DialogTitle>
-                    <DialogDescription>
-                        Barcode <span className="font-bold text-primary">{tempProductBarcode}</span> was not found in the inventory.
-                    </DialogDescription>
+                    <DialogDescription>Barcode <span className="font-bold text-primary">{tempProductBarcode}</span> was not found in the inventory.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                     <div>
+                    <div>
                         <h3 className="font-semibold">Option 1: Add as Temporary Product</h3>
-                        <p className="text-sm text-muted-foreground">Add a temporary name and price to sell it now. This item will not be saved to the main inventory.</p>
-                     </div>
+                        <p className="text-sm text-muted-foreground">Add a name and price to sell it now. This item will not be saved to the main inventory.</p>
+                    </div>
                     <div className="space-y-2">
                         <Label htmlFor="temp-name">Product Name</Label>
-                        <Input 
-                            id="temp-name" 
-                            value={tempProductName}
-                            onChange={(e) => setTempProductName(e.target.value)}
-                            placeholder="e.g., Local Soda"
-                        />
+                        <Input id="temp-name" value={tempProductName} onChange={(e) => setTempProductName(e.target.value)} placeholder="e.g., Local Soda" />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="temp-price">Price (PKR)</Label>
-                        <Input 
-                            id="temp-price" 
-                            type="number"
-                            value={tempProductPrice}
-                            onChange={(e) => setTempProductPrice(e.target.value)}
-                            placeholder="e.g., 150"
-                        />
+                        <Input id="temp-price" type="number" value={tempProductPrice} onChange={(e) => setTempProductPrice(e.target.value)} placeholder="e.g., 150" />
                     </div>
                     <Button onClick={handleAddTempProduct} className="w-full">Add to Cart as Temporary</Button>
                 </div>
-                 <Separator />
-                 <div className="space-y-4 pt-2">
+                <Separator />
+                <div className="space-y-4 pt-2">
                     <h3 className="font-semibold">Option 2: Add to Main Inventory</h3>
-                    <p className="text-sm text-muted-foreground">Open the full product form to add this item permanently to your store's inventory.</p>
+                    <p className="text-sm text-muted-foreground">Open the full product form to add this item permanently.</p>
                     <Button onClick={handleCreateNewProduct} variant="secondary" className="w-full">Open "Add Product" Form</Button>
-                 </div>
+                </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsTempProductDialogOpen(false)}>Cancel</Button>
                 </DialogFooter>
             </DialogContent>
        </Dialog>
 
-       <Dialog open={isAddProductFormOpen} onOpenChange={(open) => {
-          setIsAddProductFormOpen(open);
-          if (!open) setNewProductToCreate(undefined);
-      }}>
+       <Dialog open={isAddProductFormOpen} onOpenChange={(open) => { if (!open) setNewProductToCreate(undefined); setIsAddProductFormOpen(open); }}>
           <DialogContent className="sm:max-w-md md:max-w-lg">
-              <DialogHeader>
-                  <DialogTitle>Add New Product</DialogTitle>
-              </DialogHeader>
-              <ProductForm 
-                  onSubmit={onProductFormSubmit}
-                  product={newProductToCreate as Product | undefined}
-                  onCancel={() => {
-                      setIsAddProductFormOpen(false);
-                      setNewProductToCreate(undefined);
-                  }}
-              />
+              <DialogHeader><DialogTitle>Add New Product</DialogTitle></DialogHeader>
+              <ProductForm onSubmit={onProductFormSubmit} product={newProductToCreate as Product | undefined} onCancel={() => setIsAddProductFormOpen(false)} />
           </DialogContent>
       </Dialog>
     </div>
   );
-
-    
+}
