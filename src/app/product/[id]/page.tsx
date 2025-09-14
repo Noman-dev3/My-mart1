@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2, HelpCircle, Barcode } from 'lucide-react';
+import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2, HelpCircle, Barcode, Printer } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { getProductById, type Product, askProductQuestion } from '@/lib/product-actions';
@@ -34,6 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog"
 
 
@@ -74,6 +75,20 @@ export default function ProductDetailPage() {
       }
     }
   }, [product]);
+  
+  const handlePrintBarcode = () => {
+    const svgElement = barcodeRef.current;
+    if (svgElement) {
+        const printWindow = window.open('', '', 'width=400,height=200');
+        printWindow?.document.write('<html><head><title>Print Barcode</title></head><body style="text-align:center; margin-top: 20px;">');
+        printWindow?.document.write(svgElement.outerHTML);
+        printWindow?.document.write('</body></html>');
+        printWindow?.document.close();
+        printWindow?.focus();
+        printWindow?.print();
+        printWindow?.close();
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -269,12 +284,15 @@ export default function ProductDetailPage() {
                         <DialogHeader>
                             <DialogTitle>Product Barcode</DialogTitle>
                             <DialogDescription>
-                                Scan this barcode with the in-store scanner.
+                                This barcode can be scanned with a hardware scanner or the in-store POS system.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex justify-center p-4 bg-white rounded-md">
                            <svg ref={barcodeRef}></svg>
                         </div>
+                        <DialogFooter>
+                            <Button onClick={handlePrintBarcode}><Printer className="mr-2 h-4 w-4"/> Print</Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
               </div>

@@ -8,71 +8,56 @@ import QRCode from 'qrcode.react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 import { type RealtimeChannel } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-
-// --- Helper Components ---
-
-const Icon = ({ path, className = 'w-6 h-6' }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d={path} />
-  </svg>
-);
-
-const CameraIcon = () => <Icon path="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />;
-const QRIcon = () => <Icon path="M3 11h8V3H3v8zm2-6h4v4H5V5zM3 21h8v-8H3v8zm2-6h4v4H5v-4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM13 21h8v-8h-8v8zm2-6h4v4h-4v-4z" />;
-const ScanIcon = () => <Icon path="M4 6h-2v-2c0-1.1.9-2 2-2h2v2h-2v2zm16 0h-2v-2h2v-2h2c1.1 0 2 .9 2 2v2h-2v-2zm-2 12h2v2c0 1.1-.9 2-2 2h-2v-2h2v-2zm-14 2h-2v-2h2v2h-2c-1.1 0-2-.9-2-2v-2h2v2h2v2zm6-14h-4v4h4v-4zM9 9H7v2h2V9zm4 0h-2v2h2V9zm2 0h-2v2h2V9zm2 0h-2v2h2V9zM9 13H7v2h2v-2zm4 0h-2v2h2v-2zm2 0h-2v2h2v-2z" />;
-const DownloadIcon = () => <Icon path="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />;
-const ErrorIcon = () => <Icon path="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />;
-const PhoneIcon = () => <Icon path="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/>
-
-// --- Main App Component ---
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Camera, QrCode, Scan, Upload, Phone, AlertCircle, Download } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function BarcodeToolsPage() {
-  const [activeTab, setActiveTab] = useState('scanner');
 
   return (
-    <div className="min-h-full bg-card text-card-foreground font-sans flex flex-col items-center p-0">
-      <div className="w-full max-w-4xl bg-card rounded-2xl shadow-2xl overflow-hidden">
-        <header className="bg-muted/30 p-4 sm:p-6 border-b">
-          <h1 className="text-2xl sm:text-3xl font-bold text-center text-primary">Barcode & QR Code Suite</h1>
-          <p className="text-center text-muted-foreground mt-1">Scan, Generate, and Analyze</p>
-        </header>
+    <div className="space-y-6">
+        <div>
+            <h1 className="text-3xl font-bold font-headline">Barcode & QR Code Suite</h1>
+            <p className="text-muted-foreground">A collection of tools for scanning and generating codes.</p>
+        </div>
 
-        <nav className="flex bg-card">
-          <TabButton id="scanner" activeTab={activeTab} setActiveTab={setActiveTab} icon={<ScanIcon />}>
-            Scanner
-          </TabButton>
-          <TabButton id="generator" activeTab={activeTab} setActiveTab={setActiveTab} icon={<QRIcon />}>
-            Generator
-          </TabButton>
-        </nav>
+        <Tabs defaultValue="scanner" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="scanner"><Scan className="mr-2 h-4 w-4"/>Scanner</TabsTrigger>
+                <TabsTrigger value="generator"><QrCode className="mr-2 h-4 w-4"/>Generator</TabsTrigger>
+            </TabsList>
+            <TabsContent value="scanner">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Barcode Scanner</CardTitle>
+                        <CardDescription>Scan barcodes using your device camera, an image file, or your phone.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ScannerComponent />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="generator">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>QR Code Generator</CardTitle>
+                        <CardDescription>Create a QR code from any text or URL.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <GeneratorComponent />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
 
-        <main className="p-4 sm:p-8">
-          {activeTab === 'scanner' && <ScannerComponent />}
-          {activeTab === 'generator' && <GeneratorComponent />}
-        </main>
-
-        <footer className="text-center p-4 bg-muted/30 text-xs text-muted-foreground/50 border-t">
-          Powered by ZXing
-        </footer>
-      </div>
     </div>
   );
 }
 
-const TabButton = ({ id, activeTab, setActiveTab, icon, children }) => (
-  <button
-    onClick={() => setActiveTab(id)}
-    className={`flex-1 py-4 px-2 sm:px-4 text-sm sm:text-base font-semibold flex items-center justify-center gap-2 transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-card focus:ring-primary ${
-      activeTab === id
-        ? 'bg-primary text-primary-foreground'
-        : 'bg-card text-muted-foreground hover:bg-muted'
-    }`}
-  >
-    {icon}
-    {children}
-  </button>
-);
 
 // --- Scanner Component ---
 
@@ -123,9 +108,6 @@ function ScannerComponent() {
   }, []);
 
   const stopScan = useCallback(() => {
-    // This is tricky because the instance is inside startScan.
-    // A better approach is to have a ref for the codeReader instance.
-    // For now, we rely on the video stream stopping.
     if (videoRef.current && videoRef.current.srcObject) {
         (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
     }
@@ -197,12 +179,12 @@ function ScannerComponent() {
   
   return (
     <div className="flex flex-col gap-6">
-      <div className="relative aspect-video bg-muted/20 rounded-lg overflow-hidden border-2 border-dashed border-border flex items-center justify-center">
+      <div className="relative aspect-video bg-muted rounded-lg overflow-hidden border-2 border-dashed border-border flex items-center justify-center">
         <video ref={videoRef} className={`w-full h-full object-cover ${isScanning ? '' : 'hidden'}`} />
         {!isScanning && (
-            <div className="text-center text-muted-foreground p-4">
-                <CameraIcon />
-                <p className="mt-2">Camera is off. Press "Start Scan" to begin.</p>
+            <div className="text-center text-muted-foreground p-4 flex flex-col items-center gap-2">
+                <Camera className="h-10 w-10" />
+                <p>Camera is off. Press "Start Scan" to begin.</p>
             </div>
         )}
         {isScanning && <div className="absolute inset-0 border-4 border-primary/50 animate-pulse rounded-lg" />}
@@ -214,36 +196,37 @@ function ScannerComponent() {
                 value={selectedDevice}
                 onChange={(e) => setSelectedDevice(e.target.value)}
                 disabled={isScanning || devices.length === 0}
-                className="w-full flex-grow bg-input border border-border rounded-md px-3 py-2 focus:ring-primary focus:border-primary transition"
+                className="w-full flex-grow bg-background border border-input rounded-md px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
                 {devices.length > 0 ? devices.map(device => (
                     <option key={device.deviceId} value={device.deviceId}>{device.label || `Camera ${devices.indexOf(device) + 1}`}</option>
                 )) : <option>No cameras found</option>}
             </select>
-            <button
+            <Button
                 onClick={() => isScanning ? stopScan() : startScan(selectedDevice)}
                 disabled={!selectedDevice}
-                className={`w-full sm:w-auto px-4 py-2 font-bold rounded-md transition duration-200 flex items-center justify-center gap-2 ${
-                isScanning ? 'bg-destructive hover:bg-destructive/80' : 'bg-primary hover:bg-primary/80'
-                } disabled:bg-muted-foreground disabled:cursor-not-allowed`}
+                 variant={isScanning ? 'destructive' : 'default'}
+                className="w-full sm:w-auto"
             >
                 {isScanning ? 'Stop Scan' : 'Start Scan'}
-            </button>
+            </Button>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <label className="relative w-full flex-1 px-4 py-2 font-bold rounded-md transition duration-200 bg-secondary hover:bg-secondary/80 text-secondary-foreground text-center cursor-pointer">
-              <span>Scan from Image</span>
-              <input type="file" accept="image/*" onChange={handleFileScan} className="hidden" />
-          </label>
+          <Button asChild variant="outline" className="w-full flex-1">
+              <Label>
+                  <Upload className="mr-2 h-4 w-4" /> Scan from Image
+                  <Input type="file" accept="image/*" onChange={handleFileScan} className="hidden" />
+              </Label>
+          </Button>
            <Button onClick={openPhoneScanner} className="w-full sm:w-auto" variant="outline">
-             <PhoneIcon /> Use Phone Camera
+             <Phone className="mr-2 h-4 w-4" /> Use Phone
            </Button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-destructive/20 border border-destructive text-destructive-foreground px-4 py-3 rounded-md flex items-start gap-3">
-            <ErrorIcon className="w-5 h-5 mt-1" />
+        <div className="bg-destructive/10 border border-destructive text-destructive-foreground p-3 rounded-md flex items-start gap-3 text-sm">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
             <p>{error}</p>
         </div>
       )}
@@ -251,7 +234,7 @@ function ScannerComponent() {
       {scannedResult && (
         <div className="bg-muted/50 p-4 rounded-lg">
           <h3 className="text-lg font-bold text-primary">Scan Result</h3>
-          <p className="text-foreground bg-background p-3 rounded-md break-words my-2">{scannedResult}</p>
+          <p className="font-mono text-foreground bg-background p-3 rounded-md break-words my-2">{scannedResult}</p>
         </div>
       )}
 
@@ -273,6 +256,9 @@ function ScannerComponent() {
                     />
                )}
             </div>
+            <DialogFooter>
+                <Button onClick={() => setIsPhoneModalOpen(false)}>Close</Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -301,21 +287,21 @@ function GeneratorComponent() {
   return (
     <div className="flex flex-col items-center gap-6">
       <div className="w-full">
-        <label htmlFor="qr-input" className="block mb-2 text-sm font-medium text-muted-foreground">
+        <Label htmlFor="qr-input" className="block mb-2 text-sm font-medium">
           Enter URL or Text
-        </label>
-        <textarea
+        </Label>
+        <Textarea
           id="qr-input"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           rows={3}
-          className="w-full bg-input border border-border rounded-md p-3 focus:ring-primary focus:border-primary transition"
+          className="w-full"
           placeholder="e.g., https://google.com or your message here"
         />
       </div>
       
       {inputText && (
-        <div className="bg-white p-6 rounded-lg shadow-lg" ref={qrRef}>
+        <div className="bg-white p-6 rounded-lg shadow-inner" ref={qrRef}>
             <QRCode
               value={inputText}
               size={256}
@@ -325,14 +311,14 @@ function GeneratorComponent() {
         </div>
       )}
 
-      <button
+      <Button
         onClick={handleDownload}
         disabled={!inputText}
-        className="w-full max-w-xs mt-4 px-6 py-3 font-bold rounded-md transition duration-200 bg-primary hover:bg-primary/80 text-primary-foreground disabled:bg-muted-foreground disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full max-w-xs"
       >
-        <DownloadIcon />
+        <Download className="mr-2 h-4 w-4"/>
         Download QR Code
-      </button>
+      </Button>
     </div>
   );
 }

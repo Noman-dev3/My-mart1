@@ -75,8 +75,23 @@ export default function LandingPage() {
 
     fetchPageContent();
 
-    // No real-time subscription on homepage for performance reasons.
-    // Data will be fresh on page load.
+    const channel = supabase
+      .channel('realtime-siteContent-homepage')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'siteContent', filter: 'page=eq.homepage' },
+        (payload) => {
+          const newContent = (payload.new as any).content;
+          if (newContent && newContent.heroSlides) {
+            setHeroContent(newContent.heroSlides);
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+        supabase.removeChannel(channel);
+    }
 
   }, [supabase]);
 
