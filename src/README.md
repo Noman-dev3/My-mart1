@@ -161,25 +161,35 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('product-images', 'product-images', true)
 ON CONFLICT (id) DO NOTHING;
 
+-- Drop old policies if they exist to avoid conflicts
+DROP POLICY IF EXISTS "Admin Manage Images" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Update Images" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Delete Images" ON storage.objects;
+DROP POLICY IF EXISTS "Public Read Access" ON storage.objects;
+
 -- Create a policy to allow public read access to the images
--- This allows anyone to view the images, which is necessary for your storefront
-CREATE POLICY "Public Read Access"
+-- This allows anyone to view the images, which is necessary for your storefront.
+CREATE POLICY "Public read access for product images"
 ON storage.objects FOR SELECT
+TO public
 USING ( bucket_id = 'product-images' );
 
--- Create a policy to allow authenticated users (your admin) to upload, update, and delete images
--- This secures your bucket so only you can manage the images
-CREATE POLICY "Admin Manage Images"
+-- Create policies to allow authenticated users (your admin) to upload, update, and delete images.
+-- This secures your bucket so only your logged-in admin can manage the images.
+CREATE POLICY "Allow inserts for authenticated users"
 ON storage.objects FOR INSERT
-WITH CHECK ( bucket_id = 'product-images' AND auth.role() = 'authenticated' );
+TO authenticated
+WITH CHECK ( bucket_id = 'product-images' );
 
-CREATE POLICY "Admin Update Images"
+CREATE POLICY "Allow updates for authenticated users"
 ON storage.objects FOR UPDATE
-USING ( bucket_id = 'product-images' AND auth.role() = 'authenticated' );
+TO authenticated
+USING ( bucket_id = 'product-images' );
 
-CREATE POLICY "Admin Delete Images"
+CREATE POLICY "Allow deletes for authenticated users"
 ON storage.objects FOR DELETE
-USING ( bucket_id = 'product-images' AND auth.role() = 'authenticated' );
+TO authenticated
+USING ( bucket_id = 'product-images' );
 ```
 ---
 ## Admin Panel Access
@@ -189,6 +199,7 @@ To access the admin dashboard, navigate to `/admin` and log in with the followin
 - **Password:** `1234`
 
 These are hardcoded in the application. You can change them in `src/app/admin/login/actions.ts`.
+
 
 
 
