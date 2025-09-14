@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -54,7 +55,13 @@ const productRecommendationsFlow = ai.defineFlow(
     outputSchema: ProductRecommendationsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+        const {output} = await prompt(input);
+        return output!;
+    } catch (error) {
+        console.error("Error in product recommendations flow:", error);
+        // If the AI service fails, return an empty array to allow the frontend to use its own fallback.
+        return { recommendedProductIds: [] };
+    }
   }
 );
