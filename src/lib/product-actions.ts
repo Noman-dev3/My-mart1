@@ -151,6 +151,12 @@ export async function addProduct(values: ProductFormValues) {
     try {
         const validatedData = productSchema.parse(values);
 
+        // Correctly transform specifications array to an object
+        const specificationsObject = (validatedData.specifications || []).reduce((acc, spec) => {
+            if (spec.key) acc[spec.key] = spec.value;
+            return acc;
+        }, {} as Record<string, string>);
+
         const newProduct = {
             name: validatedData.name,
             description: validatedData.description,
@@ -160,7 +166,7 @@ export async function addProduct(values: ProductFormValues) {
             brand: validatedData.brand,
             stock_quantity: validatedData.stock_quantity,
             barcode: validatedData.barcode,
-            specifications: validatedData.specifications || {},
+            specifications: specificationsObject,
             reviews_data: validatedData.reviews_data || [],
             questions: validatedData.questions || [],
             rating: 0,
@@ -198,6 +204,12 @@ export async function updateProduct(productId: string, values: ProductFormValues
     try {
         const validatedData = productSchema.parse(values);
         
+        // Correctly transform specifications array to an object
+        const specificationsObject = (validatedData.specifications || []).reduce((acc, spec) => {
+            if (spec.key) acc[spec.key] = spec.value;
+            return acc;
+        }, {} as Record<string, string>);
+
         const updateData = {
             name: validatedData.name,
             description: validatedData.description,
@@ -207,7 +219,7 @@ export async function updateProduct(productId: string, values: ProductFormValues
             brand: validatedData.brand,
             stock_quantity: validatedData.stock_quantity,
             barcode: validatedData.barcode,
-            specifications: validatedData.specifications || {},
+            specifications: specificationsObject,
             reviews_data: values.reviews_data || [],
             questions: values.questions || []
         };
