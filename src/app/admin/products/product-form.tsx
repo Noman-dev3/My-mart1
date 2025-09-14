@@ -225,6 +225,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
                             <SelectItem value="Groceries">Groceries</SelectItem>
                             <SelectItem value="Fashion">Fashion</SelectItem>
                             <SelectItem value="Home Goods">Home Goods</SelectItem>
+                            <SelectItem value="Bakery">Bakery</SelectItem>
                             </SelectContent>
                         </Select>
                         <FormMessage />

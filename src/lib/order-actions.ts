@@ -5,6 +5,7 @@ import { type CartItem } from '@/context/cart-context';
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import type { Product } from './product-actions';
 
 // A simpler version of CartItem for Server Actions, containing only primitive types.
 export type OrderItem = {
@@ -15,7 +16,7 @@ export type OrderItem = {
     image: string;
 }
 
-export type PaymentMethod = 'COD' | 'Online' | 'In-Store';
+export type PaymentMethod = 'COD' | 'Online' | 'In-Store' | 'Pay on Collection';
 
 export type Order = {
     id: string;
@@ -27,7 +28,7 @@ export type Order = {
     };
     items: OrderItem[];
     total: number;
-    status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
+    status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Bakery Order';
     date: any; // Using `any` for serverTimestamp flexibility
     paymentMethod: PaymentMethod;
 };
@@ -220,4 +221,55 @@ export async function createStoreOrder(data: {
   revalidatePath('/admin');
 
   return savedOrder as Order;
+}
+
+export async function placeBakeryOrder(data: {
+  product: Product;
+  customization: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+  };
+}) {
+  const supabase = createServerActionClient({ cookies });
+
+  const { product, customization, user } = data;
+
+  const orderItem: OrderItem = {
+    id: product.id,
+    name: `${product.name} (Custom)`,
+    price: product.price, // Price is for reference, as it's not charged here.
+    quantity: 1,
+    image: product.image,
+  };
+
+  const newOrderData = {
+    customer: {
+      name: user.name,
+      email: user.email,
+      phone: '', // Can be enhanced later
+      address: 'Bakery Order',
+    },
+    items: [{...orderItem, customization}], // Add customization to the item
+    total: product.price, // For reference
+    status: 'Bakery Order', // A new status to filter in admin panel
+    paymentMethod: 'Pay on Collection',
+    date: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from('orders').insert(newOrderData);
+
+  if (error) {
+    console.error("Error placing bakery order:", error);
+    throw new Error("Could not place the bakery order.");
+  }
+
+  // Notify admin
+  await sendAdminNotification(newOrderData as unknown as Order);
+  
+  revalidatePath('/admin/orders');
+  revalidatePath('/account/orders');
+
+  return { success: true };
 }

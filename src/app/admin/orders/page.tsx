@@ -58,7 +58,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { updateOrderStatus, type Order } from '@/lib/order-actions';
-import { ChevronDown, File, ListFilter, MoreHorizontal, Eye, Truck, XCircle, CheckCircle, Printer } from 'lucide-react';
+import { ChevronDown, File, ListFilter, MoreHorizontal, Eye, Truck, XCircle, CheckCircle, Printer, Cake } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
@@ -200,9 +200,14 @@ export default function OrdersPage() {
                 status === 'Shipped' ? 'default' :
                 status === 'Processing' ? 'secondary' :
                 status === 'Cancelled' ? 'destructive' :
+                status === 'Bakery Order' ? 'secondary' :
                 'outline';
+            const Icon = status === 'Bakery Order' ? Cake : null;
 
-            return <Badge variant={variant} className="capitalize">{status}</Badge>
+            return <Badge variant={variant} className="capitalize">
+                {Icon && <Icon className="mr-1 h-3 w-3" />}
+                {status}
+            </Badge>
         },
         filterFn: (row, id, value) => {
             return value.includes(row.getValue(id))
@@ -301,7 +306,7 @@ export default function OrdersPage() {
     },
   });
 
-  const statusOptions: Order['status'][] = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
+  const statusOptions: Order['status'][] = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Bakery Order'];
 
   const handleExport = () => {
     const dataToExport = table.getFilteredRowModel().rows.map(row => row.original);
@@ -523,6 +528,7 @@ export default function OrdersPage() {
                             selectedOrder.status === 'Shipped' ? 'default' :
                             selectedOrder.status === 'Processing' ? 'secondary' :
                             selectedOrder.status === 'Cancelled' ? 'destructive' :
+                            selectedOrder.status === 'Bakery Order' ? 'secondary' :
                             'outline'
                         } className="capitalize">{selectedOrder.status}</Badge></p>
                         <p>Total: <span className="font-bold">PKR {selectedOrder.total.toFixed(2)}</span></p>
@@ -544,13 +550,16 @@ export default function OrdersPage() {
                 <div>
                     <h4 className="font-semibold mb-2">Items</h4>
                     <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                        {selectedOrder.items.map(item => (
+                        {selectedOrder.items.map((item: any) => (
                             <div key={item.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
                                 <div className="flex items-center gap-3">
                                     <Image src={item.image} alt={item.name} width={48} height={48} className="rounded" />
                                     <div>
                                         <p className="font-medium">{item.name}</p>
                                         <p className="text-sm text-muted-foreground">Qty: {item.quantity} x PKR {item.price.toFixed(2)}</p>
+                                        {item.customization && (
+                                            <p className="text-xs text-primary bg-primary/10 p-1 rounded-sm mt-1">Custom: {item.customization}</p>
+                                        )}
                                     </div>
                                 </div>
                                 <p className="font-medium">PKR {(item.price * item.quantity).toFixed(2)}</p>
@@ -593,5 +602,3 @@ export default function OrdersPage() {
     </>
   );
 }
-
-    

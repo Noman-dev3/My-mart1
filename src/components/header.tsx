@@ -84,6 +84,7 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-4">
           <Link href="/" className="text-sm font-medium hover:text-primary transition-colors">Home</Link>
           <Link href="/products" className="text-sm font-medium hover:text-primary transition-colors">Products</Link>
+          <Link href="/bakery" className="text-sm font-medium hover:text-primary transition-colors">Bakery</Link>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -195,6 +196,7 @@ export default function Header() {
                     <nav className="flex flex-col gap-2 mb-auto">
                       <Link href="/" className="text-lg font-medium hover:text-primary transition-colors">Home</Link>
                       <Link href="/products" className="text-lg font-medium hover:text-primary transition-colors">Products</Link>
+                      <Link href="/bakery" className="text-lg font-medium hover:text-primary transition-colors">Bakery</Link>
                     </nav>
                      {user ? (
                         <div className="border-t pt-4">

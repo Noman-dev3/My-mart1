@@ -66,6 +66,22 @@ export default function Footer() {
           <div>
             <h4 className="font-headline font-semibold text-lg mb-4">Shop</h4>
             <ul className="space-y-2 text-sm">
+               <li>
+                <Link
+                  href="/products"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  All Products
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/bakery"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Bakery
+                </Link>
+              </li>
               <li>
                 <Link
                   href="/products?category=Electronics"
@@ -80,22 +96,6 @@ export default function Footer() {
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Groceries
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/products?category=Fashion"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Fashion
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/products?category=Home%20Goods"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Home Goods
                 </Link>
               </li>
             </ul>
