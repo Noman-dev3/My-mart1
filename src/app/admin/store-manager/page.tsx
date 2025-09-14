@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X, Plus } from 'lucide-react';
+import { Barcode, ScanLine, ShoppingCart, Trash2, Loader2, UserPlus, X, Plus, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getProductByBarcode, type Product, addProduct } from '@/lib/product-actions';
 import { createStoreOrder } from '@/lib/order-actions';
@@ -18,6 +18,9 @@ import { logAdminActivity } from '@/lib/admin-actions';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { ProductFormValues } from '@/lib/schemas';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import QRCode from 'qrcode.react';
 
 
 type CartItem = {
@@ -72,6 +75,7 @@ const saveActiveSessions = (sessions: CustomerSession[]) => {
 export default function StoreManagerPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const supabase = createSupabaseBrowserClient();
   
   const [sessions, setSessions] = useState<CustomerSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -91,6 +95,10 @@ export default function StoreManagerPage() {
   const [isAddProductFormOpen, setIsAddProductFormOpen] = useState(false);
   const [newProductToCreate, setNewProductToCreate] = useState<Partial<Product> | undefined>(undefined);
   
+  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
+  const [phoneSessionId, setPhoneSessionId] = useState('');
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
   const barcodeBuffer = useRef<string[]>([]);
   const barcodeTimeout = useRef<NodeJS.Timeout | null>(null);
   
@@ -187,7 +195,7 @@ export default function StoreManagerPage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (isCustomerDialogOpen || isTempProductDialogOpen || isAddProductFormOpen) return;
+        if (isCustomerDialogOpen || isTempProductDialogOpen || isAddProductFormOpen || isPhoneModalOpen) return;
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
         if (e.key === 'Enter') {
@@ -212,7 +220,7 @@ export default function StoreManagerPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen, isAddProductFormOpen]);
+  }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen, isAddProductFormOpen, isPhoneModalOpen]);
 
     useEffect(() => {
         if (isCameraOn && videoRef.current) {
@@ -332,11 +340,49 @@ export default function StoreManagerPage() {
       setIsAddProductFormOpen(false);
       setNewProductToCreate(undefined);
       return true;
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to save product.", variant: "destructive" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to save product.", variant: "destructive" });
       return false;
     }
   }
+
+  const openPhoneScanner = () => {
+    if (!activeSessionId) {
+        toast({ title: 'No active session', description: 'Please start a customer session first.', variant: 'destructive'});
+        return;
+    }
+    const sessionId = `pos-scan-${activeSessionId}`;
+    setPhoneSessionId(sessionId);
+    setIsPhoneModalOpen(true);
+    
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    const channel = supabase.channel(sessionId);
+    channel.on('broadcast', { event: 'barcode-scanned' }, (payload) => {
+        processBarcode(payload.payload.barcode);
+        toast({ title: "Barcode Received", description: "Item processed from phone scan."});
+        // We might not want to close the modal, to allow for multiple scans
+        // setIsPhoneModalOpen(false); 
+    }).subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+            console.log(`Listening for phone scans on channel: ${sessionId}`);
+        }
+    });
+
+    channelRef.current = channel;
+  };
+   
+  useEffect(() => {
+    // Cleanup Supabase channel on component unmount
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [supabase]);
+
 
   const activeSession = sessions.find(s => s.id === activeSessionId);
   const cartTotal = activeSession?.cart.reduce((total, item) => total + item.price * item.quantity, 0) || 0;
@@ -353,9 +399,14 @@ export default function StoreManagerPage() {
             <CardHeader>
                 <div className="flex justify-between items-center">
                     <CardTitle className="flex items-center gap-2"><ScanLine /> Scanner</CardTitle>
-                     <Button onClick={() => setIsCameraOn(prev => !prev)} variant={isCameraOn ? 'destructive' : 'default'} size="sm">
-                       {isCameraOn ? 'Stop Camera' : 'Start Camera'}
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button onClick={openPhoneScanner} variant="outline" size="sm">
+                            <Phone className="mr-2 h-4 w-4"/> Use Phone
+                        </Button>
+                        <Button onClick={() => setIsCameraOn(prev => !prev)} variant={isCameraOn ? 'destructive' : 'default'} size="sm">
+                        {isCameraOn ? 'Stop Camera' : 'Start Camera'}
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center gap-4">
@@ -502,6 +553,32 @@ export default function StoreManagerPage() {
               <ProductForm onSubmit={onProductFormSubmit} product={newProductToCreate as Product | undefined} onCancel={() => setIsAddProductFormOpen(false)} />
           </DialogContent>
       </Dialog>
+      
+      <Dialog open={isPhoneModalOpen} onOpenChange={setIsPhoneModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Use Your Phone as a Scanner</DialogTitle>
+                <DialogDescription>
+                    Scan the QR code below with your phone's camera to open the scanner page. The result will appear in the active customer's cart automatically.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center p-4 bg-white rounded-md my-4">
+               {typeof window !== 'undefined' && phoneSessionId && (
+                    <QRCode
+                        value={`${window.location.origin}/scan/${phoneSessionId}`}
+                        size={256}
+                        level={"H"}
+                        includeMargin={true}
+                    />
+               )}
+            </div>
+            <DialogFooter>
+                <Button variant="secondary" onClick={() => setIsPhoneModalOpen(false)}>Done</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+    
