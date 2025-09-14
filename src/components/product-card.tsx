@@ -28,7 +28,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     });
   };
   
-  const inStock = product.stockQuantity > 0;
+  const inStock = product.stock_quantity > 0;
 
   return (
     <Card className="flex flex-col overflow-hidden h-full rounded-lg shadow-md transition-all duration-300 hover:shadow-xl hover:-translate-y-1">

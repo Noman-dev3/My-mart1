@@ -18,12 +18,12 @@ export type Product = {
     image: string;
     category: 'Electronics' | 'Groceries' | 'Fashion' | 'Home Goods';
     brand: string;
-    stockQuantity: number;
+    stock_quantity: number;
     barcode: string;
     rating: number;
     reviews: number;
     specifications: Record<string, string>;
-    reviewsData: {
+    reviews_data: {
       author: string;
       rating: number;
       comment: string;
@@ -126,10 +126,10 @@ export async function addProduct(values: ProductFormValues) {
             image: validatedData.image,
             category: validatedData.category,
             brand: validatedData.brand,
-            "stockQuantity": parseInt(validatedData.stockQuantity as any, 10),
+            stock_quantity: validatedData.stock_quantity,
             barcode: validatedData.barcode,
             specifications: validatedData.specifications || {},
-            "reviewsData": validatedData.reviewsData || [],
+            reviews_data: validatedData.reviews_data || [],
             questions: validatedData.questions || [],
             rating: 0,
             reviews: 0,
@@ -174,10 +174,10 @@ export async function updateProduct(productId: string, values: ProductFormValues
             image: validatedData.image,
             category: validatedData.category,
             brand: validatedData.brand,
-            "stockQuantity": parseInt(validatedData.stockQuantity as any, 10),
+            stock_quantity: validatedData.stock_quantity,
             barcode: validatedData.barcode,
             specifications: validatedData.specifications || {},
-            "reviewsData": values.reviewsData || [],
+            reviews_data: values.reviews_data || [],
             questions: values.questions || []
         };
 

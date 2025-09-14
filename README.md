@@ -20,8 +20,11 @@ To get the application running, you need to set up your Supabase database schema
 ### Database Setup SQL Script
 
 ```sql
--- Create the products table if it doesn't exist
-CREATE TABLE IF NOT EXISTS products (
+-- Drop the old products table to remove it completely
+DROP TABLE IF EXISTS products;
+
+-- Create the new, corrected products table with snake_case column names
+CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     description TEXT,
@@ -29,15 +32,16 @@ CREATE TABLE IF NOT EXISTS products (
     image TEXT,
     category TEXT,
     brand TEXT,
-    "stockQuantity" INTEGER DEFAULT 0,
+    stock_quantity INTEGER DEFAULT 0 NOT NULL,
     barcode TEXT UNIQUE,
-    rating NUMERIC DEFAULT 0,
-    reviews INT DEFAULT 0,
+    rating NUMERIC DEFAULT 0 NOT NULL,
+    reviews INT DEFAULT 0 NOT NULL,
     specifications JSONB,
-    "reviewsData" JSONB,
+    reviews_data JSONB,
     questions JSONB,
-    created_at TIMESTAMPTZ DEFAULT now()
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
+
 
 -- Create the orders table if it doesn't exist
 CREATE TABLE IF NOT EXISTS orders (
@@ -160,4 +164,5 @@ To access the admin dashboard, navigate to `/admin` and log in with the followin
 - **Password:** `1234`
 
 These are hardcoded in the application. You can change them in `src/app/admin/login/actions.ts`.
+
 

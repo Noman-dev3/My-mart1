@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import type { Product } from '@/lib/placeholder-data';
+import type { Product } from '@/lib/product-actions';
 import { useToast } from '@/hooks/use-toast';
 
 export type CartItem = Product & {

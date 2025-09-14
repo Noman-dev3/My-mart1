@@ -75,14 +75,14 @@ export default function ProductListing({ products }: { products: Product[] }) {
       .filter((p) => (selectedCategories.length > 0 ? selectedCategories.includes(p.category) : true))
       .filter((p) => (selectedBrands.length > 0 ? selectedBrands.includes(p.brand) : true))
       .filter((p) => p.rating >= selectedRating)
-      .filter((p) => (inStockOnly ? p.stockQuantity > 0 : true));
+      .filter((p) => (inStockOnly ? p.stock_quantity > 0 : true));
 
     switch (sortOrder) {
       case 'price-asc':
         result.sort((a, b) => a.price - b.price);
         break;
       case 'price-desc':
-        result.sort((a, b) => b.price - b.price);
+        result.sort((a, b) => b.price - a.price);
         break;
       case 'popularity':
         result.sort((a, b) => b.reviews - a.reviews);

@@ -217,7 +217,7 @@ export default function ProductDetailPage() {
       )
   }
   
-  const inStock = product.stockQuantity > 0;
+  const inStock = product.stock_quantity > 0;
 
   const RecommendationsSkeleton = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -341,7 +341,7 @@ export default function ProductDetailPage() {
                     </AccordionTrigger>
                     <AccordionContent>
                       <div className="space-y-6 mt-2">
-                        {product.reviewsData?.map((review, index) => (
+                        {product.reviews_data?.map((review, index) => (
                           <div key={index}>
                             <div className="flex items-center gap-2">
                               <ProductRating rating={review.rating} />
@@ -351,7 +351,7 @@ export default function ProductDetailPage() {
                             <p className="text-muted-foreground mt-2">{review.comment}</p>
                           </div>
                         ))}
-                         {(!product.reviewsData || product.reviewsData.length === 0) && (
+                         {(!product.reviews_data || product.reviews_data.length === 0) && (
                             <p className="text-sm text-muted-foreground">No reviews yet.</p>
                          )}
                       </div>

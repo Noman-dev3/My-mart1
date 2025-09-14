@@ -60,17 +60,20 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
         image: "",
         category: "Electronics",
         brand: "",
-        stockQuantity: 0,
+        stock_quantity: 0,
         barcode: "",
         specifications: {},
-        reviewsData: [],
+        reviews_data: [],
         questions: [],
     }
   });
 
   useEffect(() => {
     if (product) {
-      form.reset(product);
+      form.reset({
+        ...product,
+        stock_quantity: product.stock_quantity || 0,
+      });
     } else {
       form.reset({
         name: '',
@@ -79,10 +82,10 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
         image: 'https://picsum.photos/seed/product/600/600',
         category: 'Electronics',
         brand: '',
-        stockQuantity: 0,
+        stock_quantity: 0,
         barcode: '',
         specifications: {},
-        reviewsData: [],
+        reviews_data: [],
         questions: [],
       });
     }
@@ -114,6 +117,8 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
     const dataToSubmit = {
       ...values,
       specifications: values.specifications || {},
+      reviews_data: values.reviews_data || [],
+      questions: values.questions || [],
     };
     const result = await onSubmit(dataToSubmit);
     if (result) {
@@ -212,7 +217,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <FormField
                 control={form.control}
-                name="stockQuantity"
+                name="stock_quantity"
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Stock Quantity</FormLabel>

@@ -190,10 +190,10 @@ export default function ProductsPage() {
         },
     },
     {
-        accessorKey: "stockQuantity",
+        accessorKey: "stock_quantity",
         header: "Stock",
         cell: ({ row }) => {
-            const stock = row.getValue("stockQuantity") as number;
+            const stock = row.getValue("stock_quantity") as number;
             return stock > 0 ? 
                 <Badge variant="secondary">{stock} in Stock</Badge> : 
                 <Badge variant="destructive">Out of Stock</Badge>;
