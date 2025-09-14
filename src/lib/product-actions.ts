@@ -150,11 +150,11 @@ export async function addProduct(values: ProductDbValues) {
     const supabase = createServerActionClient({ cookies });
     
     try {
-        // Validate with the DB schema that expects specifications as an object
         const validatedData = productDbSchema.parse(values);
 
         const newProduct = {
             ...validatedData,
+            price: String(validatedData.price), // Ensure price is a string for NUMERIC type
             specifications: validatedData.specifications || {},
             reviews_data: validatedData.reviews_data || [],
             questions: validatedData.questions || [],
@@ -191,11 +191,11 @@ export async function updateProduct(productId: string, values: ProductDbValues) 
     const supabase = createServerActionClient({ cookies });
     
     try {
-        // Validate with the DB schema that expects specifications as an object
         const validatedData = productDbSchema.parse(values);
         
         const updateData = {
             ...validatedData,
+            price: String(validatedData.price), // Ensure price is a string for NUMERIC type
             specifications: validatedData.specifications || {},
             reviews_data: values.reviews_data || [],
             questions: values.questions || []
@@ -313,5 +313,3 @@ export async function deleteProduct(productId: string) {
     
     return { success: true };
 }
-
-    
