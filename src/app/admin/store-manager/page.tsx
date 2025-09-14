@@ -37,30 +37,8 @@ type CustomerSession = {
     cart: CartItem[];
 };
 
-type TempProduct = {
-    id: string; // The barcode
-    name: string;
-    price: number;
-}
 
 // Local storage helpers
-const getTempProducts = (): TempProduct[] => {
-    if (typeof window === 'undefined') return [];
-    const stored = localStorage.getItem('myMart-temp-products');
-    return stored ? JSON.parse(stored) : [];
-};
-
-const saveTempProduct = (product: TempProduct) => {
-    const products = getTempProducts();
-    const existingIndex = products.findIndex(p => p.id === product.id);
-    if (existingIndex > -1) {
-        products[existingIndex] = product;
-    } else {
-        products.push(product);
-    }
-    localStorage.setItem('myMart-temp-products', JSON.stringify(products));
-};
-
 const getActiveSessions = (): CustomerSession[] => {
     if (typeof window === 'undefined') return [];
     const stored = localStorage.getItem('myMart-active-sessions');
@@ -87,10 +65,8 @@ export default function StoreManagerPage() {
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState('');
   
-  const [isTempProductDialogOpen, setIsTempProductDialogOpen] = useState(false);
-  const [tempProductBarcode, setTempProductBarcode] = useState('');
-  const [tempProductName, setTempProductName] = useState('');
-  const [tempProductPrice, setTempProductPrice] = useState('');
+  const [isProductNotFoundDialogOpen, setIsProductNotFoundDialogOpen] = useState(false);
+  const [notFoundBarcode, setNotFoundBarcode] = useState('');
 
   const [isAddProductFormOpen, setIsAddProductFormOpen] = useState(false);
   const [newProductToCreate, setNewProductToCreate] = useState<Partial<Product> | undefined>(undefined);
@@ -163,21 +139,11 @@ export default function StoreManagerPage() {
     toast({ title: 'Processing...', description: `Searching for barcode: ${barcode}` });
 
     try {
-        const tempProducts = getTempProducts();
-        const tempProduct = tempProducts.find(p => p.id === barcode.trim());
-
-        if (tempProduct) {
-            addProductToCart(tempProduct);
-            return;
-        }
-
         const { data: product, error } = await getProductByBarcode(barcode.trim());
 
         if (error || !product) {
-            setTempProductBarcode(barcode.trim());
-            setTempProductName('');
-            setTempProductPrice('');
-            setIsTempProductDialogOpen(true);
+            setNotFoundBarcode(barcode.trim());
+            setIsProductNotFoundDialogOpen(true);
         } else {
             addProductToCart(product);
         }
@@ -195,7 +161,7 @@ export default function StoreManagerPage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (isCustomerDialogOpen || isTempProductDialogOpen || isAddProductFormOpen || isPhoneModalOpen) return;
+        if (isCustomerDialogOpen || isProductNotFoundDialogOpen || isAddProductFormOpen || isPhoneModalOpen) return;
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
         if (e.key === 'Enter') {
@@ -220,7 +186,7 @@ export default function StoreManagerPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [processBarcode, isCustomerDialogOpen, isTempProductDialogOpen, isAddProductFormOpen, isPhoneModalOpen]);
+  }, [processBarcode, isCustomerDialogOpen, isProductNotFoundDialogOpen, isAddProductFormOpen, isPhoneModalOpen]);
 
     useEffect(() => {
         if (isCameraOn && videoRef.current) {
@@ -314,21 +280,9 @@ export default function StoreManagerPage() {
     }
   };
   
-  const handleAddTempProduct = () => {
-    const price = parseFloat(tempProductPrice);
-    if (!tempProductName.trim() || isNaN(price) || price <= 0) {
-        toast({ title: "Invalid Data", description: "Please enter a valid name and price.", variant: "destructive" });
-        return;
-    }
-    const newTempProduct: TempProduct = { id: tempProductBarcode, name: tempProductName, price: price };
-    saveTempProduct(newTempProduct);
-    addProductToCart(newTempProduct);
-    setIsTempProductDialogOpen(false);
-  }
-
   const handleCreateNewProduct = () => {
-      setNewProductToCreate({ barcode: tempProductBarcode });
-      setIsTempProductDialogOpen(false);
+      setNewProductToCreate({ barcode: notFoundBarcode });
+      setIsProductNotFoundDialogOpen(false);
       setIsAddProductFormOpen(true);
   }
 
@@ -514,35 +468,18 @@ export default function StoreManagerPage() {
             </DialogContent>
        </Dialog>
        
-       <Dialog open={isTempProductDialogOpen} onOpenChange={setIsTempProductDialogOpen}>
+       <Dialog open={isProductNotFoundDialogOpen} onOpenChange={setIsProductNotFoundDialogOpen}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Product Not Found</DialogTitle>
-                    <DialogDescription>Barcode <span className="font-bold text-primary">{tempProductBarcode}</span> was not found in the inventory.</DialogDescription>
+                    <DialogDescription>
+                        Barcode <span className="font-bold text-primary">{notFoundBarcode}</span> was not found in the inventory.
+                        Would you like to add it as a new product now?
+                    </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div>
-                        <h3 className="font-semibold">Option 1: Add as Temporary Product</h3>
-                        <p className="text-sm text-muted-foreground">Add a name and price to sell it now. This item will not be saved to the main inventory.</p>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="temp-name">Product Name</Label>
-                        <Input id="temp-name" value={tempProductName} onChange={(e) => setTempProductName(e.target.value)} placeholder="e.g., Local Soda" />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="temp-price">Price (PKR)</Label>
-                        <Input id="temp-price" type="number" value={tempProductPrice} onChange={(e) => setTempProductPrice(e.target.value)} placeholder="e.g., 150" />
-                    </div>
-                    <Button onClick={handleAddTempProduct} className="w-full">Add to Cart as Temporary</Button>
-                </div>
-                <Separator />
-                <div className="space-y-4 pt-2">
-                    <h3 className="font-semibold">Option 2: Add to Main Inventory</h3>
-                    <p className="text-sm text-muted-foreground">Open the full product form to add this item permanently.</p>
-                    <Button onClick={handleCreateNewProduct} variant="secondary" className="w-full">Open "Add Product" Form</Button>
-                </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsTempProductDialogOpen(false)}>Cancel</Button>
+                    <Button variant="outline" onClick={() => setIsProductNotFoundDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleCreateNewProduct}>Add New Product</Button>
                 </DialogFooter>
             </DialogContent>
        </Dialog>
@@ -580,5 +517,3 @@ export default function StoreManagerPage() {
     </div>
   );
 }
-
-    
