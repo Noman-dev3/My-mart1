@@ -45,9 +45,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   
   const SidebarContent = () => (
     <>
-        <div className="flex items-center gap-2 px-4 py-6 border-b border-border/50">
-            <Icons.logo className="h-8 w-8 text-primary" />
-            <span className="font-headline text-2xl font-bold text-primary">
+        <div className="flex items-center gap-2 px-4 py-6 border-b border-sidebar-border">
+            <Icons.logo className="h-8 w-8 text-sidebar-primary" />
+            <span className="font-headline text-2xl font-bold text-sidebar-primary">
             My Mart
             </span>
         </div>
@@ -59,8 +59,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                     <Link href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
                     <div
                         className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-accent",
-                        pathname === item.href && "bg-accent text-primary font-semibold"
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:text-sidebar-primary hover:bg-sidebar-accent",
+                        pathname === item.href && "bg-sidebar-primary text-sidebar-primary-foreground font-semibold"
                         )}
                     >
                         <item.icon className="h-5 w-5" />
@@ -72,7 +72,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             </ul>
             </nav>
         </div>
-        <div className="mt-auto p-4 border-t border-border/50">
+        <div className="mt-auto p-4 border-t border-sidebar-border">
             <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive">
                 <LogOut className="mr-2 h-5 w-5" />
                 Logout
@@ -84,13 +84,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       {/* Desktop Sidebar */}
-      <aside className="hidden border-r bg-card md:flex flex-col">
+      <aside className="hidden bg-sidebar md:flex flex-col fixed h-full w-[220px] lg:w-[280px]">
         <SidebarContent />
       </aside>
       
       {/* Mobile Sidebar */}
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <SheetContent side="left" className="flex flex-col w-full max-w-[300px] p-0">
+        <SheetContent side="left" className="flex flex-col w-full max-w-[300px] p-0 bg-sidebar border-sidebar-border">
            <SheetHeader className="sr-only">
             <SheetTitle>Admin Menu</SheetTitle>
           </SheetHeader>
@@ -98,7 +98,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col md:ml-[220px] lg:ml-[280px]">
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6 sticky top-0 z-30">
           <Button
             variant="outline"
