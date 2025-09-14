@@ -7,8 +7,9 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { randomBytes } from 'crypto';
-import { productSchema } from './schemas';
+import { productDbSchema, type ProductDbValues } from './schemas'; // <-- Use the new DB schema
 import type { ProductFormValues } from './schemas';
+
 
 // We define the Product type here as this file is the source of truth for product data structures.
 export type Product = {
@@ -145,28 +146,16 @@ const questionSchema = z.object({
 });
 
 
-export async function addProduct(values: ProductFormValues) {
+export async function addProduct(values: ProductDbValues) {
     const supabase = createServerActionClient({ cookies });
     
     try {
-        const validatedData = productSchema.parse(values);
-
-        // Correctly transform specifications array to an object
-        const specificationsObject = (validatedData.specifications || []).reduce((acc, spec) => {
-            if (spec.key) acc[spec.key] = spec.value;
-            return acc;
-        }, {} as Record<string, string>);
+        // Validate with the DB schema that expects specifications as an object
+        const validatedData = productDbSchema.parse(values);
 
         const newProduct = {
-            name: validatedData.name,
-            description: validatedData.description,
-            price: validatedData.price,
-            image: validatedData.image,
-            category: validatedData.category,
-            brand: validatedData.brand,
-            stock_quantity: validatedData.stock_quantity,
-            barcode: validatedData.barcode,
-            specifications: specificationsObject,
+            ...validatedData,
+            specifications: validatedData.specifications || {},
             reviews_data: validatedData.reviews_data || [],
             questions: validatedData.questions || [],
             rating: 0,
@@ -198,28 +187,16 @@ export async function addProduct(values: ProductFormValues) {
     }
 }
 
-export async function updateProduct(productId: string, values: ProductFormValues) {
+export async function updateProduct(productId: string, values: ProductDbValues) {
     const supabase = createServerActionClient({ cookies });
     
     try {
-        const validatedData = productSchema.parse(values);
+        // Validate with the DB schema that expects specifications as an object
+        const validatedData = productDbSchema.parse(values);
         
-        // Correctly transform specifications array to an object
-        const specificationsObject = (validatedData.specifications || []).reduce((acc, spec) => {
-            if (spec.key) acc[spec.key] = spec.value;
-            return acc;
-        }, {} as Record<string, string>);
-
         const updateData = {
-            name: validatedData.name,
-            description: validatedData.description,
-            price: validatedData.price,
-            image: validatedData.image,
-            category: validatedData.category,
-            brand: validatedData.brand,
-            stock_quantity: validatedData.stock_quantity,
-            barcode: validatedData.barcode,
-            specifications: specificationsObject,
+            ...validatedData,
+            specifications: validatedData.specifications || {},
             reviews_data: values.reviews_data || [],
             questions: values.questions || []
         };

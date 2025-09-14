@@ -1,4 +1,6 @@
 
+'use client';
+
 import { z } from 'zod';
 
 const specificationSchema = z.object({
@@ -6,7 +8,7 @@ const specificationSchema = z.object({
   value: z.string().min(1, "Specification value cannot be empty."),
 });
 
-// SINGLE SOURCE OF TRUTH FOR PRODUCT VALIDATION
+// FOR THE CLIENT-SIDE FORM (react-hook-form)
 export const productSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters long."),
   description: z.string().min(10, "Description must be at least 10 characters long."),
@@ -22,3 +24,11 @@ export const productSchema = z.object({
 });
 
 export type ProductFormValues = z.infer<typeof productSchema>;
+
+
+// FOR THE SERVER-SIDE ACTION (what the DB expects)
+export const productDbSchema = productSchema.extend({
+  specifications: z.record(z.string()).optional(), // Expects an object, not an array of objects
+});
+
+export type ProductDbValues = z.infer<typeof productDbSchema>;
