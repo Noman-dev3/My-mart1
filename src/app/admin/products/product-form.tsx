@@ -171,7 +171,8 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   }
 
   const onFormSubmit = async (values: ProductFormValues) => {
-    // Convert specifications array back to an object
+    // The `onSubmit` prop (which is addProduct/updateProduct) expects the DB format.
+    // So we convert specifications here before passing it on.
     const specificationsObject = (values.specifications || []).reduce((acc, spec) => {
       if (spec.key) {
         acc[spec.key] = spec.value;
@@ -185,7 +186,8 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
       reviews_data: values.reviews_data || [],
       questions: values.questions || [],
     };
-    const result = await onSubmit(dataToSubmit as any); // The type will mismatch slightly due to array vs object
+    
+    const result = await onSubmit(dataToSubmit as any);
     if (result) {
       onCancel();
     }
@@ -466,12 +468,9 @@ const QAndAItem = ({ product, question, onAnswerSubmit }: { product: Product, qu
     const handleGenerateAnswer = async () => {
         setIsGenerating(true);
         try {
-            const { name, description, category, brand } = product;
-            // Convert spec array to object for AI
-            const specificationsObject = product.specifications ? Object.fromEntries(Object.entries(product.specifications)) : {};
-
+            const { name, description, category, brand, specifications } = product;
             const result = await getProductQuestionAnswer({
-                product: { name, description, category, brand, specifications: specificationsObject },
+                product: { name, description, category, brand, specifications },
                 question: question.text
             });
             setAnswer(result.answer);
