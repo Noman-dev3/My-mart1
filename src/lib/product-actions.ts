@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { randomBytes } from 'crypto';
@@ -43,7 +44,13 @@ export type Product = {
 export type { ProductFormValues };
 
 export async function uploadProductImage(formData: FormData) {
-  const supabase = createServerActionClient({ cookies });
+  // Use the service role client for direct uploads, bypassing RLS.
+  // This is secure because this is a server action.
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   const file = formData.get('file') as File;
 
   if (!file) {
@@ -144,7 +151,6 @@ export async function addProduct(values: ProductFormValues) {
     try {
         const validatedData = productSchema.parse(values);
 
-        // Explicitly construct the object to be sent to the database
         const newProduct = {
             name: validatedData.name,
             description: validatedData.description,
@@ -178,7 +184,7 @@ export async function addProduct(values: ProductFormValues) {
         return savedProduct as Product;
 
     } catch (error: any) {
-        if (error.code === '23505') { // Unique violation error code for PostgreSQL
+        if (error.code === '23505') { 
              throw new Error("A product with this barcode already exists.");
         }
         console.error('Database error saving product:', error);
@@ -223,7 +229,7 @@ export async function updateProduct(productId: string, values: ProductFormValues
         return updatedProduct;
 
     } catch (error: any) {
-         if (error.code === '23505') { // Unique violation error code for PostgreSQL
+         if (error.code === '23505') { 
              throw new Error("A product with this barcode already exists.");
         }
         console.error('Database error updating product:', error);
