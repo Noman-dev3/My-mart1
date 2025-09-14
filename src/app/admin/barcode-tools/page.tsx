@@ -5,11 +5,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { NotFoundException, ChecksumException, FormatException } from '@zxing/library';
 import QRCode from 'qrcode.react';
-import { createSupabaseBrowserClient } from '@/lib/supabase-client';
-import { type RealtimeChannel } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Camera, QrCode, Scan, Upload, Phone, AlertCircle, Download } from 'lucide-react';
+import { Camera, QrCode, Scan, Upload, AlertCircle, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -34,7 +31,7 @@ export default function BarcodeToolsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Barcode Scanner</CardTitle>
-                        <CardDescription>Scan barcodes using your device camera, an image file, or your phone.</CardDescription>
+                        <CardDescription>Scan barcodes using your device camera or an image file.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <ScannerComponent />
@@ -68,11 +65,7 @@ function ScannerComponent() {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDevice, setSelectedDevice] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
-  
-  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
-  const [phoneSessionId, setPhoneSessionId] = useState('');
-  const supabase = createSupabaseBrowserClient();
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  const codeReader = useRef(new BrowserMultiFormatReader());
 
 
   const startScan = useCallback(async (deviceId: string) => {
@@ -81,14 +74,12 @@ function ScannerComponent() {
     setScannedResult('');
     setIsScanning(true);
 
-    const codeReader = new BrowserMultiFormatReader();
-
     try {
-      codeReader.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
+      codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
         if (result) {
           setScannedResult(result.getText());
           setIsScanning(false);
-          codeReader.reset();
+          codeReader.current.reset();
         }
         if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
            console.error("Scanning error:", err);
@@ -108,9 +99,7 @@ function ScannerComponent() {
   }, []);
 
   const stopScan = useCallback(() => {
-    if (videoRef.current && videoRef.current.srcObject) {
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-    }
+    codeReader.current.reset();
     setIsScanning(false);
   }, []);
 
@@ -126,11 +115,8 @@ function ScannerComponent() {
 
     return () => {
       stopScan();
-      if(channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
     };
-  }, [stopScan, supabase]);
+  }, [stopScan]);
 
   const handleFileScan = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -138,7 +124,7 @@ function ScannerComponent() {
       setError('');
       setScannedResult('');
       setIsScanning(true); // Visually indicate activity
-      const codeReader = new BrowserMultiFormatReader();
+      const localCodeReader = new BrowserMultiFormatReader();
       try {
         const dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -146,7 +132,7 @@ function ScannerComponent() {
             reader.onerror = reject;
             reader.readAsDataURL(file);
         });
-        const result = await codeReader.decodeFromImageUrl(dataUrl);
+        const result = await localCodeReader.decodeFromImageUrl(dataUrl);
         setScannedResult(result.getText());
       } catch (err) {
         console.error("File scan error:", err);
@@ -155,26 +141,6 @@ function ScannerComponent() {
         setIsScanning(false);
       }
     }
-  };
-
-  const openPhoneScanner = () => {
-    const sessionId = `scan-session-${Math.random().toString(36).substring(2, 11)}`;
-    setPhoneSessionId(sessionId);
-    setIsPhoneModalOpen(true);
-    
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-    }
-
-    const channel = supabase.channel(sessionId);
-    channel.on('broadcast', { event: 'barcode-scanned' }, (payload) => {
-        setScannedResult(payload.payload.barcode);
-        setIsPhoneModalOpen(false);
-        supabase.removeChannel(channel);
-        channelRef.current = null;
-    }).subscribe();
-
-    channelRef.current = channel;
   };
   
   return (
@@ -211,16 +177,13 @@ function ScannerComponent() {
                 {isScanning ? 'Stop Scan' : 'Start Scan'}
             </Button>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Button asChild variant="outline" className="w-full flex-1">
-              <Label>
+        <div className="flex">
+          <Button asChild variant="outline" className="w-full">
+              <Label className="cursor-pointer">
                   <Upload className="mr-2 h-4 w-4" /> Scan from Image
                   <Input type="file" accept="image/*" onChange={handleFileScan} className="hidden" />
               </Label>
           </Button>
-           <Button onClick={openPhoneScanner} className="w-full sm:w-auto" variant="outline">
-             <Phone className="mr-2 h-4 w-4" /> Use Phone
-           </Button>
         </div>
       </div>
 
@@ -237,30 +200,6 @@ function ScannerComponent() {
           <p className="font-mono text-foreground bg-background p-3 rounded-md break-words my-2">{scannedResult}</p>
         </div>
       )}
-
-      <Dialog open={isPhoneModalOpen} onOpenChange={setIsPhoneModalOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Use Your Phone as a Scanner</DialogTitle>
-                <DialogDescription>
-                    Scan the QR code below with your phone's camera to open the scanner page. The result will appear here automatically.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="flex justify-center p-4 bg-white rounded-md my-4">
-               {typeof window !== 'undefined' && phoneSessionId && (
-                    <QRCode
-                        value={`${window.location.origin}/scan/${phoneSessionId}`}
-                        size={256}
-                        level={"H"}
-                        includeMargin={true}
-                    />
-               )}
-            </div>
-            <DialogFooter>
-                <Button onClick={() => setIsPhoneModalOpen(false)}>Close</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
