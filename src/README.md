@@ -166,6 +166,11 @@ DROP POLICY IF EXISTS "Admin Manage Images" ON storage.objects;
 DROP POLICY IF EXISTS "Admin Update Images" ON storage.objects;
 DROP POLICY IF EXISTS "Admin Delete Images" ON storage.objects;
 DROP POLICY IF EXISTS "Public Read Access" ON storage.objects;
+DROP POLICY IF EXISTS "Public read access for product images" ON storage.objects;
+DROP POLICY IF EXISTS "Allow inserts for authenticated users" ON storage.objects;
+DROP POLICY IF EXISTS "Allow updates for authenticated users" ON storage.objects;
+DROP POLICY IF EXISTS "Allow deletes for authenticated users" ON storage.objects;
+
 
 -- Create a policy to allow public read access to the images
 -- This allows anyone to view the images, which is necessary for your storefront.
@@ -199,6 +204,7 @@ To access the admin dashboard, navigate to `/admin` and log in with the followin
 - **Password:** `1234`
 
 These are hardcoded in the application. You can change them in `src/app/admin/login/actions.ts`.
+
 
 
 

@@ -155,6 +155,45 @@ EXCEPTION
     -- do nothing
 END;
 $$;
+
+-- Create a new storage bucket for product images if it doesn't exist
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('product-images', 'product-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Drop old policies if they exist to avoid conflicts
+DROP POLICY IF EXISTS "Admin Manage Images" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Update Images" ON storage.objects;
+DROP POLICY IF EXISTS "Admin Delete Images" ON storage.objects;
+DROP POLICY IF EXISTS "Public Read Access" ON storage.objects;
+DROP POLICY IF EXISTS "Public read access for product images" ON storage.objects;
+DROP POLICY IF EXISTS "Allow inserts for authenticated users" ON storage.objects;
+DROP POLICY IF EXISTS "Allow updates for authenticated users" ON storage.objects;
+DROP POLICY IF EXISTS "Allow deletes for authenticated users" ON storage.objects;
+
+-- Create a policy to allow public read access to the images
+-- This allows anyone to view the images, which is necessary for your storefront.
+CREATE POLICY "Public read access for product images"
+ON storage.objects FOR SELECT
+TO public
+USING ( bucket_id = 'product-images' );
+
+-- Create policies to allow authenticated users (your admin) to upload, update, and delete images.
+-- This secures your bucket so only your logged-in admin can manage the images.
+CREATE POLICY "Allow inserts for authenticated users"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK ( bucket_id = 'product-images' );
+
+CREATE POLICY "Allow updates for authenticated users"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING ( bucket_id = 'product-images' );
+
+CREATE POLICY "Allow deletes for authenticated users"
+ON storage.objects FOR DELETE
+TO authenticated
+USING ( bucket_id = 'product-images' );
 ```
 ---
 ## Admin Panel Access
@@ -164,5 +203,6 @@ To access the admin dashboard, navigate to `/admin` and log in with the followin
 - **Password:** `1234`
 
 These are hardcoded in the application. You can change them in `src/app/admin/login/actions.ts`.
+
 
 
