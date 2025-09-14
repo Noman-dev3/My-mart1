@@ -84,7 +84,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       {/* Desktop Sidebar */}
-      <aside className="hidden bg-sidebar md:flex flex-col fixed h-full w-[220px] lg:w-[280px]">
+      <aside className="hidden bg-sidebar md:flex flex-col h-full">
         <SidebarContent />
       </aside>
       
@@ -98,7 +98,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-col md:ml-[220px] lg:ml-[280px]">
+      <div className="flex flex-col">
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6 sticky top-0 z-30">
           <Button
             variant="outline"
