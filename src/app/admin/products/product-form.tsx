@@ -35,10 +35,11 @@ import { productSchema, type ProductFormValues } from "@/lib/schemas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { answerProductQuestion } from "@/lib/product-actions";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
-import { Loader2, RefreshCw, ScanLine } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, RefreshCw, ScanLine, Upload } from "lucide-react";
 import { getProductQuestionAnswer } from "@/ai/flows/answer-product-question"
 import BarcodeScanner from "./barcode-scanner"
+import { createSupabaseBrowserClient } from "@/lib/supabase-client";
 
 type ProductFormProps = {
     onSubmit: (values: ProductFormValues) => Promise<any>;
@@ -50,6 +51,9 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("details");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createSupabaseBrowserClient();
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -73,6 +77,9 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
       form.reset({
         ...product,
         stock_quantity: product.stock_quantity || 0,
+        specifications: product.specifications || {},
+        reviews_data: product.reviews_data || [],
+        questions: product.questions || [],
       });
     } else {
       form.reset({
@@ -90,6 +97,36 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
       });
     }
   }, [product, form]);
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    toast({ title: 'Uploading image...', description: 'Please wait.' });
+
+    const filePath = `public/${Date.now()}-${file.name}`;
+
+    const { error } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, file);
+
+    if (error) {
+      console.error('Image upload error:', error);
+      toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
+      setIsUploading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath);
+
+    form.setValue('image', publicUrl, { shouldValidate: true });
+    toast({ title: 'Success!', description: 'Image uploaded and URL updated.' });
+    setIsUploading(false);
+  };
+
 
   const handleAnswerSubmit = async (questionId: string, answer: string) => {
     if (!product) return;
@@ -257,9 +294,22 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Image URL</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://picsum.photos/..." {...field} />
-                  </FormControl>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input placeholder="https://picsum.photos/..." {...field} />
+                    </FormControl>
+                    <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                        {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4" />}
+                        Upload
+                    </Button>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        accept="image/png, image/jpeg, image/gif, image/webp"
+                    />
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -269,7 +319,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
                 <Button type="button" variant="outline" onClick={onCancel}>
                     Cancel
                 </Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
+                <Button type="submit" disabled={form.formState.isSubmitting || isUploading}>
                     {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Save Product'}
                 </Button>
             </div>
