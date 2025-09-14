@@ -118,6 +118,7 @@ export async function addProduct(values: ProductFormValues) {
     try {
         const validatedData = productSchema.parse(values);
 
+        // Explicitly construct the object to be sent to the database
         const newProduct = {
             name: validatedData.name,
             description: validatedData.description,
@@ -125,14 +126,14 @@ export async function addProduct(values: ProductFormValues) {
             image: validatedData.image,
             category: validatedData.category,
             brand: validatedData.brand,
-            stockQuantity: validatedData.stockQuantity,
+            "stockQuantity": parseInt(validatedData.stockQuantity as any, 10),
             barcode: validatedData.barcode,
             specifications: validatedData.specifications || {},
-            reviewsData: validatedData.reviewsData || [],
+            "reviewsData": validatedData.reviewsData || [],
             questions: validatedData.questions || [],
-            rating: 0, // Explicitly set default
-            reviews: 0, // Explicitly set default
-            created_at: new Date().toISOString(), // Explicitly set timestamp
+            rating: 0,
+            reviews: 0,
+            created_at: new Date().toISOString(),
         };
 
         const { data: savedProduct, error } = await supabase
@@ -173,11 +174,11 @@ export async function updateProduct(productId: string, values: ProductFormValues
             image: validatedData.image,
             category: validatedData.category,
             brand: validatedData.brand,
-            stockQuantity: validatedData.stockQuantity,
+            "stockQuantity": parseInt(validatedData.stockQuantity as any, 10),
             barcode: validatedData.barcode,
             specifications: validatedData.specifications || {},
-            reviewsData: values.reviewsData || [], // Preserve existing data
-            questions: values.questions || [] // Preserve existing data
+            "reviewsData": values.reviewsData || [],
+            questions: values.questions || []
         };
 
         const { data: updatedProduct, error } = await supabase
