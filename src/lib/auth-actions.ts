@@ -33,6 +33,7 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
       data: {
         full_name: name,
       },
+      // Corrected: Use the public site URL for the email redirect.
       emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login`,
     },
   });
