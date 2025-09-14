@@ -2,7 +2,7 @@
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, useFieldArray } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -36,8 +36,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { answerProductQuestion, uploadProductImage } from "@/lib/product-actions";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
-import { Loader2, RefreshCw, ScanLine, Upload } from "lucide-react";
+import { Loader2, RefreshCw, ScanLine, Upload, PlusCircle, Trash2, Wand2 } from "lucide-react";
 import { getProductQuestionAnswer } from "@/ai/flows/answer-product-question"
+import { generateProductDescription } from "@/ai/flows/generate-product-description"
 import BarcodeScanner from "./barcode-scanner"
 
 type ProductFormProps = {
@@ -51,6 +52,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   const [activeTab, setActiveTab] = useState("details");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProductFormValues>({
@@ -64,10 +66,15 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
         brand: "",
         stock_quantity: 0,
         barcode: "",
-        specifications: {},
+        specifications: [],
         reviews_data: [],
         questions: [],
     }
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "specifications"
   });
 
   useEffect(() => {
@@ -75,7 +82,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
       form.reset({
         ...product,
         stock_quantity: product.stock_quantity || 0,
-        specifications: product.specifications || {},
+        specifications: product.specifications ? Object.entries(product.specifications).map(([key, value]) => ({ key, value })) : [],
         reviews_data: product.reviews_data || [],
         questions: product.questions || [],
       });
@@ -89,7 +96,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
         brand: '',
         stock_quantity: 0,
         barcode: '',
-        specifications: {},
+        specifications: [],
         reviews_data: [],
         questions: [],
       });
@@ -121,6 +128,25 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
     }
   };
 
+  const handleGenerateDescription = async () => {
+    const productName = form.getValues("name");
+    if (!productName) {
+        toast({ title: "Product name is empty", description: "Please enter a product name first.", variant: "destructive" });
+        return;
+    }
+    setIsGeneratingDesc(true);
+    try {
+        const result = await generateProductDescription({ productName });
+        form.setValue("description", result.description, { shouldValidate: true });
+        toast({ title: "Description generated!", description: "The AI-powered description has been added." });
+    } catch (e) {
+        console.error(e);
+        toast({ title: "AI Generation Failed", description: "Could not generate a description.", variant: "destructive"});
+    } finally {
+        setIsGeneratingDesc(false);
+    }
+  };
+
 
   const handleAnswerSubmit = async (questionId: string, answer: string) => {
     if (!product) return;
@@ -145,13 +171,21 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   }
 
   const onFormSubmit = async (values: ProductFormValues) => {
+    // Convert specifications array back to an object
+    const specificationsObject = (values.specifications || []).reduce((acc, spec) => {
+      if (spec.key) {
+        acc[spec.key] = spec.value;
+      }
+      return acc;
+    }, {} as Record<string, string>);
+
     const dataToSubmit = {
       ...values,
-      specifications: values.specifications || {},
+      specifications: specificationsObject,
       reviews_data: values.reviews_data || [],
       questions: values.questions || [],
     };
-    const result = await onSubmit(dataToSubmit);
+    const result = await onSubmit(dataToSubmit as any); // The type will mismatch slightly due to array vs object
     if (result) {
       onCancel();
     }
@@ -160,8 +194,9 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   return (
     <>
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="details">Product Details</TabsTrigger>
+        <TabsTrigger value="specs">Specifications</TabsTrigger>
         <TabsTrigger value="qa" disabled={!product}>Q&A</TabsTrigger>
       </TabsList>
       
@@ -186,9 +221,15 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Description</FormLabel>
+                    <Button type="button" variant="outline" size="sm" onClick={handleGenerateDescription} disabled={isGeneratingDesc}>
+                       {isGeneratingDesc ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4"/>}
+                       Generate
+                    </Button>
+                  </div>
                   <FormControl>
-                    <Textarea placeholder="High-fidelity wireless headphones..." {...field} />
+                    <Textarea placeholder="High-fidelity wireless headphones..." {...field} rows={5} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -322,6 +363,59 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
         </Form>
       </TabsContent>
 
+      <TabsContent value="specs">
+         <div className="space-y-6 mt-4 max-h-[70vh] overflow-y-auto pr-2">
+            <h3 className="text-lg font-medium">Product Specifications</h3>
+            <div className="space-y-4">
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex gap-2 items-start">
+                  <FormField
+                    control={form.control}
+                    name={`specifications.${index}.key`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel className={index !== 0 ? "sr-only" : ""}>Key</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., Color" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`specifications.${index}.value`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                         <FormLabel className={index !== 0 ? "sr-only" : ""}>Value</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g., Black" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <div className="flex-shrink-0">
+                     <Label className={index !== 0 ? "sr-only" : ""}>&nbsp;</Label>
+                     <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                   </div>
+                </div>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => append({ key: "", value: "" })}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Specification
+            </Button>
+         </div>
+      </TabsContent>
+
       <TabsContent value="qa">
         <div className="space-y-6 mt-4 max-h-[70vh] overflow-y-auto pr-2">
             <h3 className="text-lg font-medium">Product Questions</h3>
@@ -372,12 +466,16 @@ const QAndAItem = ({ product, question, onAnswerSubmit }: { product: Product, qu
     const handleGenerateAnswer = async () => {
         setIsGenerating(true);
         try {
-            const { specifications, name, description, category, brand } = product;
+            const { name, description, category, brand } = product;
+            // Convert spec array to object for AI
+            const specificationsObject = product.specifications ? Object.fromEntries(Object.entries(product.specifications)) : {};
+
             const result = await getProductQuestionAnswer({
-                product: { name, description, category, brand, specifications: specifications || {} },
+                product: { name, description, category, brand, specifications: specificationsObject },
                 question: question.text
             });
             setAnswer(result.answer);
+            toast({ title: "Answer Generated", description: "AI-powered answer has been drafted for you."})
         } catch(e) {
             console.error(e);
             toast({ title: "AI Generation Failed", description: "Could not generate an answer.", variant: "destructive"});
@@ -408,7 +506,7 @@ const QAndAItem = ({ product, question, onAnswerSubmit }: { product: Product, qu
                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit Answer'}
                         </Button>
                         <Button type="button" size="sm" variant="outline" onClick={handleGenerateAnswer} disabled={isSubmitting || isGenerating}>
-                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : '✨'}
+                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : <Wand2 className="mr-2 h-4 w-4" />}
                             AI Assist
                         </Button>
                     </div>

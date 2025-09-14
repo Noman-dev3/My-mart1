@@ -1,6 +1,11 @@
 
 import { z } from 'zod';
 
+const specificationSchema = z.object({
+  key: z.string().min(1, "Specification key cannot be empty."),
+  value: z.string().min(1, "Specification value cannot be empty."),
+});
+
 // SINGLE SOURCE OF TRUTH FOR PRODUCT VALIDATION
 export const productSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters long."),
@@ -11,7 +16,7 @@ export const productSchema = z.object({
   brand: z.string().min(2, "Brand must be at least 2 characters long."),
   stock_quantity: z.coerce.number().int("Stock must be a whole number."),
   barcode: z.string().min(8, "Barcode must be at least 8 characters long."),
-  specifications: z.any().optional(),
+  specifications: z.array(specificationSchema).optional(),
   reviews_data: z.any().optional(),
   questions: z.any().optional(),
 });

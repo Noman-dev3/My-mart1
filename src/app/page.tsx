@@ -114,8 +114,7 @@ export default function LandingPage() {
 
   const heroTextOpacity = useTransform(heroScrollYProgress, [0, 0.5], [1, 0]);
   const heroTextY = useTransform(heroScrollYProgress, [0, 0.8], ['0%', '100%']);
-  const heroImageX = useTransform(heroScrollYProgress, [0, 1], ['0%', '-50%']);
-
+  
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -183,28 +182,21 @@ export default function LandingPage() {
             <motion.div
               key={heroIndex}
               className="absolute inset-0"
-              initial={{ x: '100%', opacity: 0 }}
-              animate={{ x: '0%', opacity: 1 }}
-              exit={{ x: '-100%', opacity: 0 }}
-              transition={{ duration: 1, ease: [0.43, 0.13, 0.23, 0.96] }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5, ease: [0.43, 0.13, 0.23, 0.96] }}
             >
-              <motion.div
-                className="absolute inset-0"
-                style={{
-                  x: heroImageX,
-                }}
-              >
-                <Image
-                  src={currentHero.image}
-                  alt="Hero background"
-                  fill
-                  className="object-cover"
-                  quality={100}
-                  priority
-                  data-ai-hint={currentHero.hint}
-                />
-                <div className="absolute inset-0 bg-black/50" />
-              </motion.div>
+              <Image
+                src={currentHero.image}
+                alt="Hero background"
+                fill
+                className="object-cover"
+                quality={100}
+                priority
+                data-ai-hint={currentHero.hint}
+              />
+              <div className="absolute inset-0 bg-black/50" />
             </motion.div>
           </AnimatePresence>
 

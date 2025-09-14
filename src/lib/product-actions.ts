@@ -17,7 +17,7 @@ export type Product = {
     description: string;
     price: number;
     image: string;
-    category: 'Electronics' | 'Groceries' | 'Fashion' | 'Home Goods';
+    category: 'Electronics' | 'Groceries' | 'Fashion' | 'Home Goods' | 'Bakery';
     brand: string;
     stock_quantity: number;
     barcode: string;
