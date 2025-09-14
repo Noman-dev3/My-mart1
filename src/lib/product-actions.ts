@@ -42,6 +42,32 @@ export type Product = {
 
 export type { ProductFormValues };
 
+export async function uploadProductImage(formData: FormData) {
+  const supabase = createServerActionClient({ cookies });
+  const file = formData.get('file') as File;
+
+  if (!file) {
+    throw new Error('No file provided for upload.');
+  }
+
+  const filePath = `public/${Date.now()}-${file.name}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('product-images')
+    .upload(filePath, file);
+
+  if (uploadError) {
+    console.error('Image upload error:', uploadError);
+    throw new Error('Failed to upload image to storage.');
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('product-images')
+    .getPublicUrl(filePath);
+
+  return { publicUrl };
+}
+
 
 export async function getAllProducts(): Promise<{data: Product[] | null, error: any }> {
     const supabase = createServerActionClient({ cookies });
@@ -133,7 +159,6 @@ export async function addProduct(values: ProductFormValues) {
             questions: validatedData.questions || [],
             rating: 0,
             reviews: 0,
-            created_at: new Date().toISOString(),
         };
 
         const { data: savedProduct, error } = await supabase

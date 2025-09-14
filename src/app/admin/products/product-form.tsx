@@ -33,13 +33,12 @@ import { Textarea } from "@/components/ui/textarea"
 import type { Product } from "@/lib/product-actions";
 import { productSchema, type ProductFormValues } from "@/lib/schemas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { answerProductQuestion } from "@/lib/product-actions";
+import { answerProductQuestion, uploadProductImage } from "@/lib/product-actions";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { Loader2, RefreshCw, ScanLine, Upload } from "lucide-react";
 import { getProductQuestionAnswer } from "@/ai/flows/answer-product-question"
 import BarcodeScanner from "./barcode-scanner"
-import { createSupabaseBrowserClient } from "@/lib/supabase-client";
 
 type ProductFormProps = {
     onSubmit: (values: ProductFormValues) => Promise<any>;
@@ -53,7 +52,6 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const supabase = createSupabaseBrowserClient();
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -105,26 +103,22 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
     setIsUploading(true);
     toast({ title: 'Uploading image...', description: 'Please wait.' });
 
-    const filePath = `public/${Date.now()}-${file.name}`;
+    const formData = new FormData();
+    formData.append('file', file);
 
-    const { error } = await supabase.storage
-      .from('product-images')
-      .upload(filePath, file);
-
-    if (error) {
+    try {
+      const { publicUrl } = await uploadProductImage(formData);
+      form.setValue('image', publicUrl, { shouldValidate: true });
+      toast({ title: 'Success!', description: 'Image uploaded and URL updated.' });
+    } catch (error) {
       console.error('Image upload error:', error);
-      toast({ title: 'Upload Failed', description: error.message, variant: 'destructive' });
+      toast({ title: 'Upload Failed', description: 'Could not upload image.', variant: 'destructive' });
+    } finally {
       setIsUploading(false);
-      return;
+       if(fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(filePath);
-
-    form.setValue('image', publicUrl, { shouldValidate: true });
-    toast({ title: 'Success!', description: 'Image uploaded and URL updated.' });
-    setIsUploading(false);
   };
 
 
