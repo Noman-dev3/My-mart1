@@ -94,3 +94,35 @@
         box-shadow: 0 0 15px 0px hsl(var(--primary) / 0.5);
     }
 }
+
+@layer utilities {
+    .rounded-lg {
+        border-radius: 0.5rem;
+    }
+    .rounded-md {
+        border-radius: 0.375rem;
+    }
+    .rounded-sm {
+        border-radius: 0.25rem;
+    }
+    .rounded-full {
+        border-radius: 9999px;
+    }
+    
+    /* Ensure ShadCN components get their radius */
+    .card,
+    .btn,
+    .input,
+    .alert,
+    .dialog-content,
+    .sheet-content,
+    .popover-content,
+    .table,
+    .textarea {
+        @apply rounded-lg;
+    }
+
+    .badge {
+        @apply rounded-full;
+    }
+}
