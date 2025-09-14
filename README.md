@@ -5,7 +5,7 @@ This is a Next.js e-commerce application built with Supabase, Tailwind CSS, and 
 
 ## Supabase Database Setup
 
-To get the application running, you need to set up your Supabase database schema. Run the following SQL script in your Supabase project's SQL Editor.
+To get the application running, you need to set up your Supabase database schema. Run the following SQL script in your Supabase project's SQL Editor. This is the latest and definitive script required.
 
 **Steps:**
 1. Navigate to your Supabase project dashboard.
@@ -185,12 +185,3 @@ To access the admin dashboard, navigate to `/admin` and log in with the followin
 - **Password:** `1234`
 
 These are hardcoded in the application. You can change them in `src/app/admin/login/actions.ts`.
-
-
-
-
-
-
-
-
-

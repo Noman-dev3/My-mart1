@@ -26,12 +26,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogClose,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import type { Product } from "@/lib/product-actions";
-import { productSchema, type ProductFormValues } from "@/lib/schemas";
+import { productFormSchema, type ProductFormValues } from "@/lib/schemas";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { answerProductQuestion, uploadProductImage } from "@/lib/product-actions";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +55,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productFormSchema),
     defaultValues: {
         name: "",
         description: "",
@@ -67,8 +66,6 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
         stock_quantity: 0,
         barcode: "",
         specifications: [],
-        reviews_data: [],
-        questions: [],
     }
   });
 
@@ -81,24 +78,21 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
     if (product) {
       form.reset({
         ...product,
-        stock_quantity: product.stock_quantity || 0,
+        price: Number(product.price),
+        stock_quantity: Number(product.stock_quantity),
         specifications: product.specifications ? Object.entries(product.specifications).map(([key, value]) => ({ key, value })) : [],
-        reviews_data: product.reviews_data || [],
-        questions: product.questions || [],
       });
     } else {
       form.reset({
         name: '',
         description: '',
-        price: 0,
+        price: undefined,
         image: 'https://picsum.photos/seed/product/600/600',
         category: 'Electronics',
         brand: '',
         stock_quantity: 0,
         barcode: '',
         specifications: [],
-        reviews_data: [],
-        questions: [],
       });
     }
   }, [product, form]);

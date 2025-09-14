@@ -7,9 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { randomBytes } from 'crypto';
-import { productDbSchema, productSchema, type ProductFormValues } from './schemas'; // <-- Use the new DB schema
-import type { ProductDbValues } from './schemas';
-
+import { productFormSchema, type ProductFormValues } from './schemas';
 
 // We define the Product type here as this file is the source of truth for product data structures.
 export type Product = {
@@ -150,19 +148,27 @@ export async function addProduct(values: ProductFormValues) {
     const supabase = createServerActionClient({ cookies });
     
     try {
-        const validatedData = productSchema.parse(values);
+        const validatedData = productFormSchema.parse(values);
 
-        // Convert specifications array to a JSONB object
         const specificationsObject = (validatedData.specifications || []).reduce((acc, spec) => {
-            if (spec.key) acc[spec.key] = spec.value;
+            if (spec.key && spec.value) acc[spec.key] = spec.value;
             return acc;
         }, {} as Record<string, string>);
 
-        const newProduct: ProductDbValues = {
-            ...validatedData,
+        const newProduct = {
+            name: validatedData.name,
+            description: validatedData.description,
+            price: validatedData.price,
+            image: validatedData.image,
+            category: validatedData.category,
+            brand: validatedData.brand,
+            stock_quantity: validatedData.stock_quantity,
+            barcode: validatedData.barcode,
             specifications: specificationsObject,
             rating: 0,
             reviews: 0,
+            reviews_data: [],
+            questions: []
         };
 
         const { data: savedProduct, error } = await supabase
@@ -172,7 +178,11 @@ export async function addProduct(values: ProductFormValues) {
             .single();
         
         if (error) {
-            throw error;
+            console.error('Database error saving product:', error);
+            if (error.code === '23505') { 
+                 throw new Error("A product with this barcode already exists.");
+            }
+            throw new Error("Could not save product due to a database error.");
         }
         
         revalidatePath('/admin/products');
@@ -182,11 +192,11 @@ export async function addProduct(values: ProductFormValues) {
         return savedProduct as Product;
 
     } catch (error: any) {
-        if (error.code === '23505') { 
-             throw new Error("A product with this barcode already exists.");
+        if (error instanceof z.ZodError) {
+            console.error("Validation error:", error.issues);
+            throw new Error("Validation failed. Please check the form fields.");
         }
-        console.error('Database error saving product:', error);
-        throw new Error("Could not save product due to a database error.");
+        throw error;
     }
 }
 
@@ -194,17 +204,23 @@ export async function updateProduct(productId: string, values: ProductFormValues
     const supabase = createServerActionClient({ cookies });
     
     try {
-        const validatedData = productSchema.parse(values);
+        const validatedData = productFormSchema.parse(values);
         
-        // Convert specifications array to a JSONB object
         const specificationsObject = (validatedData.specifications || []).reduce((acc, spec) => {
-            if (spec.key) acc[spec.key] = spec.value;
+            if (spec.key && spec.value) acc[spec.key] = spec.value;
             return acc;
         }, {} as Record<string, string>);
 
-        const updateData: ProductDbValues = {
-            ...validatedData,
-            specifications: specificationsObject,
+        const updateData = {
+            name: validatedData.name,
+            description: validatedData.description,
+            price: validatedData.price,
+            image: validatedData.image,
+            category: validatedData.category,
+            brand: validatedData.brand,
+            stock_quantity: validatedData.stock_quantity,
+            barcode: validatedData.barcode,
+            specifications: specificationsObject
         };
 
         const { data: updatedProduct, error } = await supabase
@@ -215,7 +231,11 @@ export async function updateProduct(productId: string, values: ProductFormValues
             .single();
         
         if (error) {
-            throw error;
+            console.error('Database error updating product:', error);
+             if (error.code === '23505') { 
+                throw new Error("A product with this barcode already exists.");
+            }
+            throw new Error("Could not update product due to a database error.");
         };
 
         revalidatePath('/admin/products');
@@ -224,11 +244,11 @@ export async function updateProduct(productId: string, values: ProductFormValues
         return updatedProduct;
 
     } catch (error: any) {
-         if (error.code === '23505') { 
-             throw new Error("A product with this barcode already exists.");
+        if (error instanceof z.ZodError) {
+            console.error("Validation error:", error.issues);
+            throw new Error("Validation failed. Please check the form fields.");
         }
-        console.error('Database error updating product:', error);
-        throw new Error("Could not update product due to a database error.");
+        throw error;
     }
 }
 
