@@ -118,28 +118,44 @@ function ScannerComponent() {
     };
   }, [stopScan]);
 
-  const handleFileScan = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileScan = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setError('');
       setScannedResult('');
-      setIsScanning(true); // Visually indicate activity
+      setIsScanning(true);
       const localCodeReader = new BrowserMultiFormatReader();
-      try {
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-        const result = await localCodeReader.decodeFromImageUrl(dataUrl);
-        setScannedResult(result.getText());
-      } catch (err) {
-        console.error("File scan error:", err);
-        setError('Could not decode barcode from the image. Please try a clearer image.');
-      } finally {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+
+        img.onload = async () => {
+          try {
+            const result = await localCodeReader.decode(img);
+            setScannedResult(result.getText());
+          } catch (err) {
+            console.error("File scan error:", err);
+            setError('Could not decode barcode from the image. Please try a clearer image.');
+          } finally {
+            setIsScanning(false);
+          }
+        };
+
+        img.onerror = () => {
+          setError('Failed to load the selected image file.');
+          setIsScanning(false);
+        };
+      };
+
+      reader.onerror = () => {
+        setError('Failed to read the file.');
         setIsScanning(false);
-      }
+      };
+
+      reader.readAsDataURL(file);
     }
   };
   
