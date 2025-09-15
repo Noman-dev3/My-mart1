@@ -117,25 +117,25 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                         </div>
                         
                         {/* Form Section */}
-                        <div className="relative h-full flex flex-col justify-center p-8 sm:p-12 bg-card lg:bg-card">
+                        <div className="relative h-full flex flex-col justify-center p-8 sm:p-12 lg:bg-card">
                             {/* Glassmorphism card for mobile */}
                             <div className="relative lg:static bg-transparent lg:bg-card p-0 lg:p-0 rounded-xl">
                                <div className="absolute inset-0 bg-card/80 backdrop-blur-md rounded-xl border border-white/10 lg:hidden"></div>
 
                                 <div className="relative">
-                                    <Link href="/" className="w-fit mb-8 flex items-center gap-2 text-muted-foreground lg:text-muted-foreground hover:text-primary transition-colors">
+                                    <Link href="/" className="w-fit mb-8 flex items-center gap-2 text-foreground lg:text-muted-foreground hover:text-primary transition-colors">
                                         <Icons.logo className="h-6 w-6"/>
                                         <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
                                     </Link>
 
                                     <div className="text-left">
-                                        <h1 className="font-headline text-4xl font-bold text-foreground lg:text-foreground">Admin Access</h1>
-                                        <p className="text-muted-foreground mt-2 lg:text-muted-foreground">Access to this section requires the <br/><span className="font-semibold text-foreground lg:text-foreground">{roleName}</span> role.</p>
+                                        <h1 className="font-headline text-4xl font-bold text-white lg:text-foreground">Admin Access</h1>
+                                        <p className="text-gray-300 lg:text-muted-foreground mt-2">Access to this section requires the <br/><span className="font-semibold text-white lg:text-foreground">{roleName}</span> role.</p>
                                     </div>
 
                                     <form onSubmit={handleLogin} className="mt-8 space-y-4">
                                         <div>
-                                            <Label htmlFor="username" className="text-foreground/80 lg:text-foreground">Username</Label>
+                                            <Label htmlFor="username" className="text-gray-200 lg:text-foreground">Username</Label>
                                             <Input
                                                 id="username"
                                                 type="text"
@@ -143,11 +143,11 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                                 value={username}
                                                 onChange={(e) => setUsername(e.target.value)}
                                                 disabled={isLoading}
-                                                className="mt-1 h-11 bg-background/50 lg:bg-background"
+                                                className="mt-1 h-11 bg-background/50 lg:bg-background text-white lg:text-foreground"
                                             />
                                         </div>
                                         <div>
-                                            <Label htmlFor="password" className="text-foreground/80 lg:text-foreground">Password</Label>
+                                            <Label htmlFor="password" className="text-gray-200 lg:text-foreground">Password</Label>
                                             <Input
                                                 id="password"
                                                 type="password"
@@ -155,7 +155,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
                                                 disabled={isLoading}
-                                                className="mt-1 h-11 bg-background/50 lg:bg-background"
+                                                className="mt-1 h-11 bg-background/50 lg:bg-background text-white lg:text-foreground"
                                             />
                                             {error && <p className="text-sm text-destructive mt-2">{error}</p>}
                                         </div>
@@ -331,3 +331,5 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+    
