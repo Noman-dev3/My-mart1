@@ -1,12 +1,12 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import { verifyRolePassword, type AdminRole } from '@/lib/role-auth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { Icons } from '../icons';
 
@@ -133,34 +133,54 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   }
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit mb-4">
-            <Icons.logo className="h-8 w-8 text-primary" />
-          </div>
-          <CardTitle>Enter Password</CardTitle>
-          <CardDescription>
-            Enter the password for the <span className="font-bold text-foreground">{roleName}</span> role.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <Input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
-            />
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? <Loader2 className="mr-2 animate-spin" /> : null}
-              Unlock
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="flex h-screen w-full items-center justify-center p-4 bg-muted/30">
+        <div className="relative w-full max-w-4xl min-h-[600px] grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl bg-card">
+            <div className="p-8 sm:p-12 flex flex-col justify-center">
+                 <Link href="/" className="w-fit mb-8 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+                    <Icons.logo className="h-6 w-6"/>
+                    <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
+                </Link>
+
+                <h1 className="font-headline text-3xl font-bold">Good day!</h1>
+                <p className="text-muted-foreground mt-2">Please enter the password for the <span className="font-semibold text-foreground">{roleName}</span> role to continue.</p>
+
+                <form onSubmit={handleLogin} className="mt-8 space-y-4">
+                    <div>
+                        <Label htmlFor="password">Password</Label>
+                        <Input
+                            id="password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            disabled={isLoading}
+                            className="mt-1"
+                        />
+                        {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="mr-2 animate-spin" /> : null}
+                    Unlock Access
+                    </Button>
+                </form>
+            </div>
+            <div className="hidden lg:block relative">
+                <Image
+                    src="https://picsum.photos/seed/cat-desk/800/1200"
+                    alt="Desk with a cat"
+                    fill
+                    className="object-cover"
+                    data-ai-hint="desk cat"
+                />
+                <div className="absolute inset-0 bg-blue-500/70 mix-blend-multiply" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+
+                <div className="absolute bottom-12 left-12 text-white">
+                    <h2 className="font-headline text-3xl font-bold">My Mart Admin</h2>
+                    <p className="max-w-xs mt-2 text-white/80">Manage your store with ease. If you encounter any issues, our support team is ready to help.</p>
+                </div>
+            </div>
+        </div>
     </div>
   );
 }
