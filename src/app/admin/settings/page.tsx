@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { getSettings, updateSettings, updateAdminPassword } from '@/lib/settings-actions';
-import { updateApiKey, type SiteSettings } from '@/lib/api-keys';
+import { updateApiKey } from '@/lib/api-keys';
 
 const settingsSchema = z.object({
   storeName: z.string().min(1, "Store name is required."),
@@ -40,7 +40,10 @@ const passwordSchema = z.object({
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 const apiKeySchema = z.object({
-    geminiApiKey: z.string().min(1, "API Key is required.")
+    geminiApiKey: z.string().optional(),
+    supabaseUrl: z.string().optional(),
+    supabaseAnonKey: z.string().optional(),
+    supabaseServiceKey: z.string().optional(),
 });
 
 type ApiKeyFormValues = z.infer<typeof apiKeySchema>;
@@ -75,7 +78,10 @@ export default function SettingsPage() {
   const apiKeyForm = useForm<ApiKeyFormValues>({
     resolver: zodResolver(apiKeySchema),
     defaultValues: {
-        geminiApiKey: ''
+        geminiApiKey: '',
+        supabaseUrl: '',
+        supabaseAnonKey: '',
+        supabaseServiceKey: '',
     }
   });
 
@@ -143,18 +149,29 @@ export default function SettingsPage() {
   };
   
    const onApiKeySubmit = async (data: ApiKeyFormValues) => {
+    const updates = Object.entries(data).filter(([, value]) => value);
+
+    if (updates.length === 0) {
+        toast({ title: 'No Keys to Update', description: 'Please enter a value for at least one key.'});
+        return;
+    }
+
     try {
-        await updateApiKey({ keyName: 'geminiApiKey', keyValue: data.geminiApiKey });
+        for (const [keyName, keyValue] of updates) {
+            if (keyValue) {
+                await updateApiKey({ keyName, keyValue });
+            }
+        }
         toast({
-            title: 'API Key Updated',
-            description: 'The Gemini API key has been securely updated.'
+            title: 'API Keys Updated',
+            description: 'The provided API keys have been securely updated.'
         });
-        apiKeyForm.reset({ geminiApiKey: '' });
+        apiKeyForm.reset();
     } catch (error: any) {
         console.error("Failed to update API key:", error);
         toast({
             title: 'Error',
-            description: error.message || 'Failed to update API key.',
+            description: error.message || 'Failed to update API keys.',
             variant: 'destructive',
         });
     }
@@ -223,7 +240,7 @@ export default function SettingsPage() {
             <form onSubmit={apiKeyForm.handleSubmit(onApiKeySubmit)}>
                 <CardHeader>
                     <CardTitle>API Key Management</CardTitle>
-                    <CardDescription>Manage keys for third-party services. Keys are write-only for security.</CardDescription>
+                    <CardDescription>Manage keys for third-party services. Keys are write-only for security and current values are not displayed.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                      <FormField
@@ -237,11 +254,44 @@ export default function SettingsPage() {
                             </FormItem>
                         )}
                     />
+                    <FormField
+                        control={apiKeyForm.control}
+                        name="supabaseUrl"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Supabase URL</FormLabel>
+                                <FormControl><Input type="password" {...field} placeholder="Enter new Supabase URL..." /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={apiKeyForm.control}
+                        name="supabaseAnonKey"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Supabase Anon Key</FormLabel>
+                                <FormControl><Input type="password" {...field} placeholder="Enter new Anon Key..." /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={apiKeyForm.control}
+                        name="supabaseServiceKey"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Supabase Service Role Key</FormLabel>
+                                <FormControl><Input type="password" {...field} placeholder="Enter new Service Role Key..." /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 </CardContent>
                  <CardFooter className="flex justify-end border-t pt-6">
                     <Button type="submit" disabled={apiKeyForm.formState.isSubmitting}>
                         {apiKeyForm.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Update API Key
+                        Update API Keys
                     </Button>
                 </CardFooter>
             </form>
@@ -304,5 +354,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
