@@ -38,25 +38,14 @@ export default function RoleGate({ role, children }: RoleGateProps) {
       if (hasSession) {
         setAuthStatus('authenticated');
       } else {
-        if (role !== 'SUPER_ADMIN') {
-          // For any role other than SUPER_ADMIN, if there's no session, redirect immediately.
-          router.replace('/admin');
-          // We don't set a status here because the redirect will take over.
-        } else {
-          // Only SUPER_ADMIN is allowed to see the login prompt.
-          setAuthStatus('unauthenticated');
-        }
+        setAuthStatus('unauthenticated');
       }
     } catch (e) {
       // sessionStorage is not available, likely on server.
-      // Default to redirecting unless it's the SUPER_ADMIN page itself.
-      if (role !== 'SUPER_ADMIN') {
-        router.replace('/admin');
-      } else {
-        setAuthStatus('unauthenticated');
-      }
+      // Default to unauthenticated.
+      setAuthStatus('unauthenticated');
     }
-  }, [role, router]);
+  }, [role]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +82,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
     return <AdminLayoutContent>{children}</AdminLayoutContent>;
   }
   
-  if (authStatus === 'unauthenticated' && role === 'SUPER_ADMIN') {
+  if (authStatus === 'unauthenticated') {
      return (
         <div className="flex h-screen w-full items-center justify-center p-4 bg-muted/30">
             <AnimatePresence>
@@ -158,7 +147,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
       );
   }
 
-  // Fallback for non-SUPER_ADMIN roles during redirect.
+  // Fallback for checking state or other edge cases.
   return (
     <div className="flex h-screen w-full items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin" />
