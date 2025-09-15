@@ -27,19 +27,25 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
+    // This effect runs only once on component mount
     const sessionKey = `myMart-role-${role}`;
-    if (sessionStorage.getItem(sessionKey) === 'true') {
+    const hasSession = sessionStorage.getItem(sessionKey) === 'true';
+
+    if (hasSession) {
       setIsAuthenticated(true);
       setShowSuccess(false); // Don't show animation on reload
     } else if (role !== 'SUPER_ADMIN') {
-        // If not authenticated and not the main login page, redirect.
-        router.push('/admin');
+      // If not authenticated and not on the main admin login page, redirect immediately.
+      router.push('/admin');
     }
+    // Finished initial check, can now show login form if needed
+    setIsChecking(false);
   }, [role, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -57,24 +63,32 @@ export default function RoleGate({ role, children }: RoleGateProps) {
       }, 2000); // Duration of the success animation
     } else {
       setError('Incorrect password. Please try again.');
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
   
   const roleName = role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
+  // While checking session, show a loader to prevent flicker
+  if (isChecking) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
   if (isAuthenticated) {
-    // If authenticated, render the full admin layout with content
     return <AdminLayoutContent>{children}</AdminLayoutContent>;
   }
   
   if (showSuccess) {
-      // Show success animation before rendering layout
-      return <SuccessAnimation roleName={roleName} show={showSuccess} />;
+    return <SuccessAnimation roleName={roleName} show={showSuccess} />;
   }
   
-  // For SUPER_ADMIN, show the login page. Others get redirected by useEffect.
-  if (role === 'SUPER_ADMIN') {
+  // This part will only be rendered for SUPER_ADMIN role if not authenticated,
+  // or for other roles briefly before the redirect in useEffect kicks in.
+  if (role === 'SUPER_ADMIN' && !isAuthenticated) {
       return (
         <div className="flex h-screen w-full items-center justify-center p-4 bg-muted/30">
             <div className="relative w-full max-w-4xl min-h-[600px] grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl bg-card">
@@ -128,7 +142,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
       );
   }
 
-  // Render a loader while redirecting other roles
+  // Render a loader for other roles while redirecting
   return (
     <div className="flex h-screen w-full items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin" />
@@ -182,7 +196,7 @@ const textVariants = {
 
 function SuccessAnimation({ roleName, show }: { roleName: string, show: boolean }) {
     return (
-        <div className="relative w-full h-full min-h-[80vh] flex items-center justify-center overflow-hidden">
+        <div className="relative w-full h-screen flex items-center justify-center overflow-hidden">
              <AnimatePresence>
                {show && (
                    <>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -6,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 // This page now acts as a simple entry point that redirects to the main dashboard.
-// The dashboard itself is protected by the RoleGate, ensuring a password is required.
+// The dashboard itself is protected by the RoleGate, which will force a password prompt.
 export default function AdminRedirectPage() {
   const router = useRouter();
 
