@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -13,8 +14,7 @@ import {
   Info,
   ChevronDown,
   LogOut,
-  ChevronsLeft,
-  ChevronsRight,
+  Scan,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -53,15 +53,15 @@ const navItems: NavItem[] = [
       { label: 'Customers', href: '/admin/customers' },
     ],
   },
-  { label: 'Insights', icon: BarChart2, href: '/admin/insights' },
-  { label: 'Data Lake', icon: Database, href: '/admin/data' },
-  { label: 'Collaboration', icon: Users, href: '/admin/collaboration' },
-  { label: 'Apps', icon: AppWindow, href: '/admin/apps' },
+  { label: 'Barcode Tools', icon: Scan, href: '/admin/barcode-tools' },
+  { label: 'Insights', icon: BarChart2, href: '#' }, // Placeholder
+  { label: 'Data Lake', icon: Database, href: '#' }, // Placeholder
+  { label: 'Collaboration', icon: Users, href: '#' }, // Placeholder
 ];
 
 const bottomNavItems: NavItem[] = [
-  { label: 'Settings', icon: Settings, href: '/admin/settings' },
-  { label: 'Info', icon: Info, href: '/admin/info' },
+  { label: 'Settings', icon: Settings, href: '#' }, // Placeholder
+  { label: 'Info', icon: Info, href: '#' }, // Placeholder
 ];
 
 export default function Sidebar({
@@ -74,7 +74,7 @@ export default function Sidebar({
   onLinkClick?: () => void;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const [openDropdowns, setOpenDropdowns] = useState<string[]>([]);
+  const [openDropdowns, setOpenDropdowns] = useState<string[]>(['Home', 'Catalog']); // Open by default
   const pathname = usePathname();
 
   const toggleDropdown = (label: string) => {
@@ -87,7 +87,6 @@ export default function Sidebar({
 
   const handleMouseEnter = () => !isMobile && setIsCollapsed(false);
   const handleMouseLeave = () => !isMobile && setIsCollapsed(true);
-  const handleToggleCollapse = () => setIsCollapsed((prev) => !prev);
   
   if (isMobile) {
     return (
