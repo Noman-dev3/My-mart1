@@ -9,7 +9,7 @@ import { verifyUserRole, type AdminRole } from '@/lib/role-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Search, Bell, Menu, Unlock } from 'lucide-react';
+import { Loader2, Search, Bell, Menu, Unlock, Package, Settings, BarChart2 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Sidebar from '@/components/admin/sidebar';
@@ -49,7 +49,6 @@ export default function RoleGate({ role, children }: RoleGateProps) {
           }
         }
         // If any check fails, treat as unauthenticated
-        sessionStorage.removeItem(sessionKey);
         setAuthStatus('unauthenticated');
       } catch (e) {
         setAuthStatus('unauthenticated');
@@ -105,80 +104,79 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   
   if (authStatus === 'unauthenticated') {
      return (
-        <div className="relative flex h-screen w-full items-center justify-center bg-muted overflow-hidden">
-            {/* Background Image for all screens */}
+        <div className="relative flex h-screen w-full items-center justify-center bg-gray-900 p-4">
+             {/* Full-screen background image */}
             <Image
-                src="https://picsum.photos/seed/admin-bg/1200/800"
+                src="https://picsum.photos/seed/admin-bg-full/1920/1080"
                 alt="Admin background"
-                fill
-                className="object-cover"
+                layout="fill"
+                objectFit="cover"
                 quality={90}
+                className="opacity-40"
                 data-ai-hint="abstract texture"
             />
-            <div className="absolute inset-0 bg-black/50"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-900/60 to-black/80"></div>
             
             <AnimatePresence mode="wait">
                 {showSuccess ? (
                     <SuccessAnimation roleName={roleName} />
                 ) : (
-                   <div className="relative w-full h-full flex items-center justify-center p-4">
-                        
-                        {/* Mobile & Tablet: Glassmorphism Form */}
-                        <div className="relative w-full max-w-md p-8 space-y-6 bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl lg:hidden">
-                            <Link href="/" className="w-fit flex items-center gap-2 text-white">
-                                <Icons.logo className="h-6 w-6"/>
-                                <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
-                            </Link>
+                   <div className="relative w-full h-full flex items-center justify-center">
 
-                            <div>
-                                <h1 className="font-headline text-4xl font-bold text-white">Admin Access</h1>
-                                <p className="text-gray-300 mt-2">Access requires the <span className="font-semibold text-white">{roleName}</span> role.</p>
+                        {/* Mobile View (<768px): Glassmorphism Form */}
+                        <div className="relative w-full max-w-md p-8 space-y-6 bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl md:hidden">
+                           <LoginHeader isGlass />
+                            <div className="text-left">
+                                <h1 className="font-headline text-3xl font-bold text-white">Admin Access</h1>
+                                <p className="text-gray-300 mt-1 text-sm">Access requires the <span className="font-semibold text-white">{roleName}</span> role.</p>
                             </div>
                             <LoginForm
-                                username={username}
-                                setUsername={setUsername}
-                                password={password}
-                                setPassword={setPassword}
-                                isLoading={isLoading}
-                                error={error}
-                                handleLogin={handleLogin}
+                                username={username} setUsername={setUsername}
+                                password={password} setPassword={setPassword}
+                                isLoading={isLoading} error={error} handleLogin={handleLogin}
                                 isGlass
                             />
                         </div>
-                        
-                        {/* Desktop: Two-Column Layout */}
-                        <div className="hidden lg:grid grid-cols-2 max-w-4xl w-full min-h-[600px] shadow-2xl overflow-hidden rounded-2xl bg-card">
-                            <div className="p-12 flex flex-col justify-center">
-                                 <Link href="/" className="w-fit mb-8 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
-                                    <Icons.logo className="h-6 w-6"/>
-                                    <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
-                                </Link>
 
-                                <div className="text-left">
+                        {/* Tablet and Desktop View (>=768px) */}
+                        <div className="hidden md:grid max-w-6xl w-full h-[700px] shadow-2xl overflow-hidden rounded-2xl bg-card lg:grid-cols-2">
+                             <div className="p-12 flex flex-col justify-center">
+                                <LoginHeader />
+                                <div className="text-left mb-8">
                                     <h1 className="font-headline text-4xl font-bold text-foreground">Admin Access</h1>
                                     <p className="text-muted-foreground mt-2">Access to this section requires the <br/><span className="font-semibold text-foreground">{roleName}</span> role.</p>
                                 </div>
                                 <LoginForm
-                                    username={username}
-                                    setUsername={setUsername}
-                                    password={password}
-                                    setPassword={setPassword}
-                                    isLoading={isLoading}
-                                    error={error}
-                                    handleLogin={handleLogin}
+                                    username={username} setUsername={setUsername}
+                                    password={password} setPassword={setPassword}
+                                    isLoading={isLoading} error={error} handleLogin={handleLogin}
                                 />
                             </div>
-                            <div className="relative">
+                            
+                            {/* Tablet View Right Side (768px - 1024px) */}
+                            <div className="hidden md:block lg:hidden bg-muted p-12">
+                                <h3 className="font-headline text-2xl font-bold">Dashboard Capabilities</h3>
+                                <p className="text-muted-foreground mt-2 mb-8">All the tools you need to run your store efficiently.</p>
+                                <div className="space-y-6">
+                                    <FeatureItem icon={BarChart2} title="Sales Analytics" description="Monitor revenue, track orders, and gain insights into your store's performance." />
+                                    <FeatureItem icon={Package} title="Inventory Control" description="Add, edit, and manage all your products, including stock levels and pricing." />
+                                    <FeatureItem icon={Settings} title="Store Customization" description="Easily update your site's content, theme, and operational settings." />
+                                </div>
+                            </div>
+                            
+                            {/* Desktop View Right Side (>1024px) */}
+                            <div className="hidden lg:block relative">
                                 <Image
                                     src="https://picsum.photos/seed/admin-bg-side/800/1200"
-                                    alt="Admin background"
-                                    fill
-                                    className="object-cover"
+                                    alt="Admin decorative"
+                                    layout="fill"
+                                    objectFit="cover"
                                     quality={90}
-                                    data-ai-hint="abstract texture"
+                                    data-ai-hint="abstract modern"
                                 />
                             </div>
                         </div>
+
                    </div>
                 )}
             </AnimatePresence>
@@ -193,6 +191,27 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   );
 }
 
+// --- Reusable Login Header ---
+const LoginHeader = ({ isGlass = false }: { isGlass?: boolean }) => (
+    <Link href="/" className={`w-fit mb-8 flex items-center gap-2 transition-colors ${isGlass ? 'text-white/80 hover:text-white' : 'text-muted-foreground hover:text-primary'}`}>
+        <Icons.logo className="h-6 w-6"/>
+        <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
+    </Link>
+)
+
+// --- Reusable Feature Item for Tablet view ---
+const FeatureItem = ({ icon: Icon, title, description }: { icon: React.ElementType, title: string, description: string }) => (
+    <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Icon className="w-5 h-5 text-primary"/>
+        </div>
+        <div>
+            <h4 className="font-semibold text-foreground">{title}</h4>
+            <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+    </div>
+);
+
 
 // --- Login Form Component ---
 
@@ -206,7 +225,7 @@ function LoginForm({
     isGlass?: boolean;
 }) {
     return (
-        <form onSubmit={handleLogin} className="mt-8 space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4">
             <div>
                 <Label htmlFor="username" className={isGlass ? 'text-gray-200' : 'text-foreground'}>Username</Label>
                 <Input
@@ -216,7 +235,7 @@ function LoginForm({
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     disabled={isLoading}
-                    className={`mt-1 h-11 ${isGlass ? 'bg-white/10 text-white placeholder:text-gray-400 border-white/20' : 'bg-background'}`}
+                    className={`mt-1 h-11 ${isGlass ? 'bg-white/10 text-white placeholder:text-gray-400 border-white/20 focus:bg-white/20' : 'bg-background'}`}
                 />
             </div>
             <div>
@@ -228,7 +247,7 @@ function LoginForm({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
-                    className={`mt-1 h-11 ${isGlass ? 'bg-white/10 text-white placeholder:text-gray-400 border-white/20' : 'bg-background'}`}
+                    className={`mt-1 h-11 ${isGlass ? 'bg-white/10 text-white placeholder:text-gray-400 border-white/20 focus:bg-white/20' : 'bg-background'}`}
                 />
                 {error && <p className="text-sm text-destructive mt-2">{error}</p>}
             </div>
@@ -269,7 +288,7 @@ function SuccessAnimation({ roleName }: { roleName: string }) {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="text-center p-8 bg-card rounded-lg shadow-2xl"
+            className="text-center p-8 bg-card rounded-lg shadow-2xl relative z-10"
         >
             <h2 className="text-4xl font-headline font-bold text-primary">Access Granted</h2>
             <p className="text-muted-foreground mt-2">Welcome! You have access as {roleName}.</p>
@@ -377,5 +396,3 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-    
