@@ -21,6 +21,7 @@ import type { ProductFormValues } from '@/lib/schemas';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import QRCode from 'qrcode.react';
+import RoleGate from '@/components/admin/role-gate';
 
 
 type CartItem = {
@@ -50,7 +51,7 @@ const saveActiveSessions = (sessions: CustomerSession[]) => {
 }
 
 
-export default function StoreManagerPage() {
+function StoreManagerPageContent() {
   const { toast } = useToast();
   const router = useRouter();
   const supabase = createSupabaseBrowserClient();
@@ -68,7 +69,7 @@ export default function StoreManagerPage() {
   const [isProductNotFoundDialogOpen, setIsProductNotFoundDialogOpen] = useState(false);
   const [notFoundBarcode, setNotFoundBarcode] = useState('');
 
-  const [isAddProductFormOpen, setIsAddProductFormOpen] = useState(false);
+  const [isAddProductFormOpen, setIsAddProductFormOpen] = useState false;
   const [newProductToCreate, setNewProductToCreate] = useState<Partial<Product> | undefined>(undefined);
   
   const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
@@ -517,3 +518,13 @@ export default function StoreManagerPage() {
     </div>
   );
 }
+
+
+export default function StoreManagerPage() {
+    return (
+        <RoleGate role="SUPER_ADMIN">
+            <StoreManagerPageContent />
+        </RoleGate>
+    );
+}
+    
