@@ -33,18 +33,24 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   const router = useRouter();
 
   useEffect(() => {
-    // This effect runs only once on component mount
     const sessionKey = `myMart-role-${role}`;
-    const hasSession = sessionStorage.getItem(sessionKey) === 'true';
-
-    if (hasSession) {
-      setIsAuthenticated(true);
-      setShowSuccess(false); // Don't show animation on reload
-    } else if (role !== 'SUPER_ADMIN') {
-      // If not authenticated and not on the main admin login page, redirect immediately.
-      router.push('/admin');
+    try {
+      const hasSession = sessionStorage.getItem(sessionKey) === 'true';
+      if (hasSession) {
+        setIsAuthenticated(true);
+      } else {
+        if (role !== 'SUPER_ADMIN') {
+          router.push('/admin');
+          return; // Stop further execution
+        }
+      }
+    } catch (e) {
+      // sessionStorage is not available on the server
+      if (role !== 'SUPER_ADMIN') {
+        router.push('/admin');
+        return;
+      }
     }
-    // Finished initial check, can now show login form if needed
     setIsChecking(false);
   }, [role, router]);
 
@@ -86,8 +92,8 @@ export default function RoleGate({ role, children }: RoleGateProps) {
     return <SuccessAnimation roleName={roleName} show={showSuccess} />;
   }
   
-  // This part will only be rendered for SUPER_ADMIN role if not authenticated,
-  // or for other roles briefly before the redirect in useEffect kicks in.
+  // This part will only be rendered for SUPER_ADMIN role if not authenticated.
+  // Other roles would have been redirected by the useEffect hook.
   if (role === 'SUPER_ADMIN' && !isAuthenticated) {
       return (
         <div className="flex h-screen w-full items-center justify-center p-4 bg-muted/30">
