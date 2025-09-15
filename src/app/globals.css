@@ -11,7 +11,7 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 177 97% 40%;
+    --primary: var(--primary-dynamic);
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -33,7 +33,7 @@
     /* Sidebar theme for light mode */
     --sidebar-background: 220 13% 95%;
     --sidebar-foreground: 222.2 47.4% 11.2%;
-    --sidebar-primary: 177 97% 40%;
+    --sidebar-primary: var(--primary-dynamic);
     --sidebar-primary-foreground: 210 40% 98%;
     --sidebar-accent: 214.3 31.8% 91.4%;
     --sidebar-accent-foreground: 222.2 47.4% 11.2%;
@@ -48,7 +48,7 @@
     --card-foreground: 210 2% 78%;
     --popover: 210 22% 16%;
     --popover-foreground: 210 2% 78%;
-    --primary: 177 97% 70%;
+    --primary: var(--primary-dynamic);
     --primary-foreground: 210 14% 5%;
     --secondary: 210 22% 16%;
     --secondary-foreground: 210 2% 78%;
@@ -70,7 +70,7 @@
     /* Sidebar theme for dark mode */
     --sidebar-background: 210 20% 8%;
     --sidebar-foreground: 210 5% 70%;
-    --sidebar-primary: 177 97% 70%;
+    --sidebar-primary: var(--primary-dynamic);
     --sidebar-primary-foreground: 210 14% 5%;
     --sidebar-accent: 210 22% 16%;
     --sidebar-accent-foreground: 177 97% 70%;

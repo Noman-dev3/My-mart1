@@ -5,15 +5,34 @@ import Link from 'next/link';
 import { Icons } from './icons';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { subscribeToNewsletter } from '@/ai/flows/newsletter-subscription';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import type { SiteSettings } from '@/lib/settings-actions';
 
 export default function Footer() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
   const { toast } = useToast();
+  const supabase = createSupabaseBrowserClient();
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data, error } = await supabase
+        .from('siteContent')
+        .select('content')
+        .eq('page', 'settings')
+        .single();
+      
+      if (data) {
+        setSettings(data.content as SiteSettings);
+      }
+    };
+    fetchSettings();
+  }, [supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,12 +73,15 @@ export default function Footer() {
             <Link href="/" className="flex items-center gap-2">
               <Icons.logo className="h-8 w-8 text-primary" />
               <span className="font-headline text-2xl font-bold text-primary">
-                My Mart
+                {settings?.storeName || 'My Mart'}
               </span>
             </Link>
             <p className="text-muted-foreground text-sm">
               Your one-stop shop for everything you need, delivered right to
               your door.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {settings?.address || '123 Market Street, Karachi, Pakistan'}
             </p>
           </div>
 
@@ -130,6 +152,22 @@ export default function Footer() {
                   Shipping & Returns
                 </Link>
               </li>
+               <li>
+                <a
+                  href={`mailto:${settings?.contactEmail || 'contact@mymart.com'}`}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  {settings?.contactEmail || 'contact@mymart.com'}
+                </a>
+              </li>
+               <li>
+                <a
+                  href={`tel:${settings?.contactPhone || '+923119991972'}`}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  {settings?.contactPhone || '+92 311 9991972'}
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -163,7 +201,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 border-t pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} My Mart. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {settings?.storeName || 'My Mart'}. All rights reserved.</p>
           <div className="flex gap-4 mt-4 md:mt-0">
             <Link
               href="/terms-of-service"

@@ -57,7 +57,7 @@ const navItems: NavItem[] = [
 ];
 
 const bottomNavItems: NavItem[] = [
-  { label: 'Settings', icon: Settings, href: '#' }, // Placeholder
+  { label: 'Settings', icon: Settings, href: '/admin/settings' },
   { label: 'Info', icon: Info, href: '#' }, // Placeholder
 ];
 
