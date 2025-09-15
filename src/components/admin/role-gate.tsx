@@ -65,18 +65,26 @@ export default function RoleGate({ role, children }: RoleGateProps) {
 
     const result = await verifyUserRole(username, password);
 
-    if (result.success && (result.role === 'SUPER_ADMIN' || result.role === role)) {
-      const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
-      const sessionValue = JSON.stringify({ user: { username, role: result.role }, expiry });
-      sessionStorage.setItem(`myMart-role-session`, sessionValue);
+    if (result.success) {
+      // SUPER_ADMIN can access everything.
+      const hasAccess = result.role === 'SUPER_ADMIN' || result.role === role;
+      
+      if (hasAccess) {
+        const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
+        const sessionValue = JSON.stringify({ user: { username, role: result.role }, expiry });
+        sessionStorage.setItem(`myMart-role-session`, sessionValue);
 
-      setShowSuccess(true);
-      setTimeout(() => {
-        setAuthStatus('authenticated');
-        setShowSuccess(false);
-      }, 1500);
+        setShowSuccess(true);
+        setTimeout(() => {
+          setAuthStatus('authenticated');
+          setShowSuccess(false);
+        }, 1500);
+      } else {
+        setError('You do not have the required permissions for this section.');
+        setIsLoading(false);
+      }
     } else {
-      setError(result.error || 'Incorrect username or password, or insufficient permissions.');
+      setError(result.error || 'Incorrect username or password.');
       setIsLoading(false);
     }
   };
@@ -97,88 +105,79 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   
   if (authStatus === 'unauthenticated') {
      return (
-        <div className="flex h-screen w-full items-center justify-center bg-muted">
+        <div className="relative flex h-screen w-full items-center justify-center bg-muted overflow-hidden">
+            {/* Background Image for all screens */}
+            <Image
+                src="https://picsum.photos/seed/admin-bg/1200/800"
+                alt="Admin background"
+                fill
+                className="object-cover"
+                quality={90}
+                data-ai-hint="abstract texture"
+            />
+            <div className="absolute inset-0 bg-black/50"></div>
+            
             <AnimatePresence mode="wait">
                 {showSuccess ? (
                     <SuccessAnimation roleName={roleName} />
                 ) : (
-                   <div className="relative w-full h-full lg:max-w-4xl lg:min-h-[600px] lg:shadow-2xl lg:overflow-hidden lg:rounded-2xl lg:grid lg:grid-cols-2">
-                        {/* Background for Mobile */}
-                        <div className="lg:hidden absolute inset-0">
-                           <Image
-                                src="https://picsum.photos/seed/admin-bg/800/1200"
-                                alt="Admin background"
-                                fill
-                                className="object-cover"
-                                quality={90}
-                                data-ai-hint="abstract texture"
+                   <div className="relative w-full h-full flex items-center justify-center p-4">
+                        
+                        {/* Mobile & Tablet: Glassmorphism Form */}
+                        <div className="relative w-full max-w-md p-8 space-y-6 bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl lg:hidden">
+                            <Link href="/" className="w-fit flex items-center gap-2 text-white">
+                                <Icons.logo className="h-6 w-6"/>
+                                <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
+                            </Link>
+
+                            <div>
+                                <h1 className="font-headline text-4xl font-bold text-white">Admin Access</h1>
+                                <p className="text-gray-300 mt-2">Access requires the <span className="font-semibold text-white">{roleName}</span> role.</p>
+                            </div>
+                            <LoginForm
+                                username={username}
+                                setUsername={setUsername}
+                                password={password}
+                                setPassword={setPassword}
+                                isLoading={isLoading}
+                                error={error}
+                                handleLogin={handleLogin}
+                                isGlass
                             />
-                            <div className="absolute inset-0 bg-black/50"></div>
                         </div>
                         
-                        {/* Form Section */}
-                        <div className="relative h-full flex flex-col justify-center p-8 sm:p-12 lg:bg-card">
-                            {/* Glassmorphism card for mobile */}
-                            <div className="relative lg:static bg-transparent lg:bg-card p-0 lg:p-0 rounded-xl">
-                               <div className="absolute inset-0 bg-card/80 backdrop-blur-md rounded-xl border border-white/10 lg:hidden"></div>
+                        {/* Desktop: Two-Column Layout */}
+                        <div className="hidden lg:grid grid-cols-2 max-w-4xl w-full min-h-[600px] shadow-2xl overflow-hidden rounded-2xl bg-card">
+                            <div className="p-12 flex flex-col justify-center">
+                                 <Link href="/" className="w-fit mb-8 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+                                    <Icons.logo className="h-6 w-6"/>
+                                    <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
+                                </Link>
 
-                                <div className="relative">
-                                    <Link href="/" className="w-fit mb-8 flex items-center gap-2 text-foreground lg:text-muted-foreground hover:text-primary transition-colors">
-                                        <Icons.logo className="h-6 w-6"/>
-                                        <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
-                                    </Link>
-
-                                    <div className="text-left">
-                                        <h1 className="font-headline text-4xl font-bold text-white lg:text-foreground">Admin Access</h1>
-                                        <p className="text-gray-300 lg:text-muted-foreground mt-2">Access to this section requires the <br/><span className="font-semibold text-white lg:text-foreground">{roleName}</span> role.</p>
-                                    </div>
-
-                                    <form onSubmit={handleLogin} className="mt-8 space-y-4">
-                                        <div>
-                                            <Label htmlFor="username" className="text-gray-200 lg:text-foreground">Username</Label>
-                                            <Input
-                                                id="username"
-                                                type="text"
-                                                placeholder="Enter your username"
-                                                value={username}
-                                                onChange={(e) => setUsername(e.target.value)}
-                                                disabled={isLoading}
-                                                className="mt-1 h-11 bg-background/50 lg:bg-background text-white lg:text-foreground"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label htmlFor="password" className="text-gray-200 lg:text-foreground">Password</Label>
-                                            <Input
-                                                id="password"
-                                                type="password"
-                                                placeholder="••••••••"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                disabled={isLoading}
-                                                className="mt-1 h-11 bg-background/50 lg:bg-background text-white lg:text-foreground"
-                                            />
-                                            {error && <p className="text-sm text-destructive mt-2">{error}</p>}
-                                        </div>
-                                        <Button type="submit" size="lg" className="w-full font-bold h-11" disabled={isLoading}>
-                                        {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Unlock className="mr-2 h-4 w-4"/>}
-                                        Authenticate
-                                        </Button>
-                                    </form>
-                               </div>
-                           </div>
-                        </div>
-
-                        {/* Image for Desktop */}
-                        <div className="hidden lg:block relative">
-                            <Image
-                                src="https://picsum.photos/seed/admin-bg/800/1200"
-                                alt="Admin background"
-                                fill
-                                className="object-cover"
-                                quality={90}
-                                data-ai-hint="abstract texture"
-                            />
-                            <div className="absolute inset-0 bg-blue-900/40"></div>
+                                <div className="text-left">
+                                    <h1 className="font-headline text-4xl font-bold text-foreground">Admin Access</h1>
+                                    <p className="text-muted-foreground mt-2">Access to this section requires the <br/><span className="font-semibold text-foreground">{roleName}</span> role.</p>
+                                </div>
+                                <LoginForm
+                                    username={username}
+                                    setUsername={setUsername}
+                                    password={password}
+                                    setPassword={setPassword}
+                                    isLoading={isLoading}
+                                    error={error}
+                                    handleLogin={handleLogin}
+                                />
+                            </div>
+                            <div className="relative">
+                                <Image
+                                    src="https://picsum.photos/seed/admin-bg-side/800/1200"
+                                    alt="Admin background"
+                                    fill
+                                    className="object-cover"
+                                    quality={90}
+                                    data-ai-hint="abstract texture"
+                                />
+                            </div>
                         </div>
                    </div>
                 )}
@@ -192,6 +191,53 @@ export default function RoleGate({ role, children }: RoleGateProps) {
       <Loader2 className="h-8 w-8 animate-spin" />
     </div>
   );
+}
+
+
+// --- Login Form Component ---
+
+function LoginForm({
+    username, setUsername, password, setPassword, isLoading, error, handleLogin, isGlass = false
+}: {
+    username: string; setUsername: (u: string) => void;
+    password: string; setPassword: (p: string) => void;
+    isLoading: boolean; error: string;
+    handleLogin: (e: React.FormEvent) => void;
+    isGlass?: boolean;
+}) {
+    return (
+        <form onSubmit={handleLogin} className="mt-8 space-y-4">
+            <div>
+                <Label htmlFor="username" className={isGlass ? 'text-gray-200' : 'text-foreground'}>Username</Label>
+                <Input
+                    id="username"
+                    type="text"
+                    placeholder="Enter your username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    disabled={isLoading}
+                    className={`mt-1 h-11 ${isGlass ? 'bg-white/10 text-white placeholder:text-gray-400 border-white/20' : 'bg-background'}`}
+                />
+            </div>
+            <div>
+                <Label htmlFor="password" className={isGlass ? 'text-gray-200' : 'text-foreground'}>Password</Label>
+                <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                    className={`mt-1 h-11 ${isGlass ? 'bg-white/10 text-white placeholder:text-gray-400 border-white/20' : 'bg-background'}`}
+                />
+                {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+            </div>
+            <Button type="submit" size="lg" className="w-full font-bold h-11" disabled={isLoading}>
+            {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Unlock className="mr-2 h-4 w-4"/>}
+            Authenticate
+            </Button>
+        </form>
+    );
 }
 
 // --- Success Animation Component ---
