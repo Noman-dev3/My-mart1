@@ -1,40 +1,21 @@
-
 'use client';
 
 import { useState } from 'react';
-import { Home, Package, ShoppingCart, Users, Settings, Bell, Search, FileText, Store, LogOut, PanelLeft, X, QrCode } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { Icons } from '@/components/icons';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Search, Bell, PanelLeft, Menu } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { logout } from './login/actions';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Suspense } from 'react';
+import { usePathname } from 'next/navigation';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import Sidebar from '@/components/admin/sidebar';
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
   const router = useRouter();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
-
-  const navItems = [
-    { href: '/admin', icon: Home, label: 'Dashboard' },
-    { href: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
-    { href: '/admin/products', icon: Package, label: 'Products' },
-    { href: '/admin/customers', icon: Users, label: 'Customers' },
-    { href: '/admin/store-manager', icon: Store, label: 'Store Manager' },
-    { href: '/admin/content', icon: FileText, label: 'Content' },
-    { href: '/admin/barcode-tools', icon: QrCode, label: 'Barcode Tools' },
-  ];
-
-  const handleLogout = async () => {
-    await logout();
-    router.push('/admin/login');
-  };
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,73 +23,37 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       router.push(`/admin/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
-  
-  const SidebarContent = () => (
-    <>
-        <div className="flex items-center gap-2 px-4 py-6 border-b border-sidebar-border">
-            <Icons.logo className="h-8 w-8 text-sidebar-primary" />
-            <span className="font-headline text-2xl font-bold text-sidebar-primary">
-            My Mart
-            </span>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-            <nav className="px-4 py-4">
-            <ul className="space-y-1">
-                {navItems.map((item) => (
-                <li key={item.label}>
-                    <Link href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
-                    <div
-                        className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:text-sidebar-primary hover:bg-sidebar-accent",
-                        pathname === item.href && "bg-sidebar-primary text-sidebar-primary-foreground font-semibold"
-                        )}
-                    >
-                        <item.icon className="h-5 w-5" />
-                        {item.label}
-                    </div>
-                    </Link>
-                </li>
-                ))}
-            </ul>
-            </nav>
-        </div>
-        <div className="mt-auto p-4 border-t border-sidebar-border">
-            <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive">
-                <LogOut className="mr-2 h-5 w-5" />
-                Logout
-            </Button>
-        </div>
-    </>
-  );
 
   return (
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+    <div className="flex min-h-screen w-full bg-muted/30">
       {/* Desktop Sidebar */}
-      <aside className="hidden bg-sidebar md:flex flex-col h-full">
-        <SidebarContent />
-      </aside>
-      
-      {/* Mobile Sidebar */}
+      <div className="hidden md:block">
+        <Sidebar onLogout={() => {
+            logout().then(() => router.push('/admin/login'));
+        }} />
+      </div>
+
+       {/* Mobile Sidebar */}
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <SheetContent side="left" className="flex flex-col w-full max-w-[300px] p-0 bg-sidebar border-sidebar-border">
-           <SheetHeader className="sr-only">
-            <SheetTitle>Admin Menu</SheetTitle>
-          </SheetHeader>
-          <SidebarContent />
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="fixed top-3 left-3 z-50 md:hidden bg-background/50 backdrop-blur-sm"
+          >
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Toggle Menu</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-64">
+           <Sidebar isMobile onLinkClick={() => setIsMobileMenuOpen(false)} onLogout={() => {
+                logout().then(() => router.push('/admin/login'));
+           }} />
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col flex-1 md:ml-16">
         <header className="flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6 sticky top-0 z-30">
-          <Button
-            variant="outline"
-            size="icon"
-            className="shrink-0 md:hidden"
-            onClick={() => setIsMobileMenuOpen(true)}
-          >
-            <PanelLeft className="h-5 w-5" />
-            <span className="sr-only">Toggle navigation menu</span>
-          </Button>
           <div className="w-full flex-1">
             <form onSubmit={handleSearch}>
               <div className="relative">
@@ -123,21 +68,21 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               </div>
             </form>
           </div>
-           <div className='flex items-center gap-4'>
-                <Button variant="ghost" size="icon">
-                    <Bell className="h-5 w-5"/>
-                    <span className="sr-only">Notifications</span>
-                </Button>
-                <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                        <AvatarFallback>A</AvatarFallback>
-                    </Avatar>
-                    <div className="hidden md:block">
-                        <p className="font-semibold text-sm">Admin</p>
-                        <p className="text-xs text-muted-foreground">Store Operator</p>
-                    </div>
-                </div>
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon">
+              <Bell className="h-5 w-5" />
+              <span className="sr-only">Notifications</span>
+            </Button>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-9 w-9">
+                <AvatarFallback>A</AvatarFallback>
+              </Avatar>
+              <div className="hidden md:block">
+                <p className="font-semibold text-sm">Admin</p>
+                <p className="text-xs text-muted-foreground">Store Operator</p>
+              </div>
             </div>
+          </div>
         </header>
         <main className="flex-1 overflow-auto bg-muted/30 p-4 sm:p-6">
           <Suspense fallback={<div>Loading...</div>}>
@@ -150,15 +95,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    const pathname = usePathname();
+  const pathname = usePathname();
 
-    if (pathname === '/admin/login' || pathname === '/admin/store-manager/print-bill') {
-        return <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>;
-    }
-    
-    return (
-        <AdminLayoutContent>
-          {children}
-        </AdminLayoutContent>
-    );
+  if (pathname === '/admin/login' || pathname === '/admin/store-manager/print-bill') {
+    return <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>;
+  }
+
+  return <AdminLayoutContent>{children}</AdminLayoutContent>;
 }
