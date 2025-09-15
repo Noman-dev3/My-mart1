@@ -41,24 +41,22 @@ export default function RoleGate({ role, children }: RoleGateProps) {
         if (sessionValue) {
           const { user, expiry } = JSON.parse(sessionValue);
           if (new Date().getTime() < expiry) {
+            // SUPER_ADMIN can access everything.
             if (user.role === 'SUPER_ADMIN' || user.role === role) {
               setAuthStatus('authenticated');
-            } else {
-              setAuthStatus('unauthenticated');
+              return;
             }
-          } else {
-            sessionStorage.removeItem(sessionKey);
-            setAuthStatus('unauthenticated');
           }
-        } else {
-          setAuthStatus('unauthenticated');
         }
+        // If any check fails, treat as unauthenticated
+        sessionStorage.removeItem(sessionKey);
+        setAuthStatus('unauthenticated');
       } catch (e) {
         setAuthStatus('unauthenticated');
       }
     };
     checkAuth();
-  }, [role]);
+  }, [role, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,62 +97,78 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   
   if (authStatus === 'unauthenticated') {
      return (
-        <div className="flex h-screen w-full items-center justify-center p-4 bg-muted">
+        <div className="flex h-screen w-full items-center justify-center bg-muted">
             <AnimatePresence mode="wait">
                 {showSuccess ? (
                     <SuccessAnimation roleName={roleName} />
                 ) : (
-                   <motion.div 
-                        key="login-form"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.3 }}
-                        className="relative w-full max-w-4xl min-h-[600px] grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl bg-card"
-                    >
-                        <div className="p-8 sm:p-12 flex flex-col justify-center">
-                             <Link href="/" className="w-fit mb-8 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
-                                <Icons.logo className="h-6 w-6"/>
-                                <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
-                            </Link>
-
-                            <div className="text-left">
-                                <h1 className="font-headline text-4xl font-bold">Admin Access</h1>
-                                <p className="text-muted-foreground mt-2">Access to this section requires the <br/><span className="font-semibold text-foreground">{roleName}</span> role.</p>
-                            </div>
-
-                            <form onSubmit={handleLogin} className="mt-8 space-y-4">
-                                <div>
-                                    <Label htmlFor="username">Username</Label>
-                                    <Input
-                                        id="username"
-                                        type="text"
-                                        placeholder="Enter your username"
-                                        value={username}
-                                        onChange={(e) => setUsername(e.target.value)}
-                                        disabled={isLoading}
-                                        className="mt-1 h-11"
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="password">Password</Label>
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        disabled={isLoading}
-                                        className="mt-1 h-11"
-                                    />
-                                    {error && <p className="text-sm text-destructive mt-2">{error}</p>}
-                                </div>
-                                <Button type="submit" size="lg" className="w-full font-bold h-11" disabled={isLoading}>
-                                {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Unlock className="mr-2 h-4 w-4"/>}
-                                 Authenticate
-                                </Button>
-                            </form>
+                   <div className="relative w-full h-full lg:max-w-4xl lg:min-h-[600px] lg:shadow-2xl lg:overflow-hidden lg:rounded-2xl lg:grid lg:grid-cols-2">
+                        {/* Background for Mobile */}
+                        <div className="lg:hidden absolute inset-0">
+                           <Image
+                                src="https://picsum.photos/seed/admin-bg/800/1200"
+                                alt="Admin background"
+                                fill
+                                className="object-cover"
+                                quality={90}
+                                data-ai-hint="abstract texture"
+                            />
+                            <div className="absolute inset-0 bg-black/50"></div>
                         </div>
+                        
+                        {/* Form Section */}
+                        <div className="relative h-full flex flex-col justify-center p-8 sm:p-12 bg-card lg:bg-card">
+                            {/* Glassmorphism card for mobile */}
+                            <div className="relative lg:static bg-transparent lg:bg-card p-0 lg:p-0 rounded-xl">
+                               <div className="absolute inset-0 bg-card/80 backdrop-blur-md rounded-xl border border-white/10 lg:hidden"></div>
+
+                                <div className="relative">
+                                    <Link href="/" className="w-fit mb-8 flex items-center gap-2 text-muted-foreground lg:text-muted-foreground hover:text-primary transition-colors">
+                                        <Icons.logo className="h-6 w-6"/>
+                                        <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
+                                    </Link>
+
+                                    <div className="text-left">
+                                        <h1 className="font-headline text-4xl font-bold text-foreground lg:text-foreground">Admin Access</h1>
+                                        <p className="text-muted-foreground mt-2 lg:text-muted-foreground">Access to this section requires the <br/><span className="font-semibold text-foreground lg:text-foreground">{roleName}</span> role.</p>
+                                    </div>
+
+                                    <form onSubmit={handleLogin} className="mt-8 space-y-4">
+                                        <div>
+                                            <Label htmlFor="username" className="text-foreground/80 lg:text-foreground">Username</Label>
+                                            <Input
+                                                id="username"
+                                                type="text"
+                                                placeholder="Enter your username"
+                                                value={username}
+                                                onChange={(e) => setUsername(e.target.value)}
+                                                disabled={isLoading}
+                                                className="mt-1 h-11 bg-background/50 lg:bg-background"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="password" className="text-foreground/80 lg:text-foreground">Password</Label>
+                                            <Input
+                                                id="password"
+                                                type="password"
+                                                placeholder="••••••••"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                disabled={isLoading}
+                                                className="mt-1 h-11 bg-background/50 lg:bg-background"
+                                            />
+                                            {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+                                        </div>
+                                        <Button type="submit" size="lg" className="w-full font-bold h-11" disabled={isLoading}>
+                                        {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Unlock className="mr-2 h-4 w-4"/>}
+                                        Authenticate
+                                        </Button>
+                                    </form>
+                               </div>
+                           </div>
+                        </div>
+
+                        {/* Image for Desktop */}
                         <div className="hidden lg:block relative">
                             <Image
                                 src="https://picsum.photos/seed/admin-bg/800/1200"
@@ -166,7 +180,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                             />
                             <div className="absolute inset-0 bg-blue-900/40"></div>
                         </div>
-                   </motion.div>
+                   </div>
                 )}
             </AnimatePresence>
         </div>
