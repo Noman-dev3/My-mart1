@@ -6,7 +6,6 @@ import { Search, Bell, PanelLeft, Menu } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { logout } from './login/actions';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
@@ -41,9 +40,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen w-full bg-muted/30">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
-        <Sidebar onLogout={() => {
-            logout().then(() => router.push('/admin/login'));
-        }} />
+        <Sidebar onLogout={() => router.push('/admin/login')} />
       </div>
 
        {/* Mobile Sidebar */}
@@ -59,9 +56,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="p-0 w-64">
-           <Sidebar isMobile onLinkClick={() => setIsMobileMenuOpen(false)} onLogout={() => {
-                logout().then(() => router.push('/admin/login'));
-           }} />
+           <Sidebar isMobile onLinkClick={() => setIsMobileMenuOpen(false)} onLogout={() => router.push('/admin/login')} />
         </SheetContent>
       </Sheet>
 
@@ -110,7 +105,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (pathname === '/admin/login' || pathname === '/admin/store-manager/print-bill') {
+  // Pages that do not use the main admin layout
+  const plainLayoutRoutes = ['/admin/login', '/admin/store-manager/print-bill'];
+  if (plainLayoutRoutes.includes(pathname)) {
     return <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>;
   }
 
