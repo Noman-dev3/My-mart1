@@ -6,7 +6,8 @@ import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import { redirect } from 'next/navigation';
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
-import { getAdminCredentials, getApiKey } from '@/lib/settings-actions';
+import { getAdminCredentials } from '@/lib/settings-actions';
+import { getApiKey } from '@/lib/api-keys';
 
 const secretKey = process.env.ADMIN_SESSION_SECRET || 'fallback-secret-key-for-admin-session';
 const key = new TextEncoder().encode(secretKey);
@@ -59,11 +60,13 @@ export async function login(formData: FormData) {
     return { success: false, error: 'Could not authenticate the admin session with the database. Ensure the admin user exists in Supabase.' };
   }
   
-  const geminiApiKey = await getApiKey('geminiApiKey');
-  const sessionPayload: { user: { username: string }, expires: Date, hasGeminiKey: boolean } = {
+  // The logic for checking the API key is now simplified, as Genkit handles it.
+  const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+
+  const sessionPayload = {
     user: { username },
     expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-    hasGeminiKey: !!geminiApiKey,
+    hasGeminiKey: hasGeminiKey,
   };
 
 

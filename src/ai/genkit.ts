@@ -1,34 +1,15 @@
 
-import { genkit, configureGenkit } from 'genkit';
+import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
-import { getApiKey } from '@/lib/settings-actions';
+import { config } from 'dotenv';
 
-// Note: We are using a dynamic initialization pattern here.
-// The global `ai` object is initialized async and then exported.
-// This allows us to fetch the API key from the database before configuring Genkit.
+config(); // Ensure environment variables are loaded.
 
-let aiInstance: any;
-
-async function initializeGenkit() {
-  if (aiInstance) {
-    return aiInstance;
-  }
-  
-  const geminiApiKey = await getApiKey('geminiApiKey');
-
-  // If a key is found in the DB, use it. Otherwise, Google AI will look for GOOGLE_API_KEY env var.
-  const googleAiPlugin = geminiApiKey ? googleAI({ apiKey: geminiApiKey }) : googleAI();
-  
-  aiInstance = genkit({
-    plugins: [googleAiPlugin],
-    model: 'googleai/gemini-2.5-flash',
-  });
-  
-  return aiInstance;
-}
-
-// We export a promise that resolves to the configured `ai` object.
-// This ensures that any file importing `ai` will wait for initialization.
-export const ai = (async () => await initializeGenkit())();
-
-    
+export const ai = genkit({
+  plugins: [
+    process.env.GEMINI_API_KEY
+      ? googleAI({ apiKey: process.env.GEMINI_API_KEY })
+      : googleAI(),
+  ],
+  model: 'googleai/gemini-pro',
+});

@@ -12,7 +12,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { getSettings, updateSettings, type SiteSettings, updateAdminPassword, updateApiKey } from '@/lib/settings-actions';
+import { getSettings, updateSettings, updateAdminPassword } from '@/lib/settings-actions';
+import { updateApiKey, type SiteSettings } from '@/lib/api-keys';
 
 const settingsSchema = z.object({
   storeName: z.string().min(1, "Store name is required."),
@@ -148,7 +149,7 @@ export default function SettingsPage() {
             title: 'API Key Updated',
             description: 'The Gemini API key has been securely updated.'
         });
-        apiKeyForm.reset();
+        apiKeyForm.reset({ geminiApiKey: '' });
     } catch (error: any) {
         console.error("Failed to update API key:", error);
         toast({
