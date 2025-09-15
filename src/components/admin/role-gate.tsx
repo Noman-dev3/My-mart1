@@ -9,7 +9,7 @@ import { verifyUserRole, type AdminRole } from '@/lib/role-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Search, Bell, Menu, Unlock, Package, Settings, BarChart2 } from 'lucide-react';
+import { Loader2, Search, Bell, Menu, Unlock, Package, Settings, BarChart2, Users, FileText } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Sidebar from '@/components/admin/sidebar';
@@ -105,7 +105,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   if (authStatus === 'unauthenticated') {
      return (
         <div className="relative flex h-screen w-full items-center justify-center bg-gray-900 p-4">
-             {/* Full-screen background image */}
+             {/* Full-screen background image for all sizes */}
             <Image
                 src="https://picsum.photos/seed/admin-bg-full/1920/1080"
                 alt="Admin background"
@@ -123,12 +123,12 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                 ) : (
                    <div className="relative w-full h-full flex items-center justify-center">
 
-                        {/* Mobile View (<768px): Glassmorphism Form */}
+                        {/* Mobile View (< md) */}
                         <div className="relative w-full max-w-md p-8 space-y-6 bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl md:hidden">
                            <LoginHeader isGlass />
                             <div className="text-left">
                                 <h1 className="font-headline text-3xl font-bold text-white">Admin Access</h1>
-                                <p className="text-gray-300 mt-1 text-sm">Access requires the <span className="font-semibold text-white">{roleName}</span> role.</p>
+                                <p className="text-gray-300 mt-1 text-sm">Requires the <span className="font-semibold text-white">{roleName}</span> role.</p>
                             </div>
                             <LoginForm
                                 username={username} setUsername={setUsername}
@@ -138,9 +138,9 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                             />
                         </div>
 
-                        {/* Tablet and Desktop View (>=768px) */}
-                        <div className="hidden md:grid max-w-6xl w-full h-[700px] shadow-2xl overflow-hidden rounded-2xl bg-card lg:grid-cols-2">
-                             <div className="p-12 flex flex-col justify-center">
+                        {/* Tablet and Desktop View (>= md) */}
+                        <div className="hidden md:grid max-w-6xl w-full h-auto max-h-[700px] shadow-2xl overflow-hidden rounded-2xl bg-card md:grid-cols-2">
+                             <div className="p-10 flex flex-col justify-center">
                                 <LoginHeader />
                                 <div className="text-left mb-8">
                                     <h1 className="font-headline text-4xl font-bold text-foreground">Admin Access</h1>
@@ -153,18 +153,19 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                 />
                             </div>
                             
-                            {/* Tablet View Right Side (768px - 1024px) */}
-                            <div className="hidden md:block lg:hidden bg-muted p-12">
-                                <h3 className="font-headline text-2xl font-bold">Dashboard Capabilities</h3>
-                                <p className="text-muted-foreground mt-2 mb-8">All the tools you need to run your store efficiently.</p>
+                            {/* Tablet View Right Side (md to lg) */}
+                            <div className="hidden md:flex lg:hidden bg-muted p-10 flex-col justify-center">
+                                <h3 className="font-headline text-2xl font-bold mb-2">My Mart Dashboard</h3>
+                                <p className="text-muted-foreground mb-8">All the tools you need to run your store efficiently.</p>
                                 <div className="space-y-6">
-                                    <FeatureItem icon={BarChart2} title="Sales Analytics" description="Monitor revenue, track orders, and gain insights into your store's performance." />
-                                    <FeatureItem icon={Package} title="Inventory Control" description="Add, edit, and manage all your products, including stock levels and pricing." />
-                                    <FeatureItem icon={Settings} title="Store Customization" description="Easily update your site's content, theme, and operational settings." />
+                                    <FeatureItem icon={BarChart2} title="Sales Analytics" description="Monitor revenue, track orders, and gain insights into store performance." />
+                                    <FeatureItem icon={Package} title="Inventory Control" description="Add, edit, and manage all products, including stock levels and pricing." />
+                                    <FeatureItem icon={Users} title="Customer Management" description="View customer history and manage user data." />
+                                    <FeatureItem icon={FileText} title="Content Editing" description="Easily update your site's content, theme, and operational settings." />
                                 </div>
                             </div>
                             
-                            {/* Desktop View Right Side (>1024px) */}
+                            {/* Desktop View Right Side (> lg) */}
                             <div className="hidden lg:block relative">
                                 <Image
                                     src="https://picsum.photos/seed/admin-bg-side/800/1200"
@@ -195,7 +196,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
 const LoginHeader = ({ isGlass = false }: { isGlass?: boolean }) => (
     <Link href="/" className={`w-fit mb-8 flex items-center gap-2 transition-colors ${isGlass ? 'text-white/80 hover:text-white' : 'text-muted-foreground hover:text-primary'}`}>
         <Icons.logo className="h-6 w-6"/>
-        <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
+        <span className="font-headline text-xl font-semibold">My Mart</span>
     </Link>
 )
 
