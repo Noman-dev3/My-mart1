@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { getSettings, updateSettings, type SiteSettings, updateAdminPassword } from '@/lib/settings-actions';
+import { getSettings, updateSettings, type SiteSettings, updateAdminPassword, updateApiKey } from '@/lib/settings-actions';
 
 const settingsSchema = z.object({
   storeName: z.string().min(1, "Store name is required."),
@@ -37,6 +38,12 @@ const passwordSchema = z.object({
 
 type PasswordFormValues = z.infer<typeof passwordSchema>;
 
+const apiKeySchema = z.object({
+    geminiApiKey: z.string().min(1, "API Key is required.")
+});
+
+type ApiKeyFormValues = z.infer<typeof apiKeySchema>;
+
 
 export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -61,6 +68,13 @@ export default function SettingsPage() {
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
+    }
+  });
+  
+  const apiKeyForm = useForm<ApiKeyFormValues>({
+    resolver: zodResolver(apiKeySchema),
+    defaultValues: {
+        geminiApiKey: ''
     }
   });
 
@@ -125,6 +139,24 @@ export default function SettingsPage() {
             variant: 'destructive',
         });
     }
+  };
+  
+   const onApiKeySubmit = async (data: ApiKeyFormValues) => {
+    try {
+        await updateApiKey({ keyName: 'geminiApiKey', keyValue: data.geminiApiKey });
+        toast({
+            title: 'API Key Updated',
+            description: 'The Gemini API key has been securely updated.'
+        });
+        apiKeyForm.reset();
+    } catch (error: any) {
+        console.error("Failed to update API key:", error);
+        toast({
+            title: 'Error',
+            description: error.message || 'Failed to update API key.',
+            variant: 'destructive',
+        });
+    }
   }
 
 
@@ -175,16 +207,45 @@ export default function SettingsPage() {
                         </FormItem> 
                     )} />
                 </CardContent>
+                 <CardFooter className="flex justify-end border-t pt-6">
+                    <Button type="submit" disabled={settingsForm.formState.isSubmitting}>
+                    {settingsForm.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Save Site Settings
+                    </Button>
+                </CardFooter>
             </Card>
-            
-          <div className="flex justify-end pt-4">
-            <Button type="submit" disabled={settingsForm.formState.isSubmitting}>
-              {settingsForm.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save All Settings
-            </Button>
-          </div>
         </form>
       </Form>
+      
+      <Card>
+          <Form {...apiKeyForm}>
+            <form onSubmit={apiKeyForm.handleSubmit(onApiKeySubmit)}>
+                <CardHeader>
+                    <CardTitle>API Key Management</CardTitle>
+                    <CardDescription>Manage keys for third-party services. Keys are write-only for security.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <FormField
+                        control={apiKeyForm.control}
+                        name="geminiApiKey"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Google AI (Gemini) API Key</FormLabel>
+                                <FormControl><Input type="password" {...field} placeholder="Enter new API Key..." /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </CardContent>
+                 <CardFooter className="flex justify-end border-t pt-6">
+                    <Button type="submit" disabled={apiKeyForm.formState.isSubmitting}>
+                        {apiKeyForm.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Update API Key
+                    </Button>
+                </CardFooter>
+            </form>
+          </Form>
+      </Card>
 
       <Card>
           <Form {...passwordForm}>
@@ -242,3 +303,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    

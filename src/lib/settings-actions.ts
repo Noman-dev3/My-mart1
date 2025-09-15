@@ -1,7 +1,9 @@
 
+
 'use server';
 
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -17,6 +19,17 @@ const settingsSchema = z.object({
 });
 
 export type SiteSettings = z.infer<typeof settingsSchema>;
+
+const createServiceSupabaseClient = () => {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Supabase URL or Service Role Key is not configured.');
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+};
+
 
 export async function getSettings(): Promise<SiteSettings | null> {
   const supabase = createServerActionClient({ cookies });
@@ -119,3 +132,53 @@ export async function updateAdminPassword(values: z.infer<typeof passwordSchema>
 
     return { success: true };
 }
+
+
+const apiKeySchema = z.object({
+    keyName: z.string(),
+    keyValue: z.string(),
+});
+
+export async function updateApiKey(data: z.infer<typeof apiKeySchema>) {
+    const supabase = createServiceSupabaseClient();
+    
+    const { data: existingKeys, error: fetchError } = await supabase
+        .from('siteContent')
+        .select('content')
+        .eq('page', 'apiKeys')
+        .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+        throw new Error('Could not fetch existing API keys.');
+    }
+
+    const currentKeys = (existingKeys?.content as Record<string, string>) || {};
+    currentKeys[data.keyName] = data.keyValue;
+
+    const { error: updateError } = await supabase
+        .from('siteContent')
+        .upsert({ page: 'apiKeys', content: currentKeys }, { onConflict: 'page' });
+
+    if (updateError) {
+        throw new Error('Failed to update API key.');
+    }
+
+    return { success: true };
+}
+
+export async function getApiKey(keyName: string): Promise<string | null> {
+    const supabase = createServiceSupabaseClient();
+    const { data, error } = await supabase
+        .from('siteContent')
+        .select('content')
+        .eq('page', 'apiKeys')
+        .single();
+
+    if (error || !data) {
+        return null;
+    }
+    const keys = data.content as Record<string, string>;
+    return keys[keyName] || null;
+}
+
+    

@@ -1,11 +1,12 @@
 
+
 'use server';
 
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import { redirect } from 'next/navigation';
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
-import { getAdminCredentials } from '@/lib/settings-actions';
+import { getAdminCredentials, getApiKey } from '@/lib/settings-actions';
 
 const secretKey = process.env.ADMIN_SESSION_SECRET || 'fallback-secret-key-for-admin-session';
 const key = new TextEncoder().encode(secretKey);
@@ -57,11 +58,18 @@ export async function login(formData: FormData) {
     console.error('Supabase admin login failed:', supabaseError);
     return { success: false, error: 'Could not authenticate the admin session with the database. Ensure the admin user exists in Supabase.' };
   }
+  
+  const geminiApiKey = await getApiKey('geminiApiKey');
+  const sessionPayload: { user: { username: string }, expires: Date, hasGeminiKey: boolean } = {
+    user: { username },
+    expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+    hasGeminiKey: !!geminiApiKey,
+  };
+
 
   // Step 4: Create the custom admin session cookie
-  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-  const session = await encrypt({ user: { username }, expires });
-  cookies().set('admin_session', session, { expires, httpOnly: true });
+  const session = await encrypt(sessionPayload);
+  cookies().set('admin_session', session, { expires: sessionPayload.expires, httpOnly: true });
   
   return { success: true };
 }
@@ -81,3 +89,5 @@ export async function getAdminSession() {
   if (!sessionCookie) return null;
   return await decrypt(sessionCookie);
 }
+
+    
