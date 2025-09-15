@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,6 +15,7 @@ import Link from 'next/link';
 import { format, startOfDay, endOfDay, getMonth, getYear, isValid, formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import RoleGate from '@/components/admin/role-gate';
 
 type Stats = {
   totalRevenue: number;
@@ -23,7 +23,7 @@ type Stats = {
   newCustomers: number;
 };
 
-export default function AdminDashboard() {
+function DashboardContent() {
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [activityLog, setActivityLog] = useState<AdminActivity[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -274,4 +274,12 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
+}
+
+export default function AdminDashboard() {
+    return (
+        <RoleGate role="SUPER_ADMIN">
+            <DashboardContent />
+        </RoleGate>
+    )
 }

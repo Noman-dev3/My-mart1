@@ -13,6 +13,8 @@ const secretKey = process.env.ADMIN_SESSION_SECRET || 'fallback-secret-key-for-a
 const key = new TextEncoder().encode(secretKey);
 
 // Supabase credentials for a dedicated admin user in Supabase Auth
+// This user is only for server-side actions to have an authenticated context
+// It is not the same as the role-based passwords.
 const SUPABASE_ADMIN_EMAIL = 'admin@mymart.local';
 const SUPABASE_ADMIN_PASSWORD = 'mymartadminpassword';
 
@@ -36,61 +38,37 @@ export async function decrypt(input: string): Promise<any> {
   }
 }
 
-export async function login(formData: FormData) {
-  const username = formData.get('username') as string;
-  const password = formData.get('password') as string;
-  const supabase = createServerActionClient({ cookies });
+// This function is kept for the dedicated Supabase admin user sign-in,
+// which is useful for server actions that need an authenticated context.
+export async function ensureSupabaseAdminAuthenticated() {
+    const supabase = createServerActionClient({ cookies });
+    const { data: { session } } = await supabase.auth.getSession();
 
-  // Step 1: Fetch the current admin credentials from the database
-  const adminCreds = await getAdminCredentials();
-  
-  // Step 2: Validate the custom admin credentials
-  if (username !== adminCreds.username || password !== adminCreds.password) {
-    return { success: false, error: 'Invalid username or password.' };
-  }
+    // If there's already a valid session for our admin user, we're good.
+    if (session) {
+        return;
+    }
 
-  // Step 3: Programmatically sign in the dedicated Supabase admin user
-  const { error: supabaseError } = await supabase.auth.signInWithPassword({
-    email: SUPABASE_ADMIN_EMAIL,
-    password: SUPABASE_ADMIN_PASSWORD,
-  });
-
-  if (supabaseError) {
-    console.error('Supabase admin login failed:', supabaseError);
-    return { success: false, error: 'Could not authenticate the admin session with the database. Ensure the admin user exists in Supabase.' };
-  }
-  
-  // The logic for checking the API key is now simplified, as Genkit handles it.
-  const hasGeminiKey = !!process.env.GEMINI_API_KEY;
-
-  const sessionPayload = {
-    user: { username },
-    expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-    hasGeminiKey: hasGeminiKey,
-  };
-
-
-  // Step 4: Create the custom admin session cookie
-  const session = await encrypt(sessionPayload);
-  cookies().set('admin_session', session, { expires: sessionPayload.expires, httpOnly: true });
-  
-  return { success: true };
+    // Otherwise, sign in programmatically.
+    const { error: supabaseError } = await supabase.auth.signInWithPassword({
+        email: SUPABASE_ADMIN_EMAIL,
+        password: SUPABASE_ADMIN_PASSWORD,
+    });
+    
+    if (supabaseError) {
+        console.error('Supabase admin login failed:', supabaseError);
+        // This is a critical internal error.
+        throw new Error('Could not authenticate the admin session with the database.');
+    }
 }
+
 
 export async function logout() {
   const supabase = createServerActionClient({ cookies });
   
-  // Destroy both sessions
+  // Sign out the dedicated Supabase user.
   await supabase.auth.signOut();
-  cookies().set('admin_session', '', { expires: new Date(0) });
 
+  // Redirect to login. Role-based sessions are in sessionStorage and will be cleared by the browser.
   redirect('/admin/login');
 }
-
-export async function getAdminSession() {
-  const sessionCookie = cookies().get('admin_session')?.value;
-  if (!sessionCookie) return null;
-  return await decrypt(sessionCookie);
-}
-
-    

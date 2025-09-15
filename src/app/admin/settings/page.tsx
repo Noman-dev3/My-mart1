@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { getSettings, updateSettings, updateAdminPassword } from '@/lib/settings-actions';
 import { updateApiKey } from '@/lib/api-keys';
+import RoleGate from '@/components/admin/role-gate';
 
 const settingsSchema = z.object({
   storeName: z.string().min(1, "Store name is required."),
@@ -48,8 +49,7 @@ const apiKeySchema = z.object({
 
 type ApiKeyFormValues = z.infer<typeof apiKeySchema>;
 
-
-export default function SettingsPage() {
+function SettingsPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -353,4 +353,12 @@ export default function SettingsPage() {
       </Card>
     </div>
   );
+}
+
+export default function SettingsPage() {
+    return (
+        <RoleGate role="SUPER_ADMIN">
+            <SettingsPageContent />
+        </RoleGate>
+    )
 }

@@ -55,8 +55,9 @@ import Image from 'next/image';
 import ProductForm from './product-form';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 import { logAdminActivity } from '@/lib/admin-actions';
+import RoleGate from '@/components/admin/role-gate';
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([])
@@ -389,4 +390,13 @@ export default function ProductsPage() {
       </AlertDialog>
     </>
   );
+}
+
+
+export default function ProductsPage() {
+    return (
+        <RoleGate role="INVENTORY_MANAGER">
+            <ProductsPageContent />
+        </RoleGate>
+    )
 }

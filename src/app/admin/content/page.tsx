@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import RoleGate from '@/components/admin/role-gate';
 
 const heroSlideSchema = z.object({
   image: z.string().url({ message: "Please enter a valid URL." }),
@@ -35,7 +36,7 @@ const contentSchema = z.object({
 
 type ContentFormValues = z.infer<typeof contentSchema>;
 
-export default function ContentPage() {
+function ContentPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('homepage');
   const { toast } = useToast();
@@ -224,4 +225,12 @@ export default function ContentPage() {
       </Form>
     </div>
   );
+}
+
+export default function ContentPage() {
+    return (
+        <RoleGate role="CONTENT_EDITOR">
+            <ContentPageContent />
+        </RoleGate>
+    )
 }

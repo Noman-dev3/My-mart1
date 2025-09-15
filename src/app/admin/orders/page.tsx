@@ -66,8 +66,9 @@ import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 import InvoiceTemplate from '@/components/invoice-template';
 import './invoice.css';
 import { logAdminActivity } from '@/lib/admin-actions';
+import RoleGate from '@/components/admin/role-gate';
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([])
@@ -601,4 +602,13 @@ export default function OrdersPage() {
     )}
     </>
   );
+}
+
+
+export default function OrdersPage() {
+    return (
+        <RoleGate role="FULFILLMENT_MANAGER">
+            <OrdersPageContent />
+        </RoleGate>
+    )
 }
