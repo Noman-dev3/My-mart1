@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { verifyRolePassword, type AdminRole } from '@/lib/role-auth';
+import { verifyUserRole, type AdminRole } from '@/lib/role-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,7 @@ type RoleGateProps = {
 
 export default function RoleGate({ role, children }: RoleGateProps) {
   const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -32,17 +33,28 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   const router = useRouter();
 
   useEffect(() => {
-    const sessionKey = `myMart-role-${role}`;
+    const sessionKey = `myMart-role-session`; // Unified session key
     try {
-      const hasSession = sessionStorage.getItem(sessionKey) === 'true';
-      if (hasSession) {
-        setAuthStatus('authenticated');
+      const sessionValue = sessionStorage.getItem(sessionKey);
+      if (sessionValue) {
+        const { user, expiry } = JSON.parse(sessionValue);
+        if (new Date().getTime() < expiry) {
+            // Re-verify the role on page load in case permissions change
+            if (user.role === 'SUPER_ADMIN' || user.role === role) {
+               setAuthStatus('authenticated');
+            } else {
+               // User has a session but not for this role, treat as unauthenticated for this gate
+               setAuthStatus('unauthenticated');
+            }
+        } else {
+            // Session expired
+            sessionStorage.removeItem(sessionKey);
+            setAuthStatus('unauthenticated');
+        }
       } else {
         setAuthStatus('unauthenticated');
       }
     } catch (e) {
-      // sessionStorage is not available, likely on server.
-      // Default to unauthenticated.
       setAuthStatus('unauthenticated');
     }
   }, [role]);
@@ -52,24 +64,27 @@ export default function RoleGate({ role, children }: RoleGateProps) {
     setIsLoading(true);
     setError('');
 
-    const isValid = await verifyRolePassword(role, password);
+    const isValid = await verifyUserRole(role, username, password);
 
     if (isValid) {
-      sessionStorage.setItem(`myMart-role-${role}`, 'true');
+      // Create a session that lasts for 1 hour
+      const expiry = new Date().getTime() + 60 * 60 * 1000;
+      const sessionValue = JSON.stringify({ user: { username, role }, expiry });
+      sessionStorage.setItem(`myMart-role-session`, sessionValue);
+
       setShowSuccess(true);
       setTimeout(() => {
         setAuthStatus('authenticated');
         setShowSuccess(false);
-      }, 1500); // Match animation exit time
+      }, 1500);
     } else {
-      setError('Incorrect password. Please try again.');
+      setError('Incorrect username or password, or insufficient permissions.');
       setIsLoading(false);
     }
   };
   
   const roleName = role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-  // Render based on the authentication status
   if (authStatus === 'checking') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-muted/30">
@@ -101,10 +116,22 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                 <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
                             </Link>
 
-                            <h1 className="font-headline text-3xl font-bold">Good day!</h1>
-                            <p className="text-muted-foreground mt-2">Please enter the password for the <span className="font-semibold text-foreground">{roleName}</span> role to continue.</p>
+                            <h1 className="font-headline text-3xl font-bold">Admin Access</h1>
+                            <p className="text-muted-foreground mt-2">Enter your credentials to manage the store. Access to this section requires the <span className="font-semibold text-foreground">{roleName}</span> role.</p>
 
                             <form onSubmit={handleLogin} className="mt-8 space-y-4">
+                                <div>
+                                    <Label htmlFor="username">Username</Label>
+                                    <Input
+                                        id="username"
+                                        type="text"
+                                        placeholder="e.g., admin"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        disabled={isLoading}
+                                        className="mt-1"
+                                    />
+                                </div>
                                 <div>
                                     <Label htmlFor="password">Password</Label>
                                     <Input
@@ -186,7 +213,7 @@ function SuccessAnimation({ roleName }: { roleName: string }) {
             className="absolute z-10 text-center p-8 bg-card rounded-2xl shadow-2xl"
         >
             <h2 className="text-4xl font-headline font-bold text-primary">Access Granted</h2>
-            <p className="text-muted-foreground mt-2">Logged in as {roleName}</p>
+            <p className="text-muted-foreground mt-2">Welcome! You have access as {roleName}.</p>
         </motion.div>
     )
 }
@@ -219,13 +246,11 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   };
 
   const handleLogout = () => {
-    // Clear all role sessions to force re-authentication
-    Object.keys(sessionStorage).forEach(key => {
-        if (key.startsWith('myMart-role-')) {
-            sessionStorage.removeItem(key);
-        }
-    });
+    // Clear the unified role session
+    sessionStorage.removeItem('myMart-role-session');
     router.push('/admin'); // Redirect to main admin to force a new login
+    // Force a full page reload to ensure all state is cleared
+    window.location.reload();
   }
 
   return (
