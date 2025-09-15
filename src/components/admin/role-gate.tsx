@@ -14,6 +14,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Sidebar from '@/components/admin/sidebar';
 import { Icons } from '../icons';
+import Image from 'next/image';
+
 
 type RoleGateProps = {
   role: AdminRole;
@@ -32,42 +34,41 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   const router = useRouter();
 
   useEffect(() => {
-    const sessionKey = `myMart-role-session`; // Unified session key
-    try {
-      const sessionValue = sessionStorage.getItem(sessionKey);
-      if (sessionValue) {
-        const { user, expiry } = JSON.parse(sessionValue);
-        if (new Date().getTime() < expiry) {
-            // Re-verify the role on page load in case permissions change
+    const checkAuth = () => {
+      const sessionKey = `myMart-role-session`;
+      try {
+        const sessionValue = sessionStorage.getItem(sessionKey);
+        if (sessionValue) {
+          const { user, expiry } = JSON.parse(sessionValue);
+          if (new Date().getTime() < expiry) {
             if (user.role === 'SUPER_ADMIN' || user.role === role) {
-               setAuthStatus('authenticated');
+              setAuthStatus('authenticated');
             } else {
-               // User has a session but not for this role, redirect to main admin login
-               router.push('/admin');
+              setAuthStatus('unauthenticated');
             }
-        } else {
-            // Session expired
+          } else {
             sessionStorage.removeItem(sessionKey);
-            router.push('/admin');
+            setAuthStatus('unauthenticated');
+          }
+        } else {
+          setAuthStatus('unauthenticated');
         }
-      } else {
+      } catch (e) {
         setAuthStatus('unauthenticated');
       }
-    } catch (e) {
-      setAuthStatus('unauthenticated');
-    }
-  }, [role, router]);
+    };
+    checkAuth();
+  }, [role]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    const result = await verifyUserRole(role, username, password);
+    const result = await verifyUserRole(username, password);
 
-    if (result.success) {
-      // Create a session that lasts for 1 hour
-      const expiry = new Date().getTime() + 60 * 60 * 1000;
+    if (result.success && (result.role === 'SUPER_ADMIN' || result.role === role)) {
+      const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
       const sessionValue = JSON.stringify({ user: { username, role: result.role }, expiry });
       sessionStorage.setItem(`myMart-role-session`, sessionValue);
 
@@ -98,33 +99,33 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   
   if (authStatus === 'unauthenticated') {
      return (
-        <div className="flex h-screen w-full items-center justify-center p-4 bg-gray-900 text-white overflow-hidden relative">
-            <div className="absolute inset-0 bg-grid-pattern opacity-10 animate-pulse"></div>
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-blue-500/20 animate-gradient-xy"></div>
-            
-            <AnimatePresence>
+        <div className="flex h-screen w-full items-center justify-center p-4 bg-muted">
+            <AnimatePresence mode="wait">
                 {showSuccess ? (
                     <SuccessAnimation roleName={roleName} />
                 ) : (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                      className="relative z-10 w-full max-w-md"
+                   <motion.div 
+                        key="login-form"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.3 }}
+                        className="relative w-full max-w-4xl min-h-[600px] grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl bg-card"
                     >
-                        <div className="bg-black/40 backdrop-blur-xl p-8 rounded-2xl border border-white/10 shadow-2xl shadow-primary/10">
-                            <div className="text-center">
-                                <Link href="/" className="inline-block mb-6">
-                                    <Icons.logo className="h-10 w-10 text-primary"/>
-                                </Link>
+                        <div className="p-8 sm:p-12 flex flex-col justify-center">
+                             <Link href="/" className="w-fit mb-8 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+                                <Icons.logo className="h-6 w-6"/>
+                                <span className="font-headline text-xl font-semibold">{process.env.NEXT_PUBLIC_STORE_NAME || 'My Mart'}</span>
+                            </Link>
 
+                            <div className="text-left">
                                 <h1 className="font-headline text-4xl font-bold">Admin Access</h1>
-                                <p className="text-white/60 mt-2">Access to this section requires the <br/><span className="font-semibold text-white">{roleName}</span> role.</p>
+                                <p className="text-muted-foreground mt-2">Access to this section requires the <br/><span className="font-semibold text-foreground">{roleName}</span> role.</p>
                             </div>
 
                             <form onSubmit={handleLogin} className="mt-8 space-y-4">
                                 <div>
-                                    <Label htmlFor="username" className="text-white/60">Username</Label>
+                                    <Label htmlFor="username">Username</Label>
                                     <Input
                                         id="username"
                                         type="text"
@@ -132,7 +133,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
                                         disabled={isLoading}
-                                        className="mt-1 bg-white/5 border-white/20 placeholder:text-white/30 h-11"
+                                        className="mt-1 h-11"
                                     />
                                 </div>
                                 <div>
@@ -144,9 +145,9 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         disabled={isLoading}
-                                        className="mt-1 bg-white/5 border-white/20 placeholder:text-white/30 h-11"
+                                        className="mt-1 h-11"
                                     />
-                                    {error && <p className="text-sm text-red-400 mt-2">{error}</p>}
+                                    {error && <p className="text-sm text-destructive mt-2">{error}</p>}
                                 </div>
                                 <Button type="submit" size="lg" className="w-full font-bold h-11" disabled={isLoading}>
                                 {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Unlock className="mr-2 h-4 w-4"/>}
@@ -154,14 +155,24 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                 </Button>
                             </form>
                         </div>
-                    </motion.div>
+                        <div className="hidden lg:block relative">
+                            <Image
+                                src="https://picsum.photos/seed/admin-bg/800/1200"
+                                alt="Admin background"
+                                fill
+                                className="object-cover"
+                                quality={90}
+                                data-ai-hint="abstract texture"
+                            />
+                            <div className="absolute inset-0 bg-blue-900/40"></div>
+                        </div>
+                   </motion.div>
                 )}
             </AnimatePresence>
         </div>
       );
   }
 
-  // Fallback for checking state or other edge cases.
   return (
     <div className="flex h-screen w-full items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin" />
@@ -193,14 +204,15 @@ const textVariants = {
 function SuccessAnimation({ roleName }: { roleName: string }) {
     return (
         <motion.div
+            key="success"
             variants={textVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="absolute z-10 text-center p-8 bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10"
+            className="text-center p-8 bg-card rounded-lg shadow-2xl"
         >
             <h2 className="text-4xl font-headline font-bold text-primary">Access Granted</h2>
-            <p className="text-white/70 mt-2">Welcome! You have access as {roleName}.</p>
+            <p className="text-muted-foreground mt-2">Welcome! You have access as {roleName}.</p>
         </motion.div>
     )
 }
