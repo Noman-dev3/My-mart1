@@ -54,9 +54,6 @@ const navItems: NavItem[] = [
     ],
   },
   { label: 'Barcode Tools', icon: Scan, href: '/admin/barcode-tools' },
-  { label: 'Insights', icon: BarChart2, href: '#' }, // Placeholder
-  { label: 'Data Lake', icon: Database, href: '#' }, // Placeholder
-  { label: 'Collaboration', icon: Users, href: '#' }, // Placeholder
 ];
 
 const bottomNavItems: NavItem[] = [
