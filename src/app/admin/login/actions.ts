@@ -1,12 +1,10 @@
 
-
 'use server';
 
 import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import { redirect } from 'next/navigation';
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
-import { getAdminCredentials } from '@/lib/settings-actions';
 import { getApiKey } from '@/lib/api-keys';
 
 const secretKey = process.env.ADMIN_SESSION_SECRET || 'fallback-secret-key-for-admin-session';

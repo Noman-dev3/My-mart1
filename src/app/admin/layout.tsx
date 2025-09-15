@@ -36,11 +36,16 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const handleLogout = () => {
+    sessionStorage.clear();
+    router.push('/admin/login');
+  }
+
   return (
     <div className="flex min-h-screen w-full bg-muted/30">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
-        <Sidebar onLogout={() => router.push('/admin/login')} />
+        <Sidebar onLogout={handleLogout} />
       </div>
 
        {/* Mobile Sidebar */}
@@ -56,7 +61,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="p-0 w-64">
-           <Sidebar isMobile onLinkClick={() => setIsMobileMenuOpen(false)} onLogout={() => router.push('/admin/login')} />
+           <Sidebar isMobile onLinkClick={() => setIsMobileMenuOpen(false)} onLogout={handleLogout} />
         </SheetContent>
       </Sheet>
 
