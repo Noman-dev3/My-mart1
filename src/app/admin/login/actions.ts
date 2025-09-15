@@ -5,13 +5,12 @@ import { cookies } from 'next/headers';
 import { SignJWT, jwtVerify } from 'jose';
 import { redirect } from 'next/navigation';
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import { getAdminCredentials } from '@/lib/settings-actions';
 
 const secretKey = process.env.ADMIN_SESSION_SECRET || 'fallback-secret-key-for-admin-session';
 const key = new TextEncoder().encode(secretKey);
 
-// Hardcoded credentials for the application's internal admin user
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = '1234';
+// Supabase credentials for a dedicated admin user in Supabase Auth
 const SUPABASE_ADMIN_EMAIL = 'admin@mymart.local';
 const SUPABASE_ADMIN_PASSWORD = 'mymartadminpassword';
 
@@ -40,12 +39,15 @@ export async function login(formData: FormData) {
   const password = formData.get('password') as string;
   const supabase = createServerActionClient({ cookies });
 
-  // Step 1: Validate the custom admin credentials
-  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+  // Step 1: Fetch the current admin credentials from the database
+  const adminCreds = await getAdminCredentials();
+  
+  // Step 2: Validate the custom admin credentials
+  if (username !== adminCreds.username || password !== adminCreds.password) {
     return { success: false, error: 'Invalid username or password.' };
   }
 
-  // Step 2: Programmatically sign in the dedicated Supabase admin user
+  // Step 3: Programmatically sign in the dedicated Supabase admin user
   const { error: supabaseError } = await supabase.auth.signInWithPassword({
     email: SUPABASE_ADMIN_EMAIL,
     password: SUPABASE_ADMIN_PASSWORD,
@@ -56,7 +58,7 @@ export async function login(formData: FormData) {
     return { success: false, error: 'Could not authenticate the admin session with the database. Ensure the admin user exists in Supabase.' };
   }
 
-  // Step 3: Create the custom admin session cookie
+  // Step 4: Create the custom admin session cookie
   const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
   const session = await encrypt({ user: { username }, expires });
   cookies().set('admin_session', session, { expires, httpOnly: true });
