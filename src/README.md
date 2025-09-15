@@ -69,6 +69,15 @@ CREATE TABLE IF NOT EXISTS admin_activity (
     details TEXT
 );
 
+-- Create the administrators table
+CREATE TABLE IF NOT EXISTS administrators (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
 
 -- RLS Policies for products table
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
@@ -99,6 +108,11 @@ CREATE POLICY "Admins can manage site content." ON "siteContent" FOR ALL USING (
 ALTER TABLE admin_activity ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admins can manage admin activity." ON admin_activity;
 CREATE POLICY "Admins can manage admin activity." ON admin_activity FOR ALL USING (true);
+
+-- RLS Policies for administrators table
+ALTER TABLE administrators ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all access for admins" ON administrators;
+CREATE POLICY "Allow all access for admins" ON administrators FOR ALL USING (true);
 
 
 -- Function to get distinct categories
@@ -156,6 +170,15 @@ EXCEPTION
 END;
 $$;
 
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE administrators;
+EXCEPTION
+  WHEN duplicate_object THEN
+    -- do nothing
+END;
+$$;
+
 -- Create a new storage bucket for product images if it doesn't exist
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('product-images', 'product-images', true)
@@ -176,6 +199,13 @@ DROP POLICY IF EXISTS "Allow deletes for authenticated users" ON storage.objects
 -- For writes (uploads), we will use an authenticated server action,
 -- which uses the service_role key and bypasses RLS for storage.
 -- Therefore, we no longer need to create complex RLS policies on the storage.objects table.
+
+-- Insert the default admin user
+-- In a production scenario, the password should be hashed.
+INSERT INTO administrators (username, password, role)
+VALUES ('admin', 'superadmin123', 'SUPER_ADMIN')
+ON CONFLICT (username) DO NOTHING;
+
 ```
 ---
 ## Admin Panel Access
