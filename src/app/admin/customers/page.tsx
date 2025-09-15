@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -27,6 +25,7 @@ import { type Order } from '@/lib/order-actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import RoleGate from '@/components/admin/role-gate';
 
 type Customer = {
     email: string;
@@ -36,7 +35,7 @@ type Customer = {
     lastOrder: Date;
 }
 
-export default function CustomersPage() {
+function CustomersPageContent() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([])
@@ -257,4 +256,10 @@ export default function CustomersPage() {
   );
 }
 
-    
+export default function CustomersPage() {
+    return (
+        <RoleGate role="SUPER_ADMIN">
+            <CustomersPageContent />
+        </RoleGate>
+    )
+}
