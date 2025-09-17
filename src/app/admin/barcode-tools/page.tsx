@@ -68,6 +68,11 @@ function ScannerComponent() {
   const codeReader = useRef(new BrowserMultiFormatReader());
 
 
+  const stopScan = useCallback(() => {
+    codeReader.current.reset();
+    setIsScanning(false);
+  }, []);
+
   const startScan = useCallback(async (deviceId: string) => {
     if (!videoRef.current) return;
     setError('');
@@ -78,14 +83,12 @@ function ScannerComponent() {
       await codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
         if (result) {
           setScannedResult(result.getText());
-          setIsScanning(false);
-          codeReader.current.stop();
+          stopScan();
         }
         if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
            console.error("Scanning error:", err);
            setError('An unexpected error occurred during scanning.');
-           setIsScanning(false);
-           codeReader.current.stop();
+           stopScan();
         }
       });
     } catch (err: any) {
@@ -97,12 +100,8 @@ function ScannerComponent() {
       }
       setIsScanning(false);
     }
-  }, []);
+  }, [stopScan]);
 
-  const stopScan = useCallback(() => {
-    codeReader.current.stop();
-    setIsScanning(false);
-  }, []);
 
   useEffect(() => {
     navigator.mediaDevices.enumerateDevices()
