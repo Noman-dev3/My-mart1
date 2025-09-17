@@ -61,9 +61,9 @@ export default function RoleGate({ role, children }: RoleGateProps) {
     setIsLoading(true);
     setError('');
 
-    const result = await verifyUserRole(username, password, role);
+    const result = await verifyUserRole(username, password);
 
-    if (result.success) {
+    if (result.success && (result.role === 'SUPER_ADMIN' || result.role === role)) {
         const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
         const sessionValue = JSON.stringify({ user: { username, role: result.role }, expiry });
         sessionStorage.setItem(`myMart-role-session`, sessionValue);
@@ -74,7 +74,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
           setShowSuccess(false);
         }, 1500);
     } else {
-      setError(result.error || 'Incorrect username or password for this role.');
+      setError(result.error || 'Incorrect credentials or insufficient permissions.');
       setIsLoading(false);
     }
   };
@@ -102,10 +102,10 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                 layout="fill"
                 objectFit="cover"
                 quality={90}
-                className="opacity-40 md:hidden"
+                className="opacity-40"
                 data-ai-hint="abstract texture"
             />
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-900/60 to-black/80 md:hidden"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-900/60 to-black/80"></div>
             
             <AnimatePresence mode="wait">
                 {showSuccess ? (
@@ -113,12 +113,12 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                 ) : (
                    <div className="relative w-full h-full flex items-center justify-center">
 
-                        {/* Mobile View (< md) */}
+                        {/* Mobile View */}
                         <div className="relative w-full max-w-md p-8 space-y-6 bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl md:hidden">
                            <LoginHeader isGlass />
                             <div className="text-left">
                                 <h1 className="font-headline text-3xl font-bold text-white">Admin Access</h1>
-                                <p className="text-gray-300 mt-1 text-sm">Requires the <span className="font-semibold text-white">{roleName}</span> role.</p>
+                                <p className="text-gray-300 mt-1 text-sm">Requires <span className="font-semibold text-white">{roleName}</span> role.</p>
                             </div>
                             <LoginForm
                                 username={username} setUsername={setUsername}
@@ -128,13 +128,13 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                             />
                         </div>
 
-                        {/* Tablet and Desktop View (>= md) */}
-                        <div className="hidden md:grid max-w-6xl w-full h-auto max-h-[700px] shadow-2xl overflow-hidden rounded-2xl bg-card md:grid-cols-2">
-                             <div className="p-10 flex flex-col justify-center">
+                        {/* Tablet and Desktop View */}
+                        <div className="hidden md:grid max-w-6xl w-full h-auto max-h-[700px] shadow-2xl overflow-hidden rounded-2xl md:grid-cols-2">
+                             <div className="p-10 flex flex-col justify-center bg-black/30 backdrop-blur-xl border border-white/10 lg:bg-card lg:backdrop-blur-none lg:border-none">
                                 <LoginHeader />
                                 <div className="text-left mb-8">
                                     <h1 className="font-headline text-4xl font-bold text-foreground">Admin Access</h1>
-                                    <p className="text-muted-foreground mt-2">Access to this section requires the <br/><span className="font-semibold text-foreground">{roleName}</span> role.</p>
+                                    <p className="text-muted-foreground mt-2">Login to manage your store. Requires<br/>the <span className="font-semibold text-foreground">{roleName}</span> role.</p>
                                 </div>
                                 <LoginForm
                                     username={username} setUsername={setUsername}
@@ -144,10 +144,10 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                             </div>
                             
                             <div className="relative">
-                                {/* Tablet View Right Side (md to lg) */}
-                                <div className="hidden md:flex lg:hidden bg-muted h-full p-10 flex-col justify-center">
-                                    <h3 className="font-headline text-2xl font-bold mb-2">My Mart Dashboard</h3>
-                                    <p className="text-muted-foreground mb-8">All the tools you need to run your store efficiently.</p>
+                                {/* Tablet View Right Side */}
+                                <div className="hidden md:flex lg:hidden bg-black/20 backdrop-blur-xl border-l border-white/10 h-full p-10 flex-col justify-center">
+                                    <h3 className="font-headline text-2xl font-bold mb-2 text-white">My Mart Dashboard</h3>
+                                    <p className="text-gray-300 mb-8">All the tools you need to run your store efficiently.</p>
                                     <div className="space-y-6">
                                         <FeatureItem icon={BarChart2} title="Sales Analytics" description="Monitor revenue, track orders, and gain insights into store performance." />
                                         <FeatureItem icon={Package} title="Inventory Control" description="Add, edit, and manage all products, including stock levels and pricing." />
@@ -156,7 +156,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                     </div>
                                 </div>
                                 
-                                {/* Desktop View Right Side (> lg) */}
+                                {/* Desktop View Right Side */}
                                 <div className="hidden lg:block h-full w-full relative">
                                     <Image
                                         src="https://picsum.photos/seed/admin-bg-side/800/1200"
@@ -195,12 +195,12 @@ const LoginHeader = ({ isGlass = false }: { isGlass?: boolean }) => (
 // --- Reusable Feature Item for Tablet view ---
 const FeatureItem = ({ icon: Icon, title, description }: { icon: React.ElementType, title: string, description: string }) => (
     <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Icon className="w-5 h-5 text-primary"/>
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+            <Icon className="w-5 h-5 text-white"/>
         </div>
         <div>
-            <h4 className="font-semibold text-foreground">{title}</h4>
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <h4 className="font-semibold text-white">{title}</h4>
+            <p className="text-sm text-gray-300">{description}</p>
         </div>
     </div>
 );
@@ -217,10 +217,11 @@ function LoginForm({
     handleLogin: (e: React.FormEvent) => void;
     isGlass?: boolean;
 }) {
+    const isGlassEffective = isGlass || false; // default to false
     return (
         <form onSubmit={handleLogin} className="space-y-4">
             <div>
-                <Label htmlFor="username" className={isGlass ? 'text-gray-200' : 'text-foreground'}>Username</Label>
+                <Label htmlFor="username" className={isGlassEffective ? 'text-gray-200' : 'text-foreground'}>Username</Label>
                 <Input
                     id="username"
                     type="text"
@@ -228,11 +229,11 @@ function LoginForm({
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     disabled={isLoading}
-                    className={`mt-1 h-11 ${isGlass ? 'bg-white/10 text-white placeholder:text-gray-400 border-white/20 focus:bg-white/20' : 'bg-background'}`}
+                    className={`mt-1 h-11 ${isGlassEffective ? 'bg-white/10 text-white placeholder:text-gray-400 border-white/20 focus:bg-white/20' : 'bg-background'}`}
                 />
             </div>
             <div>
-                <Label htmlFor="password" className={isGlass ? 'text-gray-200' : 'text-foreground'}>Password</Label>
+                <Label htmlFor="password" className={isGlassEffective ? 'text-gray-200' : 'text-foreground'}>Password</Label>
                 <Input
                     id="password"
                     type="password"
@@ -240,7 +241,7 @@ function LoginForm({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={isLoading}
-                    className={`mt-1 h-11 ${isGlass ? 'bg-white/10 text-white placeholder:text-gray-400 border-white/20 focus:bg-white/20' : 'bg-background'}`}
+                    className={`mt-1 h-11 ${isGlassEffective ? 'bg-white/10 text-white placeholder:text-gray-400 border-white/20 focus:bg-white/20' : 'bg-background'}`}
                 />
                 {error && <p className="text-sm text-destructive mt-2">{error}</p>}
             </div>
