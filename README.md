@@ -1,4 +1,3 @@
-
 # My Mart E-Commerce Store
 
 This is a Next.js e-commerce application built with Supabase, Tailwind CSS, and Genkit for AI features.
@@ -215,8 +214,11 @@ SET password = EXCLUDED.password, role = EXCLUDED.role;
 ---
 ## Admin Panel Access
 
-To access the admin dashboard, navigate to `/admin` and log in with the following credentials:
-- **Username:** `admin`
-- **Password:** `1234`
+To access the admin dashboard, navigate to any page under `/admin` (e.g., `/admin/products`). You will be prompted to log in. The default credentials are created by the SQL script above and stored in the `administrators` table.
 
-These are hardcoded in the application. You can change them in `src/app/admin/login/actions.ts`.
+| Role                  | Username    | Password        |
+| --------------------- | ----------- | --------------- |
+| **Super Admin**       | `admin`     | `superadmin123` |
+| **Fulfillment Manager** | `manager`   | `orders123`     |
+| **Inventory Manager** | `inventory` | `products123`   |
+| **Content Editor**    | `editor`    | `content123`    |
