@@ -200,11 +200,16 @@ DROP POLICY IF EXISTS "Allow deletes for authenticated users" ON storage.objects
 -- which uses the service_role key and bypasses RLS for storage.
 -- Therefore, we no longer need to create complex RLS policies on the storage.objects table.
 
--- Insert the default admin user
--- In a production scenario, the password should be hashed.
+-- Insert the default admin users.
+-- In a production scenario, passwords should be hashed.
 INSERT INTO administrators (username, password, role)
-VALUES ('admin', 'superadmin123', 'SUPER_ADMIN')
-ON CONFLICT (username) DO NOTHING;
+VALUES 
+    ('admin', 'superadmin123', 'SUPER_ADMIN'),
+    ('manager', 'orders123', 'FULFILLMENT_MANAGER'),
+    ('inventory', 'products123', 'INVENTORY_MANAGER'),
+    ('editor', 'content123', 'CONTENT_EDITOR')
+ON CONFLICT (username) DO UPDATE 
+SET password = EXCLUDED.password, role = EXCLUDED.role;
 
 ```
 ---
