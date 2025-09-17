@@ -80,7 +80,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
              setIsLoading(false);
         }
     } else {
-      setError(result.error || 'Authentication failed.');
+      setError(result.error || 'Incorrect credentials.');
       setIsLoading(false);
     }
   };
