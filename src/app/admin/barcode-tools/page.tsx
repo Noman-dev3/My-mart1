@@ -84,7 +84,7 @@ function ScannerComponent() {
     setIsScanning(true);
 
     try {
-      controlsRef.current = await codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
+      const controls = await codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
         if (result) {
           setScannedResult(result.getText());
           stopScan();
@@ -95,6 +95,7 @@ function ScannerComponent() {
            stopScan();
         }
       });
+      controlsRef.current = controls;
     } catch (err: any) {
       console.error("Camera access error:", err);
       if (err.name === 'NotAllowedError') {
