@@ -48,11 +48,10 @@ export default function RoleGate({ role, children }: RoleGateProps) {
             }
           }
         }
-        // If any check fails, treat as unauthenticated
-        setAuthStatus('unauthenticated');
       } catch (e) {
-        setAuthStatus('unauthenticated');
+        // Fallback for any parsing errors
       }
+      setAuthStatus('unauthenticated');
     };
     checkAuth();
   }, [role, router]);
@@ -62,13 +61,9 @@ export default function RoleGate({ role, children }: RoleGateProps) {
     setIsLoading(true);
     setError('');
 
-    const result = await verifyUserRole(username, password);
+    const result = await verifyUserRole(username, password, role);
 
     if (result.success) {
-      // SUPER_ADMIN can access everything.
-      const hasAccess = result.role === 'SUPER_ADMIN' || result.role === role;
-      
-      if (hasAccess) {
         const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
         const sessionValue = JSON.stringify({ user: { username, role: result.role }, expiry });
         sessionStorage.setItem(`myMart-role-session`, sessionValue);
@@ -78,12 +73,8 @@ export default function RoleGate({ role, children }: RoleGateProps) {
           setAuthStatus('authenticated');
           setShowSuccess(false);
         }, 1500);
-      } else {
-        setError('You do not have the required permissions for this section.');
-        setIsLoading(false);
-      }
     } else {
-      setError(result.error || 'Incorrect username or password.');
+      setError(result.error || 'Incorrect username or password for this role.');
       setIsLoading(false);
     }
   };
@@ -105,17 +96,16 @@ export default function RoleGate({ role, children }: RoleGateProps) {
   if (authStatus === 'unauthenticated') {
      return (
         <div className="relative flex h-screen w-full items-center justify-center bg-gray-900 p-4">
-             {/* Full-screen background image for all sizes */}
-            <Image
+             <Image
                 src="https://picsum.photos/seed/admin-bg-full/1920/1080"
                 alt="Admin background"
                 layout="fill"
                 objectFit="cover"
                 quality={90}
-                className="opacity-40"
+                className="opacity-40 md:hidden"
                 data-ai-hint="abstract texture"
             />
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-900/60 to-black/80"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-900/60 to-black/80 md:hidden"></div>
             
             <AnimatePresence mode="wait">
                 {showSuccess ? (
@@ -153,28 +143,30 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                 />
                             </div>
                             
-                            {/* Tablet View Right Side (md to lg) */}
-                            <div className="hidden md:flex lg:hidden bg-muted p-10 flex-col justify-center">
-                                <h3 className="font-headline text-2xl font-bold mb-2">My Mart Dashboard</h3>
-                                <p className="text-muted-foreground mb-8">All the tools you need to run your store efficiently.</p>
-                                <div className="space-y-6">
-                                    <FeatureItem icon={BarChart2} title="Sales Analytics" description="Monitor revenue, track orders, and gain insights into store performance." />
-                                    <FeatureItem icon={Package} title="Inventory Control" description="Add, edit, and manage all products, including stock levels and pricing." />
-                                    <FeatureItem icon={Users} title="Customer Management" description="View customer history and manage user data." />
-                                    <FeatureItem icon={FileText} title="Content Editing" description="Easily update your site's content, theme, and operational settings." />
+                            <div className="relative">
+                                {/* Tablet View Right Side (md to lg) */}
+                                <div className="hidden md:flex lg:hidden bg-muted h-full p-10 flex-col justify-center">
+                                    <h3 className="font-headline text-2xl font-bold mb-2">My Mart Dashboard</h3>
+                                    <p className="text-muted-foreground mb-8">All the tools you need to run your store efficiently.</p>
+                                    <div className="space-y-6">
+                                        <FeatureItem icon={BarChart2} title="Sales Analytics" description="Monitor revenue, track orders, and gain insights into store performance." />
+                                        <FeatureItem icon={Package} title="Inventory Control" description="Add, edit, and manage all products, including stock levels and pricing." />
+                                        <FeatureItem icon={Users} title="Customer Management" description="View customer history and manage user data." />
+                                        <FeatureItem icon={FileText} title="Content Editing" description="Easily update your site's content, theme, and operational settings." />
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            {/* Desktop View Right Side (> lg) */}
-                            <div className="hidden lg:block relative">
-                                <Image
-                                    src="https://picsum.photos/seed/admin-bg-side/800/1200"
-                                    alt="Admin decorative"
-                                    layout="fill"
-                                    objectFit="cover"
-                                    quality={90}
-                                    data-ai-hint="abstract modern"
-                                />
+                                
+                                {/* Desktop View Right Side (> lg) */}
+                                <div className="hidden lg:block h-full w-full relative">
+                                    <Image
+                                        src="https://picsum.photos/seed/admin-bg-side/800/1200"
+                                        alt="Admin decorative"
+                                        layout="fill"
+                                        objectFit="cover"
+                                        quality={90}
+                                        data-ai-hint="abstract modern"
+                                    />
+                                </div>
                             </div>
                         </div>
 
