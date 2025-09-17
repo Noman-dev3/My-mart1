@@ -69,8 +69,21 @@ const passwordSchema = z.object({
 // Default credentials, used only if nothing is in the database.
 const DEFAULT_ADMIN_CREDS = {
     username: 'admin',
-    password: '1234',
+    password: 'superadmin123',
 };
+
+export async function verifyAdminCredentials(username: string, passwordAttempt: string): Promise<{ success: boolean; error?: string; }> {
+    const currentCreds = await getAdminCredentials();
+
+    if (username === currentCreds.username && passwordAttempt === currentCreds.password) {
+        return { success: true };
+    } else {
+        // Simulate delay to prevent timing attacks
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return { success: false, error: 'Incorrect credentials.' };
+    }
+}
+
 
 export async function getAdminCredentials() {
     const supabase = createServerActionClient({ cookies });
@@ -85,32 +98,34 @@ export async function getAdminCredentials() {
         return DEFAULT_ADMIN_CREDS;
     }
 
-    if (!data || !data.content) {
+    if (!data || !data.content || !(data.content as any).password) {
+        // If creds don't exist, create them with default
+        await updateAdminPassword({
+            currentPassword: '', // Bypass check
+            newPassword: DEFAULT_ADMIN_CREDS.password
+        }, true);
         return DEFAULT_ADMIN_CREDS;
     }
 
     return data.content as { username: string; password: string };
 }
 
-export async function updateAdminPassword(values: z.infer<typeof passwordSchema>) {
+export async function updateAdminPassword(values: z.infer<typeof passwordSchema>, isInitialSetup = false) {
     const supabase = createServerActionClient({ cookies });
     const validatedData = passwordSchema.parse(values);
     
-    // 1. Get current credentials
-    const currentCreds = await getAdminCredentials();
-
-    // 2. Verify current password
-    if (validatedData.currentPassword !== currentCreds.password) {
-        return { success: false, error: "The current password you entered is incorrect." };
+    if (!isInitialSetup) {
+        const currentCreds = await getAdminCredentials();
+        if (validatedData.currentPassword !== currentCreds.password) {
+            return { success: false, error: "The current password you entered is incorrect." };
+        }
     }
 
-    // 3. Prepare new credentials
     const newCreds = {
-        username: currentCreds.username, // Username is not changeable for now
+        username: DEFAULT_ADMIN_CREDS.username, // Username is not changeable
         password: validatedData.newPassword,
     };
     
-    // 4. Update in database
     const { error } = await supabase
         .from('siteContent')
         .upsert({ page: 'adminCredentials', content: newCreds }, { onConflict: 'page' });

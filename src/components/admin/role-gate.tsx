@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { verifyUserRole, type AdminRole } from '@/lib/role-auth';
+import { verifyAdminCredentials } from '@/lib/settings-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,40 +17,28 @@ import { Icons } from '../icons';
 import Image from 'next/image';
 
 type RoleGateProps = {
-  role: AdminRole;
+  // The 'role' prop is kept for component signature consistency, but is no longer used for logic.
+  role: 'SUPER_ADMIN' | 'FULFILLMENT_MANAGER' | 'INVENTORY_MANAGER' | 'CONTENT_EDITOR';
   children: React.ReactNode;
 };
 
 type ValidSession = {
     user: {
         username: string;
-        role: AdminRole;
     };
     expiry: number;
 }
 
-const roleHierarchy: Record<AdminRole, AdminRole[]> = {
-    SUPER_ADMIN: ['SUPER_ADMIN', 'FULFILLMENT_MANAGER', 'INVENTORY_MANAGER', 'CONTENT_EDITOR'],
-    FULFILLMENT_MANAGER: ['FULFILLMENT_MANAGER'],
-    INVENTORY_MANAGER: ['INVENTORY_MANAGER'],
-    CONTENT_EDITOR: ['CONTENT_EDITOR'],
-};
-
-function hasPermission(userRole: AdminRole, pageRole: AdminRole): boolean {
-    const userPermissions = roleHierarchy[userRole];
-    return !!userPermissions && userPermissions.includes(pageRole);
-}
-
-export default function RoleGate({ role, children }: RoleGateProps) {
+export default function RoleGate({ children }: RoleGateProps) {
     const [session, setSession] = useState<ValidSession | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         try {
-            const sessionValue = sessionStorage.getItem('myMart-role-session');
+            const sessionValue = sessionStorage.getItem('myMart-admin-session');
             if (sessionValue) {
                 const parsedSession: ValidSession = JSON.parse(sessionValue);
-                if (new Date().getTime() < parsedSession.expiry && hasPermission(parsedSession.user.role, role)) {
+                if (new Date().getTime() < parsedSession.expiry) {
                     setSession(parsedSession);
                 }
             }
@@ -58,7 +46,14 @@ export default function RoleGate({ role, children }: RoleGateProps) {
             console.error("Session check failed", e);
         }
         setIsLoading(false);
-    }, [role]);
+    }, []);
+
+    const handleLoginSuccess = (username: string) => {
+        const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
+        const newSession: ValidSession = { user: { username }, expiry };
+        sessionStorage.setItem('myMart-admin-session', JSON.stringify(newSession));
+        setSession(newSession);
+    };
 
     if (isLoading) {
         return (
@@ -72,41 +67,29 @@ export default function RoleGate({ role, children }: RoleGateProps) {
         return <AdminLayoutContent>{children}</AdminLayoutContent>;
     }
 
-    return <LoginPage role={role} setSession={setSession} />;
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
 }
 
 
-function LoginPage({ role, setSession }: { role: AdminRole, setSession: (session: ValidSession) => void }) {
+function LoginPage({ onLoginSuccess }: { onLoginSuccess: (username: string) => void }) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
-    
-    const roleName = role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoggingIn(true);
         setError('');
 
-        const result = await verifyUserRole(username, password);
+        const result = await verifyAdminCredentials(username, password);
 
-        if (result.success && result.role) {
-            if (hasPermission(result.role, role)) {
-                const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
-                const newSession: ValidSession = { user: { username, role: result.role }, expiry };
-                sessionStorage.setItem('myMart-role-session', JSON.stringify(newSession));
-                
-                setShowSuccess(true);
-                setTimeout(() => {
-                    setSession(newSession); // This will trigger the re-render in the parent
-                }, 1500);
-
-            } else {
-                setError('You do not have sufficient permissions to access this page.');
-                setIsLoggingIn(false);
-            }
+        if (result.success) {
+            setShowSuccess(true);
+            setTimeout(() => {
+                onLoginSuccess(username);
+            }, 1500);
         } else {
             setError(result.error || 'Incorrect credentials.');
             setIsLoggingIn(false);
@@ -127,7 +110,7 @@ function LoginPage({ role, setSession }: { role: AdminRole, setSession: (session
             
             <AnimatePresence mode="wait">
                 {showSuccess ? (
-                    <SuccessAnimation roleName={roleName} />
+                    <SuccessAnimation />
                 ) : (
                    <div className="relative w-full h-full flex items-center justify-center">
 
@@ -136,7 +119,7 @@ function LoginPage({ role, setSession }: { role: AdminRole, setSession: (session
                            <LoginHeader isGlass />
                             <div className="text-left">
                                 <h1 className="font-headline text-3xl font-bold text-white">Admin Access</h1>
-                                <p className="text-gray-300 mt-1 text-sm">Requires <span className="font-semibold text-white">{roleName}</span> role.</p>
+                                <p className="text-gray-300 mt-1 text-sm">Login to manage your store.</p>
                             </div>
                             <LoginForm
                                 username={username} setUsername={setUsername}
@@ -152,7 +135,7 @@ function LoginPage({ role, setSession }: { role: AdminRole, setSession: (session
                                 <LoginHeader />
                                 <div className="text-left mb-8">
                                     <h1 className="font-headline text-4xl font-bold">Admin Access</h1>
-                                    <p className="text-muted-foreground mt-2">Login to manage your store. Requires<br/>the <span className="font-semibold text-foreground">{roleName}</span> role.</p>
+                                    <p className="text-muted-foreground mt-2">Login to manage your store.</p>
                                 </div>
                                 <LoginForm
                                     username={username} setUsername={setUsername}
@@ -290,7 +273,7 @@ const textVariants = {
   }
 };
 
-function SuccessAnimation({ roleName }: { roleName: string }) {
+function SuccessAnimation() {
     return (
         <motion.div
             key="success"
@@ -301,7 +284,7 @@ function SuccessAnimation({ roleName }: { roleName: string }) {
             className="text-center p-8 bg-card rounded-lg shadow-2xl relative z-10"
         >
             <h2 className="text-4xl font-headline font-bold text-primary">Access Granted</h2>
-            <p className="text-muted-foreground mt-2">Welcome! You have access as {roleName}.</p>
+            <p className="text-muted-foreground mt-2">Welcome! You now have access.</p>
         </motion.div>
     )
 }
@@ -334,9 +317,8 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   };
 
   const handleLogout = () => {
-    // Clear the role session
-    sessionStorage.removeItem('myMart-role-session');
-    router.push('/admin/login'); // Redirect to login page to force a new login
+    sessionStorage.removeItem('myMart-admin-session');
+    router.push('/admin/login');
   }
 
   return (
@@ -404,5 +386,3 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-    
