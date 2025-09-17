@@ -7,7 +7,7 @@ import { NotFoundException, ChecksumException, FormatException } from '@zxing/li
 import QRCode from 'qrcode.react';
 import JsBarcode from 'jsbarcode';
 import { Button } from '@/components/ui/button';
-import { Camera, QrCode, Scan, Upload, AlertCircle, Download, Printer, Barcode } from 'lucide-react';
+import { Camera, QrCode, Scan, Upload, AlertCircle, Download, Printer, Barcode, PlusCircle, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -55,7 +55,7 @@ function BarcodeToolsPageContent() {
                  <Card>
                     <CardHeader>
                         <CardTitle>Barcode Generator</CardTitle>
-                        <CardDescription>Create a printable Code 128 barcode.</CardDescription>
+                        <CardDescription>Create and print multiple Code 128 barcodes at once.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <BarcodeGeneratorComponent />
@@ -326,13 +326,105 @@ function QrGeneratorComponent() {
 // --- Barcode Generator Component ---
 
 function BarcodeGeneratorComponent() {
-  const [inputText, setInputText] = useState('123456789012');
-  const barcodeRef = useRef<SVGSVGElement>(null);
+  const [barcodes, setBarcodes] = useState(['123456789012']);
+
+  const handleBarcodeChange = (index: number, value: string) => {
+    const newBarcodes = [...barcodes];
+    newBarcodes[index] = value;
+    setBarcodes(newBarcodes);
+  };
+
+  const addBarcode = () => {
+    setBarcodes([...barcodes, '']);
+  };
+
+  const removeBarcode = (index: number) => {
+    const newBarcodes = barcodes.filter((_, i) => i !== index);
+    setBarcodes(newBarcodes);
+  };
+
+  const handlePrint = () => {
+    const barcodesToPrint = barcodes.filter(bc => bc.trim() !== '');
+    if (barcodesToPrint.length === 0) return;
+
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) return;
+
+    printWindow.document.write('<html><head><title>Print Barcodes</title></head><body style="padding: 20px; text-align: center;">');
+    
+    barcodesToPrint.forEach(barcodeValue => {
+      const svgId = `barcode-${Math.random().toString(36).substring(7)}`;
+      printWindow.document.write(`<div style="margin-bottom: 20px;"><svg id="${svgId}"></svg></div>`);
+      try {
+        JsBarcode(`#${svgId}`, barcodeValue, {
+          format: "CODE128",
+          lineColor: "#000",
+          width: 2,
+          height: 80,
+          displayValue: true,
+          fontOptions: "bold",
+          fontSize: 16,
+        });
+      } catch (e) {
+        JsBarcode(`#${svgId}`, "INVALID DATA", { displayValue: true, lineColor: "#d9534f" });
+      }
+    });
+
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-6">
+      <div className="w-full max-w-md space-y-4">
+        <Label className="block text-sm font-medium">Enter Data for Barcodes</Label>
+        {barcodes.map((barcode, index) => (
+          <div key={index} className="flex gap-2 items-center">
+            <Input
+              value={barcode}
+              onChange={(e) => handleBarcodeChange(index, e.target.value)}
+              className="w-full font-mono text-lg h-12 text-center"
+              placeholder="e.g., 123456789012"
+            />
+            <Button variant="destructive" size="icon" onClick={() => removeBarcode(index)} disabled={barcodes.length <= 1}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        <Button variant="outline" onClick={addBarcode} className="w-full">
+          <PlusCircle className="mr-2 h-4 w-4" /> Add Barcode
+        </Button>
+      </div>
+      
+      <div className="w-full space-y-4 max-h-96 overflow-y-auto rounded-lg bg-muted/50 p-4">
+        {barcodes.map((barcode, index) =>
+          barcode.trim() && (
+            <div key={index} className="bg-white p-4 rounded-lg shadow-inner flex justify-center">
+              <BarcodeSvg value={barcode} />
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="w-full max-w-sm">
+        <Button onClick={handlePrint} disabled={barcodes.every(bc => bc.trim() === '')} className="w-full">
+          <Printer className="mr-2 h-4 w-4" /> Print All
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const BarcodeSvg = ({ value }: { value: string }) => {
+  const ref = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
-    if (barcodeRef.current && inputText) {
+    if (ref.current && value) {
       try {
-        JsBarcode(barcodeRef.current, inputText, {
+        JsBarcode(ref.current, value, {
           format: "CODE128",
           lineColor: "#000",
           width: 2,
@@ -343,75 +435,11 @@ function BarcodeGeneratorComponent() {
         });
       } catch (e) {
         console.error("Barcode generation error", e);
-        JsBarcode(barcodeRef.current, "INVALID DATA", {displayValue: true, lineColor: "#d9534f"});
+        JsBarcode(ref.current, "INVALID DATA", { displayValue: true, lineColor: "#d9534f" });
       }
     }
-  }, [inputText]);
+  }, [value]);
 
-  const handleDownload = () => {
-    if (barcodeRef.current) {
-        const serializer = new XMLSerializer();
-        const svgString = serializer.serializeToString(barcodeRef.current);
-        const blob = new Blob([svgString], {type: "image/svg+xml"});
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `barcode-${inputText}.svg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    }
-  }
+  return <svg ref={ref}></svg>;
+};
 
-  const handlePrint = () => {
-     if (barcodeRef.current) {
-        const svgString = new XMLSerializer().serializeToString(barcodeRef.current);
-        const printWindow = window.open('', '', 'width=600,height=300');
-        printWindow?.document.write(`
-            <html>
-            <head><title>Print Barcode</title></head>
-            <body style="text-align:center; margin-top: 50px;">
-                ${svgString}
-            </body>
-            </html>
-        `);
-        printWindow?.document.close();
-        printWindow?.focus();
-        printWindow?.print();
-        printWindow?.close();
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center gap-6">
-      <div className="w-full max-w-md">
-        <Label htmlFor="barcode-input" className="block mb-2 text-sm font-medium">
-          Enter Data for Barcode
-        </Label>
-        <Input
-          id="barcode-input"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          className="w-full font-mono text-lg h-12 text-center"
-          placeholder="e.g., 123456789012"
-        />
-      </div>
-      
-      {inputText && (
-        <div className="bg-white p-6 rounded-lg shadow-inner">
-          <svg ref={barcodeRef}></svg>
-        </div>
-      )}
-
-      <div className="flex gap-4 w-full max-w-sm">
-        <Button onClick={handleDownload} variant="outline" disabled={!inputText} className="w-full">
-            <Download className="mr-2 h-4 w-4"/> Download SVG
-        </Button>
-        <Button onClick={handlePrint} disabled={!inputText} className="w-full">
-            <Printer className="mr-2 h-4 w-4"/> Print
-        </Button>
-      </div>
-    </div>
-  );
-}
