@@ -63,18 +63,24 @@ export default function RoleGate({ role, children }: RoleGateProps) {
 
     const result = await verifyUserRole(username, password);
 
-    if (result.success && (result.role === 'SUPER_ADMIN' || result.role === role)) {
-        const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
-        const sessionValue = JSON.stringify({ user: { username, role: result.role }, expiry });
-        sessionStorage.setItem(`myMart-role-session`, sessionValue);
+    if (result.success && result.role) {
+        // Check if the authenticated user has the required permissions for this page
+        if (result.role === 'SUPER_ADMIN' || result.role === role) {
+            const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
+            const sessionValue = JSON.stringify({ user: { username, role: result.role }, expiry });
+            sessionStorage.setItem(`myMart-role-session`, sessionValue);
 
-        setShowSuccess(true);
-        setTimeout(() => {
-          setAuthStatus('authenticated');
-          setShowSuccess(false);
-        }, 1500);
+            setShowSuccess(true);
+            setTimeout(() => {
+                setAuthStatus('authenticated');
+                setShowSuccess(false);
+            }, 1500);
+        } else {
+             setError('You do not have sufficient permissions to access this page.');
+             setIsLoading(false);
+        }
     } else {
-      setError(result.error || 'Incorrect credentials or insufficient permissions.');
+      setError(result.error || 'Authentication failed.');
       setIsLoading(false);
     }
   };
