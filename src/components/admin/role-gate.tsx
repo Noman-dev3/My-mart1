@@ -9,7 +9,7 @@ import { verifyUserRole, type AdminRole } from '@/lib/role-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Search, Bell, Menu, Unlock, Package, Settings, BarChart2, Users, FileText } from 'lucide-react';
+import { Loader2, Search, Bell, Menu, Unlock, Package, BarChart2, Users, FileText } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import Sidebar from '@/components/admin/sidebar';
@@ -21,7 +21,6 @@ type RoleGateProps = {
   children: React.ReactNode;
 };
 
-// Define role hierarchy on the client-side for checking access
 const roleHierarchy: Record<AdminRole, AdminRole[]> = {
     SUPER_ADMIN: ['SUPER_ADMIN', 'FULFILLMENT_MANAGER', 'INVENTORY_MANAGER', 'CONTENT_EDITOR'],
     FULFILLMENT_MANAGER: ['FULFILLMENT_MANAGER'],
@@ -48,9 +47,8 @@ export default function RoleGate({ role, children }: RoleGateProps) {
 
   useEffect(() => {
     const checkAuth = () => {
-      const sessionKey = `myMart-role-session`;
       try {
-        const sessionValue = sessionStorage.getItem(sessionKey);
+        const sessionValue = sessionStorage.getItem(`myMart-role-session`);
         if (sessionValue) {
           const { user, expiry } = JSON.parse(sessionValue);
           if (new Date().getTime() < expiry && hasClientPermission(user.role, role)) {
@@ -59,12 +57,12 @@ export default function RoleGate({ role, children }: RoleGateProps) {
           }
         }
       } catch (e) {
-        // Fallback for any parsing errors
+        console.error("Session check failed", e);
       }
       setAuthStatus('unauthenticated');
     };
     checkAuth();
-  }, [role, router]);
+  }, [role]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,8 +80,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
             setShowSuccess(true);
             setTimeout(() => {
                 setAuthStatus('authenticated');
-                setShowSuccess(false);
-            }, 1500);
+            }, 1500); // Wait for animation
         } else {
              setError('You do not have sufficient permissions to access this page.');
              setIsLoading(false);
@@ -337,7 +334,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   };
 
   const handleLogout = () => {
-    // Clear the unified role session
+    // Clear the role session
     sessionStorage.removeItem('myMart-role-session');
     router.push('/admin/login'); // Redirect to login page to force a new login
   }
@@ -407,3 +404,5 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+    
