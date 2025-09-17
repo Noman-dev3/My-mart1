@@ -131,15 +131,16 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                         {/* Tablet and Desktop View */}
                         <div className="hidden md:grid max-w-6xl w-full h-auto max-h-[700px] shadow-2xl overflow-hidden rounded-2xl md:grid-cols-2">
                              <div className="p-10 flex flex-col justify-center bg-black/30 backdrop-blur-xl border border-white/10 lg:bg-card lg:backdrop-blur-none lg:border-none">
-                                <LoginHeader />
+                                <LoginHeader isGlass={true} />
                                 <div className="text-left mb-8">
-                                    <h1 className="font-headline text-4xl font-bold text-foreground">Admin Access</h1>
-                                    <p className="text-muted-foreground mt-2">Login to manage your store. Requires<br/>the <span className="font-semibold text-foreground">{roleName}</span> role.</p>
+                                    <h1 className="font-headline text-4xl font-bold text-white lg:text-foreground">Admin Access</h1>
+                                    <p className="text-gray-300 lg:text-muted-foreground mt-2">Login to manage your store. Requires<br/>the <span className="font-semibold text-white lg:text-foreground">{roleName}</span> role.</p>
                                 </div>
                                 <LoginForm
                                     username={username} setUsername={setUsername}
                                     password={password} setPassword={setPassword}
                                     isLoading={isLoading} error={error} handleLogin={handleLogin}
+                                    isGlass
                                 />
                             </div>
                             
@@ -217,7 +218,7 @@ function LoginForm({
     handleLogin: (e: React.FormEvent) => void;
     isGlass?: boolean;
 }) {
-    const isGlassEffective = isGlass || false; // default to false
+    const isGlassEffective = isGlass || false; 
     return (
         <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -245,9 +246,14 @@ function LoginForm({
                 />
                 {error && <p className="text-sm text-destructive mt-2">{error}</p>}
             </div>
-            <Button type="submit" size="lg" className="w-full font-bold h-11" disabled={isLoading}>
-            {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Unlock className="mr-2 h-4 w-4"/>}
-            Authenticate
+            <Button 
+                type="submit" 
+                size="lg" 
+                className={`w-full font-bold h-11 ${isGlassEffective ? 'bg-white/90 text-black hover:bg-white' : ''}`} 
+                disabled={isLoading}
+            >
+                {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Unlock className="mr-2 h-4 w-4"/>}
+                Authenticate
             </Button>
         </form>
     );
@@ -320,9 +326,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const handleLogout = () => {
     // Clear the unified role session
     sessionStorage.removeItem('myMart-role-session');
-    router.push('/admin'); // Redirect to main admin to force a new login
-    // Force a full page reload to ensure all state is cleared
-    window.location.reload();
+    router.push('/admin/login'); // Redirect to login page to force a new login
   }
 
   return (
