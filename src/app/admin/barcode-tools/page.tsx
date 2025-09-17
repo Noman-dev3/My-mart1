@@ -75,16 +75,17 @@ function ScannerComponent() {
     setIsScanning(true);
 
     try {
-      codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
+      await codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
         if (result) {
           setScannedResult(result.getText());
           setIsScanning(false);
-          codeReader.current.reset();
+          codeReader.current.stop();
         }
         if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
            console.error("Scanning error:", err);
            setError('An unexpected error occurred during scanning.');
            setIsScanning(false);
+           codeReader.current.stop();
         }
       });
     } catch (err: any) {
@@ -99,7 +100,7 @@ function ScannerComponent() {
   }, []);
 
   const stopScan = useCallback(() => {
-    codeReader.current.reset();
+    codeReader.current.stop();
     setIsScanning(false);
   }, []);
 
