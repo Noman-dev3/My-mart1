@@ -13,8 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import RoleGate from '@/components/admin/role-gate';
 
-export default function BarcodeToolsPage() {
+function BarcodeToolsPageContent() {
   return (
     <div className="space-y-6">
         <div>
@@ -64,6 +65,14 @@ export default function BarcodeToolsPage() {
         </Tabs>
     </div>
   );
+}
+
+export default function BarcodeToolsPage() {
+    return (
+        <RoleGate role="INVENTORY_MANAGER">
+            <BarcodeToolsPageContent />
+        </RoleGate>
+    )
 }
 
 
