@@ -84,11 +84,10 @@ function ScannerComponent() {
     setIsScanning(true);
 
     try {
-      // decodeFromVideoDevice returns controls that must be used to stop the scan
       controlsRef.current = await codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
         if (result) {
           setScannedResult(result.getText());
-          stopScan(); // This will now correctly use the controls to stop
+          stopScan();
         }
         if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
            console.error("Scanning error:", err);
@@ -119,7 +118,6 @@ function ScannerComponent() {
       });
 
     return () => {
-      // This cleanup ensures the camera is released when the component unmounts.
       stopScan();
     };
   }, [stopScan]);
@@ -178,13 +176,13 @@ function ScannerComponent() {
         {isScanning && <div className="absolute inset-0 border-4 border-primary/50 animate-pulse rounded-lg" />}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
         <div className="flex flex-col sm:flex-row gap-2">
             <select
                 value={selectedDevice}
                 onChange={(e) => setSelectedDevice(e.target.value)}
                 disabled={isScanning || devices.length === 0}
-                className="w-full flex-grow bg-background border border-input rounded-md px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className="w-full flex-grow bg-background border border-input rounded-md px-3 py-2 text-sm h-10 ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
                 {devices.length > 0 ? devices.map(device => (
                     <option key={device.deviceId} value={device.deviceId}>{device.label || `Camera ${devices.indexOf(device) + 1}`}</option>
