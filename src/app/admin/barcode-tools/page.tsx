@@ -350,28 +350,36 @@ function BarcodeGeneratorComponent() {
     const printWindow = window.open('', '', 'width=800,height=600');
     if (!printWindow) return;
 
-    printWindow.document.write('<html><head><title>Print Barcodes</title></head><body style="padding: 20px; text-align: center;">');
-    
+    let content = '<html><head><title>Print Barcodes</title></head><body style="padding: 20px; text-align: center;">';
     barcodesToPrint.forEach(barcodeValue => {
-      const svgId = `barcode-${Math.random().toString(36).substring(7)}`;
-      printWindow.document.write(`<div style="margin-bottom: 20px;"><svg id="${svgId}"></svg></div>`);
-      try {
-        JsBarcode(`#${svgId}`, barcodeValue, {
-          format: "CODE128",
-          lineColor: "#000",
-          width: 2,
-          height: 80,
-          displayValue: true,
-          fontOptions: "bold",
-          fontSize: 16,
-        });
-      } catch (e) {
-        JsBarcode(`#${svgId}`, "INVALID DATA", { displayValue: true, lineColor: "#d9534f" });
-      }
+        const svgId = `barcode-${Math.random().toString(36).substring(7)}`;
+        content += `<div style="margin-bottom: 20px;"><svg id="${svgId}"></svg></div>`;
+    });
+    content += '</body></html>';
+    
+    printWindow.document.write(content);
+    printWindow.document.close();
+
+    barcodesToPrint.forEach((barcodeValue, index) => {
+        const svgId = printWindow.document.getElementsByTagName('svg')[index].id;
+        const svgElement = printWindow.document.getElementById(svgId);
+        if (svgElement) {
+            try {
+                JsBarcode(svgElement, barcodeValue, {
+                    format: "CODE128",
+                    lineColor: "#000",
+                    width: 2,
+                    height: 80,
+                    displayValue: true,
+                    fontOptions: "bold",
+                    fontSize: 16,
+                });
+            } catch (e) {
+                JsBarcode(svgElement, "INVALID DATA", { displayValue: true, lineColor: "#d9534f" });
+            }
+        }
     });
 
-    printWindow.document.write('</body></html>');
-    printWindow.document.close();
     printWindow.focus();
     printWindow.print();
     printWindow.close();
@@ -443,3 +451,4 @@ const BarcodeSvg = ({ value }: { value: string }) => {
   return <svg ref={ref}></svg>;
 };
 
+    
