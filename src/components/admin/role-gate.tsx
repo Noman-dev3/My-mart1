@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { verifyUserRole, type AdminRole } from '@/lib/role-auth';
+import { verifyUserRole, type AdminRole, hasPermission } from '@/lib/role-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,12 +40,9 @@ export default function RoleGate({ role, children }: RoleGateProps) {
         const sessionValue = sessionStorage.getItem(sessionKey);
         if (sessionValue) {
           const { user, expiry } = JSON.parse(sessionValue);
-          if (new Date().getTime() < expiry) {
-            // SUPER_ADMIN can access everything.
-            if (user.role === 'SUPER_ADMIN' || user.role === role) {
-              setAuthStatus('authenticated');
-              return;
-            }
+          if (new Date().getTime() < expiry && hasPermission(user.role, role)) {
+            setAuthStatus('authenticated');
+            return;
           }
         }
       } catch (e) {
@@ -64,8 +61,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
     const result = await verifyUserRole(username, password);
 
     if (result.success && result.role) {
-        // Check if the authenticated user has the required permissions for this page
-        if (result.role === 'SUPER_ADMIN' || result.role === role) {
+        if (hasPermission(result.role, role)) {
             const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
             const sessionValue = JSON.stringify({ user: { username, role: result.role }, expiry });
             sessionStorage.setItem(`myMart-role-session`, sessionValue);
@@ -105,10 +101,9 @@ export default function RoleGate({ role, children }: RoleGateProps) {
              <Image
                 src="https://picsum.photos/seed/admin-bg-full/1920/1080"
                 alt="Admin background"
-                layout="fill"
-                objectFit="cover"
+                fill
+                className="object-cover opacity-40"
                 quality={90}
-                className="opacity-40"
                 data-ai-hint="abstract texture"
             />
             <div className="absolute inset-0 bg-gradient-to-br from-gray-900/60 to-black/80"></div>
@@ -137,16 +132,15 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                         {/* Tablet and Desktop View */}
                         <div className="hidden md:grid max-w-6xl w-full h-auto max-h-[700px] shadow-2xl overflow-hidden rounded-2xl md:grid-cols-2">
                              <div className="p-10 flex flex-col justify-center bg-black/30 backdrop-blur-xl border border-white/10 lg:bg-card lg:backdrop-blur-none lg:border-none">
-                                <LoginHeader isGlass={true} />
+                                <LoginHeader />
                                 <div className="text-left mb-8">
-                                    <h1 className="font-headline text-4xl font-bold text-white lg:text-foreground">Admin Access</h1>
-                                    <p className="text-gray-300 lg:text-muted-foreground mt-2">Login to manage your store. Requires<br/>the <span className="font-semibold text-white lg:text-foreground">{roleName}</span> role.</p>
+                                    <h1 className="font-headline text-4xl font-bold">Admin Access</h1>
+                                    <p className="text-muted-foreground mt-2">Login to manage your store. Requires<br/>the <span className="font-semibold text-foreground">{roleName}</span> role.</p>
                                 </div>
                                 <LoginForm
                                     username={username} setUsername={setUsername}
                                     password={password} setPassword={setPassword}
                                     isLoading={isLoading} error={error} handleLogin={handleLogin}
-                                    isGlass
                                 />
                             </div>
                             
@@ -168,8 +162,8 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                     <Image
                                         src="https://picsum.photos/seed/admin-bg-side/800/1200"
                                         alt="Admin decorative"
-                                        layout="fill"
-                                        objectFit="cover"
+                                        fill
+                                        className="object-cover"
                                         quality={90}
                                         data-ai-hint="abstract modern"
                                     />
@@ -255,7 +249,7 @@ function LoginForm({
             <Button 
                 type="submit" 
                 size="lg" 
-                className={`w-full font-bold h-11 ${isGlassEffective ? 'bg-white/90 text-black hover:bg-white' : ''}`} 
+                className="w-full font-bold h-11 bg-white/90 text-black hover:bg-white"
                 disabled={isLoading}
             >
                 {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Unlock className="mr-2 h-4 w-4"/>}

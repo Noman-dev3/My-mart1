@@ -6,6 +6,28 @@ import { cookies } from "next/headers";
 
 export type AdminRole = 'SUPER_ADMIN' | 'FULFILLMENT_MANAGER' | 'INVENTORY_MANAGER' | 'CONTENT_EDITOR';
 
+const roleHierarchy: Record<AdminRole, AdminRole[]> = {
+    SUPER_ADMIN: ['SUPER_ADMIN', 'FULFILLMENT_MANAGER', 'INVENTORY_MANAGER', 'CONTENT_EDITOR'],
+    FULFILLMENT_MANAGER: ['FULFILLMENT_MANAGER'],
+    INVENTORY_MANAGER: ['INVENTORY_MANAGER'],
+    CONTENT_EDITOR: ['CONTENT_EDITOR'],
+};
+
+/**
+ * Checks if a user's role has permission to access a page requiring a specific role.
+ * @param userRole The role of the logged-in user.
+ * @param pageRole The role required by the page.
+ * @returns True if the user has permission, false otherwise.
+ */
+export function hasPermission(userRole: AdminRole, pageRole: AdminRole): boolean {
+    const userPermissions = roleHierarchy[userRole];
+    if (!userPermissions) {
+        return false; // Role doesn't exist in the hierarchy
+    }
+    return userPermissions.includes(pageRole);
+}
+
+
 /**
  * Verifies a user's credentials against the administrators table.
  * @param username The username to verify.
