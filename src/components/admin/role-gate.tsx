@@ -21,6 +21,14 @@ type RoleGateProps = {
   children: React.ReactNode;
 };
 
+type ValidSession = {
+    user: {
+        username: string;
+        role: AdminRole;
+    };
+    expiry: number;
+}
+
 const roleHierarchy: Record<AdminRole, AdminRole[]> = {
     SUPER_ADMIN: ['SUPER_ADMIN', 'FULFILLMENT_MANAGER', 'INVENTORY_MANAGER', 'CONTENT_EDITOR'],
     FULFILLMENT_MANAGER: ['FULFILLMENT_MANAGER'],
@@ -28,85 +36,84 @@ const roleHierarchy: Record<AdminRole, AdminRole[]> = {
     CONTENT_EDITOR: ['CONTENT_EDITOR'],
 };
 
-function hasClientPermission(userRole: AdminRole, pageRole: AdminRole): boolean {
+function hasPermission(userRole: AdminRole, pageRole: AdminRole): boolean {
     const userPermissions = roleHierarchy[userRole];
     return !!userPermissions && userPermissions.includes(pageRole);
 }
 
-
-// --- Main RoleGate Component ---
-
 export default function RoleGate({ role, children }: RoleGateProps) {
-  const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
-  const router = useRouter();
+    const [session, setSession] = useState<ValidSession | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const checkAuth = () => {
-      try {
-        const sessionValue = sessionStorage.getItem(`myMart-role-session`);
-        if (sessionValue) {
-          const { user, expiry } = JSON.parse(sessionValue);
-          if (new Date().getTime() < expiry && hasClientPermission(user.role, role)) {
-            setAuthStatus('authenticated');
-            return;
-          }
+    useEffect(() => {
+        try {
+            const sessionValue = sessionStorage.getItem('myMart-role-session');
+            if (sessionValue) {
+                const parsedSession: ValidSession = JSON.parse(sessionValue);
+                if (new Date().getTime() < parsedSession.expiry && hasPermission(parsedSession.user.role, role)) {
+                    setSession(parsedSession);
+                }
+            }
+        } catch (e) {
+            console.error("Session check failed", e);
         }
-      } catch (e) {
-        console.error("Session check failed", e);
-      }
-      setAuthStatus('unauthenticated');
-    };
-    checkAuth();
-  }, [role]);
+        setIsLoading(false);
+    }, [role]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    const result = await verifyUserRole(username, password);
-
-    if (result.success && result.role) {
-        if (hasClientPermission(result.role, role)) {
-            const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
-            const sessionValue = JSON.stringify({ user: { username, role: result.role }, expiry });
-            sessionStorage.setItem(`myMart-role-session`, sessionValue);
-
-            setShowSuccess(true);
-            setTimeout(() => {
-                setAuthStatus('authenticated');
-            }, 1500); // Wait for animation
-        } else {
-             setError('You do not have sufficient permissions to access this page.');
-             setIsLoading(false);
-        }
-    } else {
-      setError(result.error || 'Incorrect credentials.');
-      setIsLoading(false);
+    if (isLoading) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
     }
-  };
-  
-  const roleName = role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    
+    if (session) {
+        return <AdminLayoutContent>{children}</AdminLayoutContent>;
+    }
 
-  if (authStatus === 'checking') {
+    return <LoginPage role={role} setSession={setSession} />;
+}
+
+
+function LoginPage({ role, setSession }: { role: AdminRole, setSession: (session: ValidSession) => void }) {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    
+    const roleName = role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoggingIn(true);
+        setError('');
+
+        const result = await verifyUserRole(username, password);
+
+        if (result.success && result.role) {
+            if (hasPermission(result.role, role)) {
+                const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
+                const newSession: ValidSession = { user: { username, role: result.role }, expiry };
+                sessionStorage.setItem('myMart-role-session', JSON.stringify(newSession));
+                
+                setShowSuccess(true);
+                setTimeout(() => {
+                    setSession(newSession); // This will trigger the re-render in the parent
+                }, 1500);
+
+            } else {
+                setError('You do not have sufficient permissions to access this page.');
+                setIsLoggingIn(false);
+            }
+        } else {
+            setError(result.error || 'Incorrect credentials.');
+            setIsLoggingIn(false);
+        }
+    };
+    
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (authStatus === 'authenticated') {
-    return <AdminLayoutContent>{children}</AdminLayoutContent>;
-  }
-  
-  if (authStatus === 'unauthenticated') {
-     return (
         <div className="relative flex h-screen w-full items-center justify-center bg-gray-900 p-4">
              <Image
                 src="https://picsum.photos/seed/admin-bg-full/1920/1080"
@@ -134,7 +141,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                             <LoginForm
                                 username={username} setUsername={setUsername}
                                 password={password} setPassword={setPassword}
-                                isLoading={isLoading} error={error} handleLogin={handleLogin}
+                                isLoading={isLoggingIn} error={error} handleLogin={handleLogin}
                                 isGlass
                             />
                         </div>
@@ -150,7 +157,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                                 <LoginForm
                                     username={username} setUsername={setUsername}
                                     password={password} setPassword={setPassword}
-                                    isLoading={isLoading} error={error} handleLogin={handleLogin}
+                                    isLoading={isLoggingIn} error={error} handleLogin={handleLogin}
                                 />
                             </div>
                             
@@ -185,14 +192,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
                 )}
             </AnimatePresence>
         </div>
-      );
-  }
-
-  return (
-    <div className="flex h-screen w-full items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin" />
-    </div>
-  );
+    );
 }
 
 // --- Reusable Login Header ---
