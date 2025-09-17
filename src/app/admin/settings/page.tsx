@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { getSettings, updateSettings, updateAdminPassword } from '@/lib/settings-actions';
+import { getSettings, updateSettings } from '@/lib/settings-actions';
 import { updateApiKey } from '@/lib/api-keys';
 import RoleGate from '@/components/admin/role-gate';
 
@@ -27,18 +27,6 @@ const settingsSchema = z.object({
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
-
-
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required."),
-  newPassword: z.string().min(4, "New password must be at least 4 characters."),
-  confirmPassword: z.string(),
-}).refine(data => data.newPassword === data.confirmPassword, {
-    message: "Passwords do not match.",
-    path: ["confirmPassword"],
-});
-
-type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 const apiKeySchema = z.object({
     geminiApiKey: z.string().optional(),
@@ -66,15 +54,6 @@ function SettingsPageContent() {
     },
   });
 
-  const passwordForm = useForm<PasswordFormValues>({
-    resolver: zodResolver(passwordSchema),
-    defaultValues: {
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-    }
-  });
-  
   const apiKeyForm = useForm<ApiKeyFormValues>({
     resolver: zodResolver(apiKeySchema),
     defaultValues: {
@@ -123,28 +102,6 @@ function SettingsPageContent() {
         description: 'Failed to save settings. Please try again.',
         variant: 'destructive',
       });
-    }
-  };
-
-  const onPasswordSubmit = async (data: PasswordFormValues) => {
-    try {
-        const result = await updateAdminPassword(data);
-        if (result.success) {
-            toast({
-                title: 'Password Updated',
-                description: 'Your admin password has been changed successfully.'
-            });
-            passwordForm.reset();
-        } else {
-            throw new Error(result.error);
-        }
-    } catch (error: any) {
-        console.error("Failed to update password:", error);
-        toast({
-            title: 'Error',
-            description: error.message || 'Failed to update password. Please try again.',
-            variant: 'destructive',
-        });
     }
   };
   
@@ -292,60 +249,6 @@ function SettingsPageContent() {
                     <Button type="submit" disabled={apiKeyForm.formState.isSubmitting}>
                         {apiKeyForm.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Update API Keys
-                    </Button>
-                </CardFooter>
-            </form>
-          </Form>
-      </Card>
-
-      <Card>
-          <Form {...passwordForm}>
-            <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}>
-                <CardHeader>
-                    <CardTitle>Admin Account</CardTitle>
-                    <CardDescription>Change the password for the primary admin account.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <FormField
-                        control={passwordForm.control}
-                        name="currentPassword"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Current Password</FormLabel>
-                                <FormControl><Input type="password" {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <FormField
-                            control={passwordForm.control}
-                            name="newPassword"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>New Password</FormLabel>
-                                    <FormControl><Input type="password" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={passwordForm.control}
-                            name="confirmPassword"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Confirm New Password</FormLabel>
-                                    <FormControl><Input type="password" {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                </CardContent>
-                <CardFooter className="flex justify-end border-t pt-6">
-                    <Button type="submit" disabled={passwordForm.formState.isSubmitting}>
-                        {passwordForm.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Update Password
                     </Button>
                 </CardFooter>
             </form>

@@ -21,6 +21,8 @@ To get the application running, you need to set up your Supabase database schema
 ```sql
 -- Drop the old products table to remove it completely
 DROP TABLE IF EXISTS products;
+-- Drop old administrators table if it exists
+DROP TABLE IF EXISTS administrators;
 
 -- Create the new, corrected products table with snake_case column names
 CREATE TABLE products (
@@ -179,9 +181,8 @@ DROP POLICY IF EXISTS "Allow deletes for authenticated users" ON storage.objects
 ---
 ## Admin Panel Access
 
-To access the admin dashboard, navigate to any page under `/admin` (e.g., `/admin/products`). You will be prompted to log in. The credentials can be changed in the Admin Settings page.
+To access the admin dashboard, navigate to any page under `/admin` (e.g., `/admin/products`). You will be prompted to log in. The credentials can be changed in your project's `.env` file.
 
 | Username    | Password        |
 | ----------- | --------------- |
 | `admin`     | `superadmin123` |
-```

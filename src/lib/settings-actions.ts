@@ -1,9 +1,7 @@
 
-
 'use server';
 
 import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
-import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -61,21 +59,13 @@ export async function updateSettings(settings: SiteSettings) {
   return { success: true };
 }
 
-const passwordSchema = z.object({
-  currentPassword: z.string(),
-  newPassword: z.string().min(4, "New password must be at least 4 characters."),
-});
-
-// Default credentials, used only if nothing is in the database.
-const DEFAULT_ADMIN_CREDS = {
-    username: 'admin',
-    password: 'superadmin123',
-};
+// Admin credentials are now stored in environment variables for security and simplicity.
+// Default credentials are admin / superadmin123
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'superadmin123';
 
 export async function verifyAdminCredentials(username: string, passwordAttempt: string): Promise<{ success: boolean; error?: string; }> {
-    const currentCreds = await getAdminCredentials();
-
-    if (username === currentCreds.username && passwordAttempt === currentCreds.password) {
+    if (username === ADMIN_USERNAME && passwordAttempt === ADMIN_PASSWORD) {
         return { success: true };
     } else {
         // Simulate delay to prevent timing attacks
@@ -84,59 +74,6 @@ export async function verifyAdminCredentials(username: string, passwordAttempt: 
     }
 }
 
-
-export async function getAdminCredentials() {
-    const supabase = createServerActionClient({ cookies });
-    const { data, error } = await supabase
-        .from('siteContent')
-        .select('content')
-        .eq('page', 'adminCredentials')
-        .single();
-
-    if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching admin credentials:', error);
-        return DEFAULT_ADMIN_CREDS;
-    }
-
-    if (!data || !data.content || !(data.content as any).password) {
-        // If creds don't exist, create them with default
-        await updateAdminPassword({
-            currentPassword: '', // Bypass check
-            newPassword: DEFAULT_ADMIN_CREDS.password
-        }, true);
-        return DEFAULT_ADMIN_CREDS;
-    }
-
-    return data.content as { username: string; password: string };
-}
-
-export async function updateAdminPassword(values: z.infer<typeof passwordSchema>, isInitialSetup = false) {
-    const supabase = createServerActionClient({ cookies });
-    const validatedData = passwordSchema.parse(values);
-    
-    if (!isInitialSetup) {
-        const currentCreds = await getAdminCredentials();
-        if (validatedData.currentPassword !== currentCreds.password) {
-            return { success: false, error: "The current password you entered is incorrect." };
-        }
-    }
-
-    const newCreds = {
-        username: DEFAULT_ADMIN_CREDS.username, // Username is not changeable
-        password: validatedData.newPassword,
-    };
-    
-    const { error } = await supabase
-        .from('siteContent')
-        .upsert({ page: 'adminCredentials', content: newCreds }, { onConflict: 'page' });
-
-    if (error) {
-        console.error('Error updating admin password:', error);
-        return { success: false, error: "Failed to update password in the database." };
-    }
-
-    return { success: true };
-}
 
 export { getApiKey, updateApiKey };
     
