@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { verifyUserRole, type AdminRole, hasPermission } from '@/lib/role-auth';
+import { verifyUserRole, type AdminRole } from '@/lib/role-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,11 +16,24 @@ import Sidebar from '@/components/admin/sidebar';
 import { Icons } from '../icons';
 import Image from 'next/image';
 
-
 type RoleGateProps = {
   role: AdminRole;
   children: React.ReactNode;
 };
+
+// Define role hierarchy on the client-side for checking access
+const roleHierarchy: Record<AdminRole, AdminRole[]> = {
+    SUPER_ADMIN: ['SUPER_ADMIN', 'FULFILLMENT_MANAGER', 'INVENTORY_MANAGER', 'CONTENT_EDITOR'],
+    FULFILLMENT_MANAGER: ['FULFILLMENT_MANAGER'],
+    INVENTORY_MANAGER: ['INVENTORY_MANAGER'],
+    CONTENT_EDITOR: ['CONTENT_EDITOR'],
+};
+
+function hasClientPermission(userRole: AdminRole, pageRole: AdminRole): boolean {
+    const userPermissions = roleHierarchy[userRole];
+    return !!userPermissions && userPermissions.includes(pageRole);
+}
+
 
 // --- Main RoleGate Component ---
 
@@ -40,7 +53,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
         const sessionValue = sessionStorage.getItem(sessionKey);
         if (sessionValue) {
           const { user, expiry } = JSON.parse(sessionValue);
-          if (new Date().getTime() < expiry && hasPermission(user.role, role)) {
+          if (new Date().getTime() < expiry && hasClientPermission(user.role, role)) {
             setAuthStatus('authenticated');
             return;
           }
@@ -61,7 +74,7 @@ export default function RoleGate({ role, children }: RoleGateProps) {
     const result = await verifyUserRole(username, password);
 
     if (result.success && result.role) {
-        if (hasPermission(result.role, role)) {
+        if (hasClientPermission(result.role, role)) {
             const expiry = new Date().getTime() + 60 * 60 * 1000; // 1 hour session
             const sessionValue = JSON.stringify({ user: { username, role: result.role }, expiry });
             sessionStorage.setItem(`myMart-role-session`, sessionValue);
