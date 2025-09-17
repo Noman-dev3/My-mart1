@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BrowserMultiFormatReader } from '@zxing/browser';
+import { BrowserMultiFormatReader, type IScannerControls } from '@zxing/browser';
 import { NotFoundException, ChecksumException, FormatException } from '@zxing/library';
 import QRCode from 'qrcode.react';
 import { Button } from '@/components/ui/button';
@@ -66,10 +66,14 @@ function ScannerComponent() {
   const [selectedDevice, setSelectedDevice] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReader = useRef(new BrowserMultiFormatReader());
+  const controlsRef = useRef<IScannerControls | null>(null);
 
 
   const stopScan = useCallback(() => {
-    codeReader.current.reset();
+    if (controlsRef.current) {
+        controlsRef.current.stop();
+        controlsRef.current = null;
+    }
     setIsScanning(false);
   }, []);
 
@@ -80,10 +84,11 @@ function ScannerComponent() {
     setIsScanning(true);
 
     try {
-      await codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
+      // decodeFromVideoDevice returns controls that must be used to stop the scan
+      controlsRef.current = await codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
         if (result) {
           setScannedResult(result.getText());
-          stopScan();
+          stopScan(); // This will now correctly use the controls to stop
         }
         if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
            console.error("Scanning error:", err);
@@ -114,6 +119,7 @@ function ScannerComponent() {
       });
 
     return () => {
+      // This cleanup ensures the camera is released when the component unmounts.
       stopScan();
     };
   }, [stopScan]);
@@ -224,7 +230,7 @@ function ScannerComponent() {
 
 function GeneratorComponent() {
   const [inputText, setInputText] = useState('https://cloud.google.com/firebase');
-  const qrRef = useRef(null);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   const handleDownload = () => {
     const canvas = qrRef.current?.querySelector('canvas');
