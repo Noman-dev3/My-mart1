@@ -5,8 +5,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserMultiFormatReader, type IScannerControls } from '@zxing/browser';
 import { NotFoundException, ChecksumException, FormatException } from '@zxing/library';
 import QRCode from 'qrcode.react';
+import JsBarcode from 'jsbarcode';
 import { Button } from '@/components/ui/button';
-import { Camera, QrCode, Scan, Upload, AlertCircle, Download } from 'lucide-react';
+import { Camera, QrCode, Scan, Upload, AlertCircle, Download, Printer, Barcode } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,7 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 
 export default function BarcodeToolsPage() {
-
   return (
     <div className="space-y-6">
         <div>
@@ -23,9 +23,10 @@ export default function BarcodeToolsPage() {
         </div>
 
         <Tabs defaultValue="scanner" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="scanner"><Scan className="mr-2 h-4 w-4"/>Scanner</TabsTrigger>
-                <TabsTrigger value="generator"><QrCode className="mr-2 h-4 w-4"/>Generator</TabsTrigger>
+                <TabsTrigger value="qr_generator"><QrCode className="mr-2 h-4 w-4"/>QR Code Generator</TabsTrigger>
+                <TabsTrigger value="barcode_generator"><Barcode className="mr-2 h-4 w-4"/>Barcode Generator</TabsTrigger>
             </TabsList>
             <TabsContent value="scanner">
                 <Card>
@@ -38,19 +39,29 @@ export default function BarcodeToolsPage() {
                     </CardContent>
                 </Card>
             </TabsContent>
-            <TabsContent value="generator">
+            <TabsContent value="qr_generator">
                  <Card>
                     <CardHeader>
                         <CardTitle>QR Code Generator</CardTitle>
                         <CardDescription>Create a QR code from any text or URL.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <GeneratorComponent />
+                        <QrGeneratorComponent />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+             <TabsContent value="barcode_generator">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Barcode Generator</CardTitle>
+                        <CardDescription>Create a printable Code 128 barcode.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <BarcodeGeneratorComponent />
                     </CardContent>
                 </Card>
             </TabsContent>
         </Tabs>
-
     </div>
   );
 }
@@ -225,9 +236,9 @@ function ScannerComponent() {
   );
 }
 
-// --- Generator Component ---
+// --- QR Code Generator Component ---
 
-function GeneratorComponent() {
+function QrGeneratorComponent() {
   const [inputText, setInputText] = useState('https://cloud.google.com/firebase');
   const qrRef = useRef<HTMLDivElement>(null);
 
@@ -241,6 +252,26 @@ function GeneratorComponent() {
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
+    }
+  };
+
+  const handlePrint = () => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (canvas) {
+      const dataUrl = canvas.toDataURL('image/png');
+      const printWindow = window.open('', '', 'width=400,height=400');
+      printWindow?.document.write(`
+        <html>
+          <head><title>Print QR Code</title></head>
+          <body style="text-align:center; margin-top: 50px;">
+            <img src="${dataUrl}" style="max-width: 80%;" />
+          </body>
+        </html>
+      `);
+      printWindow?.document.close();
+      printWindow?.focus();
+      printWindow?.print();
+      printWindow?.close();
     }
   };
   
@@ -261,7 +292,7 @@ function GeneratorComponent() {
       </div>
       
       {inputText && (
-        <div className="bg-white p-6 rounded-lg shadow-inner" ref={qrRef}>
+        <div className="bg-white p-6 rounded-lg shadow-inner inline-block" ref={qrRef}>
             <QRCode
               value={inputText}
               size={256}
@@ -271,14 +302,107 @@ function GeneratorComponent() {
         </div>
       )}
 
-      <Button
-        onClick={handleDownload}
-        disabled={!inputText}
-        className="w-full max-w-xs"
-      >
-        <Download className="mr-2 h-4 w-4"/>
-        Download QR Code
-      </Button>
+      <div className="flex gap-4 w-full max-w-sm">
+        <Button onClick={handleDownload} variant="outline" disabled={!inputText} className="w-full">
+            <Download className="mr-2 h-4 w-4"/> Download
+        </Button>
+        <Button onClick={handlePrint} disabled={!inputText} className="w-full">
+            <Printer className="mr-2 h-4 w-4"/> Print
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// --- Barcode Generator Component ---
+
+function BarcodeGeneratorComponent() {
+  const [inputText, setInputText] = useState('123456789012');
+  const barcodeRef = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    if (barcodeRef.current && inputText) {
+      try {
+        JsBarcode(barcodeRef.current, inputText, {
+          format: "CODE128",
+          lineColor: "#000",
+          width: 2,
+          height: 80,
+          displayValue: true,
+          fontOptions: "bold",
+          fontSize: 16
+        });
+      } catch (e) {
+        console.error("Barcode generation error", e);
+        JsBarcode(barcodeRef.current, "INVALID DATA", {displayValue: true, lineColor: "#d9534f"});
+      }
+    }
+  }, [inputText]);
+
+  const handleDownload = () => {
+    if (barcodeRef.current) {
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(barcodeRef.current);
+        const blob = new Blob([svgString], {type: "image/svg+xml"});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `barcode-${inputText}.svg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+  }
+
+  const handlePrint = () => {
+     if (barcodeRef.current) {
+        const svgString = new XMLSerializer().serializeToString(barcodeRef.current);
+        const printWindow = window.open('', '', 'width=600,height=300');
+        printWindow?.document.write(`
+            <html>
+            <head><title>Print Barcode</title></head>
+            <body style="text-align:center; margin-top: 50px;">
+                ${svgString}
+            </body>
+            </html>
+        `);
+        printWindow?.document.close();
+        printWindow?.focus();
+        printWindow?.print();
+        printWindow?.close();
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-6">
+      <div className="w-full max-w-md">
+        <Label htmlFor="barcode-input" className="block mb-2 text-sm font-medium">
+          Enter Data for Barcode
+        </Label>
+        <Input
+          id="barcode-input"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          className="w-full font-mono text-lg h-12 text-center"
+          placeholder="e.g., 123456789012"
+        />
+      </div>
+      
+      {inputText && (
+        <div className="bg-white p-6 rounded-lg shadow-inner">
+          <svg ref={barcodeRef}></svg>
+        </div>
+      )}
+
+      <div className="flex gap-4 w-full max-w-sm">
+        <Button onClick={handleDownload} variant="outline" disabled={!inputText} className="w-full">
+            <Download className="mr-2 h-4 w-4"/> Download SVG
+        </Button>
+        <Button onClick={handlePrint} disabled={!inputText} className="w-full">
+            <Printer className="mr-2 h-4 w-4"/> Print
+        </Button>
+      </div>
     </div>
   );
 }
