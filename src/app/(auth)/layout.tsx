@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from 'next/image';
@@ -30,10 +29,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             src="https://picsum.photos/seed/meeting/800/1000"
             alt="Team meeting"
             fill
-            className="object-cover rounded-tl-3xl"
+            className="object-cover"
             data-ai-hint="team meeting office"
           />
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] rounded-tl-3xl"></div>
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"></div>
 
           {/* Floating UI Elements */}
           <div className="absolute inset-0 p-8 flex flex-col justify-between">
