@@ -32,7 +32,7 @@ export default function AuthLayout({
           </blockquote>
         </div>
       </div>
-      <div className="relative flex items-center justify-center p-8">
+      <div className="relative flex items-center justify-center p-12">
          <Link href="/" className="absolute right-4 top-4 text-sm font-medium text-muted-foreground hover:text-primary md:right-8 md:top-8">
             Back to Store
         </Link>
