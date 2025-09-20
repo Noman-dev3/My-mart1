@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -7,13 +8,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { registerUser, signInWithGoogle } from '@/lib/auth-actions';
 import { Icons } from '@/components/icons';
-import Header from '@/components/header';
-import Footer from '@/components/footer';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 const signupSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -26,6 +26,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export default function SignupPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -55,20 +56,16 @@ export default function SignupPage() {
   );
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header />
-      <main className="flex-grow flex items-center justify-center p-4">
-        <Card className="w-full max-w-sm">
-          <CardHeader className="text-center">
-            <Link href="/" className="w-fit mx-auto">
-              <Icons.logo className="h-10 w-10 text-primary" />
-            </Link>
-            <CardTitle className="font-headline text-3xl">Create an Account</CardTitle>
-            <CardDescription>Sign up to start shopping at My Mart.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+    <div className="flex-1 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
+        <Link href="/" className="mb-8 w-fit flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+            <Icons.logo className="h-6 w-6"/>
+            <span className="font-headline text-xl font-semibold">My Mart</span>
+        </Link>
+        <h1 className="text-3xl md:text-4xl font-bold font-headline">Create an account</h1>
+        <p className="text-muted-foreground mt-2">Sign up to start your shopping journey.</p>
+
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5">
                 <FormField
                   control={form.control}
                   name="name"
@@ -76,7 +73,7 @@ export default function SignupPage() {
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} />
+                        <Input placeholder="Amélie Laurent" {...field} className="h-12 text-base rounded-xl bg-white" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -89,7 +86,7 @@ export default function SignupPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="you@example.com" {...field} />
+                        <Input type="email" placeholder="amelielaurent7622@gmail.com" {...field} className="h-12 text-base rounded-xl bg-white" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -101,50 +98,51 @@ export default function SignupPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
-                      </FormControl>
+                       <div className="relative">
+                            <FormControl>
+                                <Input 
+                                    type={passwordVisible ? "text" : "password"} 
+                                    placeholder="••••••••••••" 
+                                    {...field} 
+                                    className="h-12 text-base rounded-xl bg-white pr-10"
+                                />
+                            </FormControl>
+                            <button type="button" onClick={() => setPasswordVisible(!passwordVisible)} className="absolute inset-y-0 right-0 px-3 flex items-center text-muted-foreground">
+                                {passwordVisible ? <EyeOff className="h-5 w-5"/> : <Eye className="h-5 w-5"/>}
+                            </button>
+                        </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full font-bold" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
-                </Button>
-              </form>
-            </Form>
-
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t"></span>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-              </div>
-            </div>
-
-            <form action={signInWithGoogle} className="w-full">
-                <Button variant="outline" className="w-full">
-                    <GoogleIcon className="mr-2 h-5 w-5" />
-                    Google
+                <Button type="submit" className="w-full font-bold h-14 rounded-2xl text-base bg-yellow-400 text-black hover:bg-yellow-500 shadow-lg" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'Create Account'}
                 </Button>
             </form>
+        </Form>
+        
+        <div className="mt-6 space-y-4">
+             <form action={signInWithGoogle} className="w-full">
+                <Button variant="outline" className="w-full h-14 rounded-2xl border-gray-300 text-base">
+                    <GoogleIcon className="mr-3 h-6 w-6" />
+                    Sign up with Google
+                </Button>
+            </form>
+        </div>
 
-            <p className="mt-4 px-8 text-center text-sm text-muted-foreground">
-              By creating an account, you agree to our{' '}
-              <Link href="/terms-of-service" className="underline hover:text-primary">
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link href="/privacy-policy" className="underline hover:text-primary">
-                Privacy Policy
-              </Link>
-              .
+        <div className="mt-auto pt-8 text-center text-sm">
+            <p className="text-muted-foreground">
+                Have an account?{" "}
+                <Link href="/login" className="font-semibold text-yellow-500 hover:underline">
+                    Sign in
+                </Link>
             </p>
-          </CardContent>
-        </Card>
-      </main>
-      <Footer />
+            <Link href="/terms-of-service" className="text-muted-foreground hover:underline mt-2 inline-block">
+                Terms & Conditions
+            </Link>
+        </div>
     </div>
   );
 }
+
+    
