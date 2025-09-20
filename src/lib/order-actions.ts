@@ -119,6 +119,19 @@ export async function placeOrder(data: {
     throw new Error("Could not place order.");
   }
   
+  // After order is saved, update stock quantities
+  for (const item of data.items) {
+      const { error: stockError } = await supabase.rpc('decrement_stock', {
+          product_id: item.id,
+          quantity_to_decrement: item.quantity
+      });
+      if (stockError) {
+          // In a real-world scenario, you might want to handle this more gracefully,
+          // like logging the failure or even attempting to cancel the order.
+          console.error(`Failed to decrement stock for product ${item.id}:`, stockError);
+      }
+  }
+
   // Send notification *after* order is successfully saved and we have an ID
   await sendAdminNotification(savedOrder as Order);
 
@@ -208,12 +221,16 @@ export async function createStoreOrder(data: {
     throw new Error('Could not create store order.');
   }
 
-  // In a real scenario, you'd also update stock quantities here.
-  // For each item in data.items, you would run:
-  // This would require a stored procedure 'decrement_stock' in the database.
-  // for (const item of data.items) {
-  //    await supabase.rpc('decrement_stock', { p_product_id: item.id, p_quantity: item.quantity });
-  // }
+  // Update stock quantities for in-store sales
+  for (const item of data.items) {
+     const { error: stockError } = await supabase.rpc('decrement_stock', {
+        p_product_id: item.id,
+        p_quantity: item.quantity
+     });
+     if (stockError) {
+        console.error(`POS: Failed to decrement stock for product ${item.id}:`, stockError);
+     }
+  }
 
 
   revalidatePath('/admin/orders');

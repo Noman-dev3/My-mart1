@@ -117,6 +117,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to decrement stock quantity for a product
+CREATE OR REPLACE FUNCTION decrement_stock(p_product_id UUID, p_quantity INT)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE products
+    SET stock_quantity = stock_quantity - p_quantity
+    WHERE id = p_product_id AND stock_quantity >= p_quantity;
+END;
+$$ LANGUAGE plpgsql;
+
 
 -- Add tables to the publication for real-time updates
 -- This might fail if the tables are already added, which is safe to ignore.
