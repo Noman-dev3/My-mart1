@@ -47,10 +47,12 @@ export default function LoginPage() {
 
   return (
     <div className="flex-1 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
-        <Link href="/" className="mb-8 w-fit flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <Icons.logo className="h-6 w-6"/>
-            <span className="font-headline text-xl font-semibold">My Mart</span>
-        </Link>
+        <Button asChild variant="outline" className="w-fit mb-8 rounded-full px-6 py-5 border-gray-400/50">
+            <Link href="/" className="flex items-center gap-2 text-foreground">
+                <Icons.logo className="h-6 w-6"/>
+                <span className="font-headline text-xl font-semibold">My Mart</span>
+            </Link>
+        </Button>
         <h1 className="text-3xl md:text-4xl font-bold font-headline">Welcome Back</h1>
         <p className="text-muted-foreground mt-2">Sign in to continue to your My Mart account.</p>
 
@@ -67,7 +69,7 @@ export default function LoginPage() {
                                 type="email" 
                                 placeholder="amelielaurent7622@gmail.com" 
                                 {...field} 
-                                className="h-12 text-base rounded-xl bg-white"
+                                className="h-12 text-base rounded-xl bg-white dark:bg-black/20"
                             />
                         </FormControl>
                         <FormMessage />
@@ -86,7 +88,7 @@ export default function LoginPage() {
                                     type={passwordVisible ? "text" : "password"} 
                                     placeholder="••••••••••••" 
                                     {...field} 
-                                    className="h-12 text-base rounded-xl bg-white pr-10"
+                                    className="h-12 text-base rounded-xl bg-white dark:bg-black/20 pr-10"
                                 />
                             </FormControl>
                             <button type="button" onClick={() => setPasswordVisible(!passwordVisible)} className="absolute inset-y-0 right-0 px-3 flex items-center text-muted-foreground">
@@ -98,7 +100,7 @@ export default function LoginPage() {
                     )}
                 />
                 <Button type="submit" className="w-full font-bold h-14 rounded-2xl text-base bg-yellow-400 text-black hover:bg-yellow-500 shadow-lg" disabled={form.formState.isSubmitting}>
-                    {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'Sign In'}
+                    {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'Submit'}
                 </Button>
             </form>
         </Form>
@@ -112,7 +114,7 @@ export default function LoginPage() {
             </form>
         </div>
 
-        <div className="mt-auto pt-8 text-center text-sm">
+        <div className="mt-auto pt-8 flex justify-between items-center text-sm">
             <p className="text-muted-foreground">
                 Don't have an account?{" "}
                 <Link href="/signup" className="font-semibold text-yellow-500 hover:underline">
@@ -126,5 +128,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    

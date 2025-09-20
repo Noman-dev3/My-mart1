@@ -57,12 +57,14 @@ export default function SignupPage() {
 
   return (
     <div className="flex-1 p-8 sm:p-12 md:p-16 flex flex-col justify-center">
-        <Link href="/" className="mb-8 w-fit flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <Icons.logo className="h-6 w-6"/>
-            <span className="font-headline text-xl font-semibold">My Mart</span>
-        </Link>
+        <Button asChild variant="outline" className="w-fit mb-8 rounded-full px-6 py-5 border-gray-400/50">
+            <Link href="/" className="flex items-center gap-2 text-foreground">
+                <Icons.logo className="h-6 w-6"/>
+                <span className="font-headline text-xl font-semibold">My Mart</span>
+            </Link>
+        </Button>
         <h1 className="text-3xl md:text-4xl font-bold font-headline">Create an account</h1>
-        <p className="text-muted-foreground mt-2">Sign up to start your shopping journey.</p>
+        <p className="text-muted-foreground mt-2">Sign up to get started.</p>
 
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="mt-8 space-y-5">
@@ -73,7 +75,7 @@ export default function SignupPage() {
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Amélie Laurent" {...field} className="h-12 text-base rounded-xl bg-white" />
+                        <Input placeholder="Amélie Laurent" {...field} className="h-12 text-base rounded-xl bg-white dark:bg-black/20" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -86,7 +88,7 @@ export default function SignupPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="amelielaurent7622@gmail.com" {...field} className="h-12 text-base rounded-xl bg-white" />
+                        <Input type="email" placeholder="amelielaurent7622@gmail.com" {...field} className="h-12 text-base rounded-xl bg-white dark:bg-black/20" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -104,7 +106,7 @@ export default function SignupPage() {
                                     type={passwordVisible ? "text" : "password"} 
                                     placeholder="••••••••••••" 
                                     {...field} 
-                                    className="h-12 text-base rounded-xl bg-white pr-10"
+                                    className="h-12 text-base rounded-xl bg-white dark:bg-black/20 pr-10"
                                 />
                             </FormControl>
                             <button type="button" onClick={() => setPasswordVisible(!passwordVisible)} className="absolute inset-y-0 right-0 px-3 flex items-center text-muted-foreground">
@@ -116,7 +118,7 @@ export default function SignupPage() {
                   )}
                 />
                 <Button type="submit" className="w-full font-bold h-14 rounded-2xl text-base bg-yellow-400 text-black hover:bg-yellow-500 shadow-lg" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'Create Account'}
+                  {form.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'Submit'}
                 </Button>
             </form>
         </Form>
@@ -130,7 +132,7 @@ export default function SignupPage() {
             </form>
         </div>
 
-        <div className="mt-auto pt-8 text-center text-sm">
+        <div className="mt-auto pt-8 flex justify-between items-center text-sm">
             <p className="text-muted-foreground">
                 Have an account?{" "}
                 <Link href="/login" className="font-semibold text-yellow-500 hover:underline">
@@ -144,5 +146,3 @@ export default function SignupPage() {
     </div>
   );
 }
-
-    
