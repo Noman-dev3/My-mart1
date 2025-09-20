@@ -33,15 +33,15 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormValues) => {
     const result = await signInUser(data);
-    if (result.success) {
-      toast({ title: 'Success', description: 'Logged in successfully!' });
-      router.push('/');
-    } else {
+    if (result?.error) {
       toast({
         title: 'Login Failed',
-        description: result.error || 'An unknown error occurred.',
+        description: result.error,
         variant: 'destructive',
       });
+    } else {
+       toast({ title: 'Success', description: 'Logged in successfully!' });
+       // The server action will handle the redirect, so client-side redirect is no longer needed.
     }
   };
 

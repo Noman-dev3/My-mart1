@@ -66,7 +66,7 @@ export async function signInUser(values: z.infer<typeof loginSchema>) {
     }
 
     revalidatePath('/', 'layout');
-    return { success: true };
+    redirect('/');
 }
 
 
