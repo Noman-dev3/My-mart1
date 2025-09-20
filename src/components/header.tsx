@@ -152,16 +152,7 @@ export default function Header() {
                   </form>
                 </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <div className="hidden md:flex items-center gap-2">
-              <Button asChild variant="ghost">
-                <Link href="/login">Login</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/signup">Sign Up</Link>
-              </Button>
-            </div>
-          )}
+          ) : null}
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
@@ -209,12 +200,7 @@ export default function Header() {
                                 </form>
                             </div>
                         </div>
-                    ) : (
-                        <div className="flex flex-col gap-2 border-t pt-4">
-                            <Button asChild className="w-full"><Link href="/login">Login</Link></Button>
-                            <Button asChild variant="outline" className="w-full"><Link href="/signup">Sign Up</Link></Button>
-                        </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </SheetContent>
