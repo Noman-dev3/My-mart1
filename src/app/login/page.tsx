@@ -7,7 +7,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Icons } from '@/components/icons';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { registerUser, signInUser, signInWithGoogle } from '@/lib/auth-actions';
@@ -89,7 +88,7 @@ export default function AuthenticationPage() {
   };
 
   return (
-    <>
+    <div className="w-full max-w-md space-y-6 rounded-lg bg-card p-8 shadow-sm">
       <div className="flex flex-col space-y-2 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">
           {isSignUp ? 'Create an account' : 'Sign in to your account'}
@@ -103,18 +102,18 @@ export default function AuthenticationPage() {
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <div className="grid gap-4">
             {isSignUp && (
-              <div className="grid gap-1">
+              <div className="grid gap-1.5">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input id="fullName" placeholder="John Doe" type="text" {...form.register('fullName')} disabled={isLoading} />
                 {form.formState.errors.fullName && <p className="text-xs text-destructive">{String(form.formState.errors.fullName.message)}</p>}
               </div>
             )}
-            <div className="grid gap-1">
+            <div className="grid gap-1.5">
               <Label htmlFor="email">Email</Label>
               <Input id="email" placeholder="name@example.com" type="email" {...form.register('email')} disabled={isLoading} />
               {form.formState.errors.email && <p className="text-xs text-destructive">{String(form.formState.errors.email.message)}</p>}
             </div>
-            <div className="grid gap-1 relative">
+            <div className="grid gap-1.5 relative">
               <Label htmlFor="password">Password</Label>
               <Input id="password" type={showPassword ? 'text' : 'password'} {...form.register('password')} disabled={isLoading} />
               <button
@@ -126,7 +125,7 @@ export default function AuthenticationPage() {
               </button>
               {form.formState.errors.password && <p className="text-xs text-destructive">{String(form.formState.errors.password.message)}</p>}
             </div>
-            <Button disabled={isLoading}>
+            <Button disabled={isLoading} className="w-full mt-4">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSignUp ? 'Create Account' : 'Sign In'}
             </Button>
@@ -137,7 +136,7 @@ export default function AuthenticationPage() {
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
+            <span className="bg-card px-2 text-muted-foreground">
               Or continue with
             </span>
           </div>
@@ -176,6 +175,6 @@ export default function AuthenticationPage() {
           </>
         )}
       </p>
-    </>
+    </div>
   );
 }
