@@ -6,6 +6,7 @@ import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { getSettings } from './settings-actions';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -22,9 +23,15 @@ const profileSchema = z.object({
     fullName: z.string().min(2, "Full name must be at least 2 characters."),
 });
 
+async function getSiteUrl() {
+    const settings = await getSettings();
+    return settings?.siteUrl || 'https://6000-firebase-studio-1757434852092.cluster-xpmcxs2fjnhg6xvn446ubtgpio.cloudworkstations.dev';
+}
+
 export async function registerUser(values: z.infer<typeof registerSchema>) {
   const supabase = createServerActionClient({ cookies });
   const { name, email, password } = registerSchema.parse(values);
+  const siteUrl = await getSiteUrl();
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -33,8 +40,7 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
       data: {
         full_name: name,
       },
-      // Corrected: Use the public site URL for the email redirect.
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login`,
+      emailRedirectTo: `${siteUrl}/login`,
     },
   });
 
@@ -72,10 +78,12 @@ export async function signOutUser() {
 
 export async function signInWithGoogle() {
   const supabase = createServerActionClient({ cookies });
+  const siteUrl = await getSiteUrl();
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      redirectTo: `${siteUrl}/auth/callback`,
     },
   });
 

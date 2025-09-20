@@ -12,6 +12,7 @@ const settingsSchema = z.object({
   contactEmail: z.string().email("Invalid email address."),
   contactPhone: z.string().min(1, "Phone number is required."),
   address: z.string().min(1, "Address is required."),
+  siteUrl: z.string().url("Please enter a valid URL."),
   theme: z.object({
     primaryColor: z.string().regex(/^(\d{1,3})\s(\d{1,3})%\s(\d{1,3})%$/, "Invalid HSL format"),
   }),

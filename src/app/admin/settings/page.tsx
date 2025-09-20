@@ -21,6 +21,7 @@ const settingsSchema = z.object({
   contactEmail: z.string().email("Invalid email address."),
   contactPhone: z.string().min(1, "Phone number is required."),
   address: z.string().min(1, "Address is required."),
+  siteUrl: z.string().url("Please enter a valid URL."),
   theme: z.object({
     primaryColor: z.string().regex(/^(\d{1,3})\s(\d{1,3})%\s(\d{1,3})%$/, "Invalid HSL format. Example: 177 97% 40%"),
   }),
@@ -48,6 +49,7 @@ function SettingsPageContent() {
       contactEmail: 'contact@mymart.com',
       contactPhone: '+92 311 9991972',
       address: '123 Market Street, Karachi, Pakistan',
+      siteUrl: 'https://6000-firebase-studio-1757434852092.cluster-xpmcxs2fjnhg6xvn446ubtgpio.cloudworkstations.dev',
       theme: {
         primaryColor: '177 97% 40%',
       },
@@ -75,6 +77,7 @@ function SettingsPageContent() {
           contactEmail: settings.contactEmail || 'contact@mymart.com',
           contactPhone: settings.contactPhone || '+92 311 9991972',
           address: settings.address || '123 Market Street, Karachi, Pakistan',
+          siteUrl: settings.siteUrl || 'https://6000-firebase-studio-1757434852092.cluster-xpmcxs2fjnhg6xvn446ubtgpio.cloudworkstations.dev',
           theme: {
             primaryColor: settings.theme?.primaryColor || '177 97% 40%',
           },
@@ -164,6 +167,7 @@ function SettingsPageContent() {
                         <FormField control={settingsForm.control} name="contactPhone" render={({ field }) => ( <FormItem> <FormLabel>Contact Phone</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                     </div>
                     <FormField control={settingsForm.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Address</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                    <FormField control={settingsForm.control} name="siteUrl" render={({ field }) => ( <FormItem> <FormLabel>Site URL</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                 </CardContent>
             </Card>
 
