@@ -124,7 +124,7 @@ export default function AuthenticationPage() {
               <input
                 {...register('firstName')}
                 type="text"
-                placeholder=""
+                placeholder="First name"
                 className="auth-input"
               />
                {getErrorMessage('firstName')}
@@ -133,7 +133,7 @@ export default function AuthenticationPage() {
               <input
                 {...register('lastName')}
                 type="text"
-                placeholder=""
+                placeholder="Last name"
                 className="auth-input"
               />
               {getErrorMessage('lastName')}
@@ -145,7 +145,7 @@ export default function AuthenticationPage() {
           <input
             {...register('email')}
             type="email"
-            placeholder=""
+            placeholder="Email"
             className="auth-input"
           />
            {getErrorMessage('email')}
@@ -155,7 +155,7 @@ export default function AuthenticationPage() {
           <input
             {...register('password')}
             type='password'
-            placeholder=""
+            placeholder="Password"
             className="auth-input"
           />
         </div>
