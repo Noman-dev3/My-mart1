@@ -8,7 +8,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { registerUser, signInUser, signInWithGoogle } from '@/lib/auth-actions';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 const signupSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -31,10 +31,10 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function AuthenticationPage() {
   const [isSignUp, setIsSignUp] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
   const currentSchema = isSignUp ? signupSchema : loginSchema;
-  const isBrowser = typeof window !== 'undefined';
   
   const form = useForm<SignupFormValues | LoginFormValues>({
     resolver: zodResolver(currentSchema),
@@ -102,39 +102,46 @@ export default function AuthenticationPage() {
 
   const getErrorMessage = (field: keyof (SignupFormValues & LoginFormValues)) => {
     const error = errors[field as keyof typeof errors];
-    return error ? <p className="text-xs text-red-500 mt-1">{String(error.message)}</p> : null;
+    return error ? <p className="text-xs text-red-400 mt-1">{String(error.message)}</p> : null;
   };
 
   return (
-    <div className="w-full">
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
-        <button 
-          onClick={() => handleModeChange(isSignUp ? 'login' : 'signup')} 
-          className="font-semibold text-[#6C63FF] hover:underline"
-        >
-          {isSignUp ? 'Log in' : 'Create an account'}
-        </button>
-      </p>
+    <div className="w-full h-full flex flex-col">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white mb-2">
+          {isSignUp ? 'Create an account' : 'Sign in to your account'}
+        </h1>
+        <p className="text-gray-400 text-sm">
+          {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+          <button 
+            onClick={() => handleModeChange(isSignUp ? 'login' : 'signup')} 
+            className="text-purple-400 hover:text-purple-300 font-medium"
+          >
+            {isSignUp ? 'Log in' : 'Create an account'}
+          </button>
+        </p>
+      </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Form */}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 flex-1">
         {isSignUp && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <input
                 {...register('firstName')}
                 type="text"
-                placeholder="First name"
-                className="auth-input"
+                placeholder="Fletcher"
+                className="w-full h-12 bg-gray-700/50 border border-gray-600 rounded-lg px-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
-               {getErrorMessage('firstName')}
+              {getErrorMessage('firstName')}
             </div>
             <div>
               <input
                 {...register('lastName')}
                 type="text"
                 placeholder="Last name"
-                className="auth-input"
+                className="w-full h-12 bg-gray-700/50 border border-gray-600 rounded-lg px-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
               {getErrorMessage('lastName')}
             </div>
@@ -146,77 +153,85 @@ export default function AuthenticationPage() {
             {...register('email')}
             type="email"
             placeholder="Email"
-            className="auth-input"
+            className="w-full h-12 bg-gray-700/50 border border-gray-600 rounded-lg px-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
-           {getErrorMessage('email')}
+          {getErrorMessage('email')}
         </div>
 
-        <div>
+        <div className="relative">
           <input
             {...register('password')}
-            type='password'
-            placeholder="Password"
-            className="auth-input"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Enter your password"
+            className="w-full h-12 bg-gray-700/50 border border-gray-600 rounded-lg px-4 pr-12 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+          {getErrorMessage('password')}
         </div>
-        {getErrorMessage('password')}
-
 
         {isSignUp && (
-          <div>
-            <label className="flex items-center space-x-3 cursor-pointer">
-              <input
-                {...register('agreeTerms')}
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                I agree to the <Link href="/terms-of-service" className="text-indigo-500 hover:underline">Terms & Conditions</Link>
-              </span>
+          <div className="flex items-center space-x-3">
+            <input
+              {...register('agreeTerms')}
+              type="checkbox"
+              id="agreeTerms"
+              className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500 focus:ring-2"
+            />
+            <label htmlFor="agreeTerms" className="text-sm text-gray-300">
+              I agree to the <Link href="/terms-of-service" className="text-purple-400 hover:text-purple-300">Terms & Conditions</Link>
             </label>
-            {getErrorMessage('agreeTerms')}
           </div>
         )}
+        {isSignUp && getErrorMessage('agreeTerms')}
         
-        <div className="pt-2">
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="auth-button-primary"
-          >
-            {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-            {isSignUp ? 'Create account' : 'Sign In'}
-          </Button>
-        </div>
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full h-12 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50"
+        >
+          {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+          {isSignUp ? 'Create account' : 'Sign In'}
+        </Button>
       </form>
 
+      {/* Divider */}
       <div className="flex items-center my-6">
-        <hr className="flex-grow border-gray-300 dark:border-gray-600" />
-        <span className="mx-4 text-sm text-gray-500 dark:text-gray-400">Or register with</span>
-        <hr className="flex-grow border-gray-300 dark:border-gray-600" />
+        <hr className="flex-grow border-gray-600" />
+        <span className="mx-4 text-xs text-gray-500 font-medium">OR CONTINUE WITH</span>
+        <hr className="flex-grow border-gray-600" />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <button className="auth-button-secondary" onClick={handleGoogleSignIn} disabled={isLoading}>
-            <svg className="w-5 h-5" viewBox="0 0 48 48">
-              <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
-              <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
-              <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
-              <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C42.022,35.242,44,30.038,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
-            </svg>
-            Google
+      {/* Social buttons */}
+      <div className="grid grid-cols-2 gap-4">
+        <button 
+          onClick={handleGoogleSignIn} 
+          disabled={isLoading}
+          className="h-12 flex items-center justify-center gap-3 bg-gray-700/50 hover:bg-gray-700 border border-gray-600 rounded-lg text-white font-medium transition-colors"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 48 48">
+            <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
+            <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
+            <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
+            <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C42.022,35.242,44,30.038,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
+          </svg>
+          Google
         </button>
-        <button className="auth-button-secondary" disabled>
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C9.656 0 7.817.918 6.68 2.375c-1.137 1.458-1.32 3.666-.375 5.75-.956.478-2.022.717-3.2.717C1.925 8.842.859 8.602 0 8.125c.945-2.084.762-4.292-.375-5.75C.817.918 2.656 0 5 0h7zm0 24c2.344 0 4.183-.918 5.32-2.375 1.137-1.458 1.32-3.666.375-5.75.956-.478 2.022-.717 3.2-.717 1.178 0 2.244.24 3.2.717-.945 2.084-.762 4.292.375 5.75C22.817 23.082 20.978 24 18.634 24H12z"/></svg>
-            Apple
+        <button 
+          className="h-12 flex items-center justify-center gap-3 bg-gray-700/50 hover:bg-gray-700 border border-gray-600 rounded-lg text-white font-medium transition-colors opacity-50 cursor-not-allowed"
+          disabled
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+          </svg>
+          Apple
         </button>
       </div>
-
-       <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-            <Link href="/" className="flex items-center justify-center h-10 w-10 rounded-full bg-gray-800 text-white font-bold text-lg shadow-lg">
-                N
-            </Link>
-       </div>
     </div>
   );
 }
