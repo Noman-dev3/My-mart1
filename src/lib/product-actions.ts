@@ -143,6 +143,14 @@ const questionSchema = z.object({
     authorId: z.string(),
 });
 
+const reviewSchema = z.object({
+    productId: z.string(),
+    rating: z.number().min(1).max(5),
+    comment: z.string().min(10, "Comment must be at least 10 characters.").max(1000, "Comment cannot be more than 1000 characters."),
+    author: z.string(),
+    authorId: z.string(),
+});
+
 
 export async function addProduct(values: ProductFormValues) {
     const supabase = createServerActionClient({ cookies });
@@ -322,6 +330,58 @@ export async function askProductQuestion(data: z.infer<typeof questionSchema>) {
     revalidatePath(`/product/${productId}`);
 
     return { success: true, question: newQuestion };
+}
+
+
+export async function addProductReview(data: z.infer<typeof reviewSchema>) {
+    const supabase = createServerActionClient({ cookies });
+    const { productId, rating, comment, author, authorId } = reviewSchema.parse(data);
+    
+    const { data: product, error: fetchError } = await supabase
+        .from('products')
+        .select('reviews_data, rating, reviews')
+        .eq('id', productId)
+        .single();
+
+    if (fetchError || !product) {
+        return { success: false, error: "Product not found." };
+    }
+    
+    const currentReviews = (product.reviews_data as Product['reviews_data']) || [];
+
+    // Optional: Prevent duplicate reviews
+    if (currentReviews.some(review => review.author === author)) {
+        return { success: false, error: "You have already submitted a review for this product." };
+    }
+
+    const newReview = {
+        author,
+        rating,
+        comment,
+        date: new Date().toISOString(),
+    };
+
+    const updatedReviews = [...currentReviews, newReview];
+    const newTotalReviews = updatedReviews.length;
+    const newAverageRating = updatedReviews.reduce((sum, r) => sum + r.rating, 0) / newTotalReviews;
+
+    const { error: updateError } = await supabase
+        .from('products')
+        .update({
+            reviews_data: updatedReviews,
+            reviews: newTotalReviews,
+            rating: newAverageRating,
+        })
+        .eq('id', productId);
+
+    if (updateError) {
+        console.error("Error adding review:", updateError);
+        return { success: false, error: "Failed to add your review." };
+    }
+
+    revalidatePath(`/product/${productId}`);
+
+    return { success: true };
 }
 
 

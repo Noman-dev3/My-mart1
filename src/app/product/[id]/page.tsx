@@ -5,10 +5,10 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2, HelpCircle, Barcode, Printer } from 'lucide-react';
+import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2, HelpCircle, Barcode, Printer, Star } from 'lucide-react';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import { getProductById, type Product, askProductQuestion } from '@/lib/product-actions';
+import { getProductById, type Product, askProductQuestion, addProductReview } from '@/lib/product-actions';
 import ProductRating from '@/components/product-rating';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -23,7 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 import JsBarcode from 'jsbarcode';
@@ -36,13 +36,19 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { cn } from '@/lib/utils';
 
 
 const questionFormSchema = z.object({
   text: z.string().min(10, "Question must be at least 10 characters.").max(500, "Question must be at most 500 characters."),
 });
-
 type QuestionFormValues = z.infer<typeof questionFormSchema>;
+
+const reviewFormSchema = z.object({
+  rating: z.number().min(1, "Please select a rating."),
+  comment: z.string().min(10, "Review must be at least 10 characters.").max(1000, "Review must be at most 1000 characters."),
+});
+type ReviewFormValues = z.infer<typeof reviewFormSchema>;
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -197,6 +203,14 @@ export default function ProductDetailPage() {
         description: "Your question has been sent and will be answered shortly."
     });
   }
+
+  const handleReviewSubmitted = () => {
+    toast({
+      title: "Review Submitted!",
+      description: "Thank you for your feedback."
+    });
+  }
+
 
   if (isLoadingProduct) {
     return (
@@ -373,6 +387,21 @@ export default function ProductDetailPage() {
                             <p className="text-sm text-muted-foreground">No reviews yet.</p>
                          )}
                       </div>
+                      <Separator className="my-6"/>
+                        {!userLoading && (
+                            user ? (
+                                <ReviewForm productId={product.id} user={user} onReviewSubmitted={handleReviewSubmitted} />
+                            ) : (
+                                <div className="text-center bg-muted/50 p-4 rounded-md">
+                                    <p className="text-sm text-muted-foreground">You must be logged in to write a review.</p>
+                                    <Button asChild variant="link" className="p-0 h-auto">
+                                        <Link href={`/login?redirect=/product/${product.id}`}>
+                                            Login or Sign Up
+                                        </Link>
+                                    </Button>
+                                </div>
+                            )
+                        )}
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="qa">
@@ -493,4 +522,98 @@ function QuestionForm({ productId, productName, user, onQuestionSubmitted }: { p
             </form>
         </Form>
     );
+}
+
+function ReviewForm({ productId, user, onReviewSubmitted }: { productId: string, user: any, onReviewSubmitted: () => void }) {
+    const form = useForm<ReviewFormValues>({
+        resolver: zodResolver(reviewFormSchema),
+        defaultValues: { rating: 0, comment: "" }
+    });
+
+    const { toast } = useToast();
+
+    const onSubmit = async (values: ReviewFormValues) => {
+        const result = await addProductReview({
+            productId,
+            rating: values.rating,
+            comment: values.comment,
+            author: user.user_metadata.full_name || user.email,
+            authorId: user.id,
+        });
+
+        if (result.success) {
+            form.reset();
+            onReviewSubmitted();
+        } else {
+            toast({
+                title: "Submission Failed",
+                description: result.error,
+                variant: 'destructive'
+            });
+        }
+    }
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <h4 className="font-headline font-semibold">Write a Review</h4>
+                 <FormField
+                    control={form.control}
+                    name="rating"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Your Rating</FormLabel>
+                            <FormControl>
+                                <StarRatingInput value={field.value} onChange={field.onChange} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="comment"
+                    render={({ field }) => (
+                        <FormItem>
+                           <FormLabel>Your Review</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Share your thoughts on the product..." {...field} rows={4} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? <Loader2 className="animate-spin mr-2"/> : null}
+                    Submit Review
+                </Button>
+            </form>
+        </Form>
+    );
+}
+
+const StarRatingInput = ({ value, onChange }: { value: number, onChange: (value: number) => void}) => {
+    const [hoverValue, setHoverValue] = useState(0);
+
+    return (
+        <div className="flex items-center gap-1">
+            {[1,2,3,4,5].map(star => (
+                <button
+                    type="button"
+                    key={star}
+                    onMouseEnter={() => setHoverValue(star)}
+                    onMouseLeave={() => setHoverValue(0)}
+                    onClick={() => onChange(star)}
+                    className="p-1"
+                >
+                    <Star
+                        className={cn(
+                            'h-6 w-6 transition-colors',
+                            star <= (hoverValue || value) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'
+                        )}
+                    />
+                </button>
+            ))}
+        </div>
+    )
 }
