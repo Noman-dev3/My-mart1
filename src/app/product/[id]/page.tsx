@@ -37,6 +37,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 
 const questionFormSchema = z.object({
@@ -374,14 +375,19 @@ export default function ProductDetailPage() {
                     <AccordionContent>
                       <div className="space-y-6 mt-2">
                         {product.reviews_data?.map((review, index) => (
-                          <div key={index}>
-                            <div className="flex items-center gap-2">
-                              <ProductRating rating={review.rating} />
-                              <p className="font-semibold">{review.author}</p>
-                              <p className="text-xs text-muted-foreground">{new Date(review.date).toLocaleDateString()}</p>
-                            </div>
-                            <p className="text-muted-foreground mt-2">{review.comment}</p>
-                          </div>
+                           <div key={index} className="flex items-start gap-4">
+                             <Avatar>
+                               <AvatarFallback>{review.author.charAt(0)}</AvatarFallback>
+                             </Avatar>
+                             <div className="flex-1">
+                               <div className="flex items-center gap-2">
+                                 <p className="font-semibold">{review.author}</p>
+                                 <p className="text-xs text-muted-foreground">{new Date(review.date).toLocaleDateString()}</p>
+                               </div>
+                               <ProductRating rating={review.rating} className="mt-1" />
+                               <p className="text-muted-foreground mt-2 text-sm">{review.comment}</p>
+                             </div>
+                           </div>
                         ))}
                          {(!product.reviews_data || product.reviews_data.length === 0) && (
                             <p className="text-sm text-muted-foreground">No reviews yet.</p>
