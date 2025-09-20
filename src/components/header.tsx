@@ -1,12 +1,11 @@
-
 'use client';
 
 import Link from 'next/link';
-import { Search, Menu, User, Moon, Sun } from 'lucide-react';
+import { Search, Menu, User, Moon, Sun, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/icons';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { CartSheet } from '@/components/cart-sheet';
 import { useContext, useState, useEffect } from 'react';
@@ -22,7 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { signOutUser } from '@/lib/auth-actions';
-import { ShoppingCart, LayoutDashboard } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 
 export default function Header() {
   const pathname = usePathname();
@@ -33,6 +32,7 @@ export default function Header() {
   const { setTheme } = useTheme();
 
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Sync search input with URL params on navigation
@@ -152,56 +152,51 @@ export default function Header() {
                   </form>
                 </DropdownMenuContent>
             </DropdownMenu>
-          ) : null}
+          ) : (
+            <Button asChild variant="ghost" size="icon">
+                <Link href="/login">
+                    <User className="h-6 w-6" />
+                </Link>
+            </Button>
+          )}
+
           <div className="md:hidden">
-            <Sheet>
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon">
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <SheetHeader>
-                    <SheetTitle className="sr-only">Mobile Menu</SheetTitle>
-                </SheetHeader>
-                <div className="flex flex-col h-full">
-                  <div className="p-4 border-b">
-                    <Link href="/" className="flex items-center gap-2">
+                <SheetHeader className="p-4 border-b">
+                  <div className="flex justify-between items-center">
+                    <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
                       <Icons.logo className="h-6 w-6 text-primary" />
                       <span className="font-headline text-xl font-bold text-primary">My Mart</span>
                     </Link>
+                    <SheetClose>
+                      <X className="h-6 w-6" />
+                    </SheetClose>
                   </div>
-                  <div className="p-4 flex-1 flex flex-col gap-4">
-                    {showSearch && (
-                      <form onSubmit={handleSearchSubmit} className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input 
-                          type="search" 
-                          placeholder="Search..." 
-                          className="pl-10 h-10 focus-visible:ring-0 focus-visible:ring-offset-0"
-                          value={searchQuery}
-                          onChange={handleSearchChange}
-                        />
-                      </form>
-                    )}
-                    <nav className="flex flex-col gap-2 mb-auto">
-                      <Link href="/" className="text-lg font-medium hover:text-primary transition-colors">Home</Link>
-                      <Link href="/products" className="text-lg font-medium hover:text-primary transition-colors">Products</Link>
-                      <Link href="/bakery" className="text-lg font-medium hover:text-primary transition-colors">Bakery</Link>
-                    </nav>
-                     {user ? (
-                        <div className="border-t pt-4">
-                            <p className="font-medium">{user.user_metadata.full_name || 'User'}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                            <div className="flex flex-col gap-2 mt-4">
-                                <Button asChild className="w-full"><Link href="/account">My Account</Link></Button>
-                                <form action={signOutUser}>
-                                  <Button type="submit" variant="outline" className="w-full">Log Out</Button>
-                                </form>
-                            </div>
-                        </div>
-                    ) : null}
-                  </div>
+                </SheetHeader>
+                <div className="p-4 flex-1 flex flex-col gap-4">
+                  {showSearch && (
+                    <form onSubmit={handleSearchSubmit} className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input 
+                        type="search" 
+                        placeholder="Search..." 
+                        className="pl-10 h-10"
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                      />
+                    </form>
+                  )}
+                  <nav className="flex flex-col gap-2 mb-auto">
+                    <Link href="/" className="text-lg font-medium hover:text-primary transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Home</Link>
+                    <Link href="/products" className="text-lg font-medium hover:text-primary transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Products</Link>
+                    <Link href="/bakery" className="text-lg font-medium hover:text-primary transition-colors" onClick={() => setIsMobileMenuOpen(false)}>Bakery</Link>
+                  </nav>
                 </div>
               </SheetContent>
             </Sheet>
