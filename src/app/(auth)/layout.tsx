@@ -15,6 +15,7 @@ export default function AuthLayout({
   const router = useRouter();
 
   useEffect(() => {
+    // If loading is finished and we have a user, redirect them away.
     if (!loading && user) {
       router.replace('/');
     }

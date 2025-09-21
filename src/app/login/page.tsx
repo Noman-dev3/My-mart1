@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { registerUser, signInUser } from '@/lib/auth-actions';
+import { signInUser } from '@/lib/auth-actions';
 import { Loader2, ChevronDown } from 'lucide-react';
 import { Icons } from '@/components/icons';
 
