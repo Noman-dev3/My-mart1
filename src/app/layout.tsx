@@ -25,7 +25,7 @@ export default async function RootLayout({
   const primaryColor = settings?.theme?.primaryColor || '177 97% 40%';
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="h-full">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -34,7 +34,7 @@ export default async function RootLayout({
           {`:root { --primary-dynamic: ${primaryColor}; }`}
         </style>
       </head>
-      <body className="font-body antialiased">
+      <body className="font-body antialiased h-full">
         <ThemeProvider
             attribute="class"
             defaultTheme="system"
