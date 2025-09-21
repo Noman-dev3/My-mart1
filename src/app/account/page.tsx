@@ -108,6 +108,14 @@ export default function ProfilePage() {
         title: "Profile Updated",
         description: "Your profile information has been updated successfully.",
       });
+      // Add profile update to the activity log on the client side
+      const newActivity: ActivityLogItem = {
+          icon: User,
+          action: 'Updated your profile information.',
+          time: 'just now',
+          date: new Date(),
+      };
+      setActivityLog(prevLog => [newActivity, ...prevLog]);
     } else {
       toast({
         title: "Update Failed",
