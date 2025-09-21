@@ -27,9 +27,9 @@ export default function AuthLayout({
     );
   }
 
-  // This container ensures its content is centered vertically and horizontally.
+  // This container now uses fixed positioning to cover the whole screen.
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[#2C2C2C] p-4">
+    <div className="fixed inset-0 z-10 flex items-center justify-center bg-[#2C2C2C] p-4">
         {children}
     </div>
   );

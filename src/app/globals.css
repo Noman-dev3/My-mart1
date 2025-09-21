@@ -1,81 +1,98 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    /* A professional, cool-toned light theme */
+    --background: 220 20% 98%;
+    --foreground: 220 15% 20%;
+    --card: 220 20% 100%;
+    --card-foreground: 220 15% 20%;
+    --popover: 220 20% 100%;
+    --popover-foreground: 220 15% 20%;
+    
     --primary: var(--primary-dynamic);
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%; /* Keep this for good contrast on primary color */
+    
+    --secondary: 220 15% 94%;
+    --secondary-foreground: 220 10% 25%;
+    
+    --muted: 220 15% 96%;
+    --muted-foreground: 220 10% 45%;
+    
+    --accent: 220 15% 92%;
+    --accent-foreground: 220 10% 15%;
+    
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 220 15% 90%;
+    --input: 220 15% 90%;
+    --ring: var(--primary-dynamic); /* Ring color should match the primary action color */
+
+    /* Chart colors remain the same, they are often distinct */
     --chart-1: 177 97% 70%;
     --chart-2: 177 38% 45%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
 
-    /* Sidebar theme for light mode */
-    --sidebar-background: 220 13% 95%;
-    --sidebar-foreground: 222.2 47.4% 11.2%;
+    /* Refined Sidebar theme for light mode */
+    --sidebar-background: 220 15% 96%;
+    --sidebar-foreground: 220 10% 25%;
     --sidebar-primary: var(--primary-dynamic);
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 214.3 31.8% 91.4%;
-    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
-    --sidebar-border: 214.3 31.8% 88%;
-    --sidebar-ring: 222.2 84% 4.9%;
+    --sidebar-accent: 220 15% 90%;
+    --sidebar-accent-foreground: 220 10% 15%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: var(--primary-dynamic);
   }
 
   .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 2% 78%;
-    --card: 224 71.4% 4.1%;
-    --card-foreground: 210 2% 78%;
-    --popover: 224 71.4% 4.1%;
-    --popover-foreground: 210 2% 78%;
+    /* A modern, cool-toned dark theme */
+    --background: 220 15% 10%;
+    --foreground: 220 15% 80%;
+    --card: 220 15% 12%;
+    --card-foreground: 220 15% 80%;
+    --popover: 220 15% 12%;
+    --popover-foreground: 220 15% 80%;
+
     --primary: var(--primary-dynamic);
     --primary-foreground: 210 14% 5%;
-    --secondary: 210 22% 16%;
-    --secondary-foreground: 210 2% 78%;
-    --muted: 210 22% 16%;
-    --muted-foreground: 210 2% 60%;
-    --accent: 177 38% 45%;
-    --accent-foreground: 210 14% 5%;
-    --destructive: 0 84.2% 60.2%;
+
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 220 10% 85%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 10% 65%;
+    
+    --accent: 220 15% 22%;
+    --accent-foreground: 220 10% 95%;
+
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 210 22% 20%;
-    --input: 210 22% 20%;
-    --ring: 177 97% 70%;
+
+    --border: 220 15% 25%;
+    --input: 220 15% 25%;
+    --ring: var(--primary-dynamic);
+
+    /* Chart colors remain the same */
     --chart-1: 177 97% 70%;
     --chart-2: 177 38% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-
-    /* Sidebar theme for dark mode */
-    --sidebar-background: 210 20% 8%;
-    --sidebar-foreground: 210 5% 70%;
+    
+    /* Refined Sidebar theme for dark mode */
+    --sidebar-background: 220 15% 8%;
+    --sidebar-foreground: 220 10% 70%;
     --sidebar-primary: var(--primary-dynamic);
     --sidebar-primary-foreground: 210 14% 5%;
-    --sidebar-accent: 210 22% 16%;
-    --sidebar-accent-foreground: 177 97% 70%;
-    --sidebar-border: 210 22% 14%;
-    --sidebar-ring: 177 97% 70%;
+    --sidebar-accent: 220 15% 18%;
+    --sidebar-accent-foreground: 210 5% 90%;
+    --sidebar-border: 220 15% 14%;
+    --sidebar-ring: var(--primary-dynamic);
   }
 }
 
@@ -89,20 +106,22 @@
 }
 
 @layer components {
+    /* More subtle and professional button glow */
     .btn-primary {
         @apply bg-primary text-primary-foreground hover:bg-primary/90;
-        box-shadow: 0 0 15px 0px hsl(var(--primary) / 0.5);
+        box-shadow: 0 4px 14px 0px hsl(var(--primary) / 0.25);
     }
 }
 
 @layer utilities {
+    /* FIXED: These classes now use your theme variables! */
     .auth-input {
-      @apply w-full h-12 bg-[#3c3c3c] rounded-lg px-4 text-white placeholder-gray-400 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 focus:ring-offset-gray-800;
+      @apply w-full h-12 bg-card rounded-lg px-4 text-foreground placeholder:text-muted-foreground border border-input focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring focus:ring-offset-background;
     }
     .auth-button-primary {
-       @apply w-full h-12 rounded-lg text-white font-bold bg-indigo-600 shadow-lg shadow-indigo-600/30 transition-all duration-300 hover:bg-indigo-700 hover:shadow-indigo-600/50;
+       @apply w-full h-12 rounded-lg text-primary-foreground font-bold bg-primary shadow-lg shadow-primary/30 transition-all duration-300 hover:bg-primary/90 hover:shadow-primary/50;
     }
     .auth-button-secondary {
-      @apply w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-[#3c3c3c] border border-gray-600 text-white font-semibold hover:bg-gray-700 transition-colors;
+      @apply w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-secondary border border-border text-secondary-foreground font-semibold hover:bg-accent hover:text-accent-foreground transition-colors;
     }
 }
