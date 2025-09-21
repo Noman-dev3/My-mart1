@@ -66,7 +66,9 @@ export async function signInUser(values: z.infer<typeof loginSchema>) {
     }
 
     revalidatePath('/', 'layout');
-    redirect('/');
+    // We don't redirect here anymore, the client-side will handle it
+    // to allow for redirecting to the intended page.
+    // redirect('/');
 }
 
 
