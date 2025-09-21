@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -12,11 +11,6 @@ const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   email: z.string().email('Please enter a valid email.'),
   password: z.string().min(6, 'Password must be at least 6 characters.'),
-});
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1, 'Password is required.'),
 });
 
 const profileSchema = z.object({
@@ -51,29 +45,6 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
   return { success: true, message: 'Please check your email to verify your account.' };
 }
 
-
-export async function signInUser(values: z.infer<typeof loginSchema>) {
-    const supabase = createServerActionClient({ cookies });
-    const { email, password } = loginSchema.parse(values);
-
-    const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-    });
-
-    if (error) {
-        return { success: false, error: 'Invalid login credentials.' };
-    }
-
-    return { success: true };
-}
-
-
-export async function signOutUser() {
-    const supabase = createServerActionClient({ cookies });
-    await supabase.auth.signOut();
-    return { success: true };
-}
 
 export async function signInWithGoogle() {
   const supabase = createServerActionClient({ cookies });
