@@ -21,14 +21,14 @@ export default function AuthLayout({
 
   if (loading || user) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-gray-900">
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-[#2C2C2C] p-4">
+    <div className="flex min-h-screen w-full items-center justify-center bg-[#2C2C2C] p-4">
         {children}
     </div>
   );
