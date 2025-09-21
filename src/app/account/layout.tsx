@@ -22,6 +22,12 @@ export default function AccountLayout({
   const router = useRouter();
   const { user, loading } = useContext(AuthContext);
 
+  const handleLogout = async () => {
+    await signOutUser();
+    router.push('/');
+    router.refresh();
+  };
+
   if (loading) {
     return (
         <div className="flex flex-col min-h-screen">
@@ -84,12 +90,10 @@ export default function AccountLayout({
                       </Button>
                     </Link>
                   ))}
-                  <form action={signOutUser} className="w-full">
-                    <Button variant="ghost" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Logout
-                    </Button>
-                  </form>
+                  <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                  </Button>
                 </nav>
               </div>
             </aside>

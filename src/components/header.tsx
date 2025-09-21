@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, Menu, User, Moon, Sun, X } from 'lucide-react';
+import { Search, Menu, User, Moon, Sun, X, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Icons } from '@/components/icons';
@@ -57,6 +57,12 @@ export default function Header() {
     const search = current.toString();
     const query = search ? `?${search}` : '';
     router.push(`${pathname}${query}`);
+  };
+  
+  const handleLogout = async () => {
+    await signOutUser();
+    router.push('/');
+    router.refresh();
   };
   
   const userInitial = user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U';
@@ -146,13 +152,10 @@ export default function Header() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <form action={signOutUser}>
-                    <button type="submit" className="w-full">
-                      <DropdownMenuItem>
-                        Log out
-                      </DropdownMenuItem>
-                    </button>
-                  </form>
+                  <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
           ) : (

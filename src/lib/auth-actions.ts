@@ -73,7 +73,8 @@ export async function signInUser(values: z.infer<typeof loginSchema>) {
 export async function signOutUser() {
     const supabase = createServerActionClient({ cookies });
     await supabase.auth.signOut();
-    redirect('/');
+    revalidatePath('/', 'layout');
+    return { success: true };
 }
 
 export async function signInWithGoogle() {
