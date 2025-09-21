@@ -34,7 +34,7 @@ export default function BakeryProductCard({ product }: BakeryProductCardProps) {
         description: 'You must be logged in to place a custom order.',
         variant: 'destructive',
       });
-      router.push('/signin?redirect=/bakery');
+      router.push('/login?redirect=/bakery');
       return;
     }
     
