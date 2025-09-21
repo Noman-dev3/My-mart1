@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -25,7 +24,7 @@ const profileSchema = z.object({
 
 async function getSiteUrl() {
     const settings = await getSettings();
-    return settings?.siteUrl || 'http://localhost:3000';
+    return settings?.siteUrl || 'https://6000-firebase-studio-1757434852092.cluster-xpmcxs2fjnhg6xvn446ubtgpio.cloudworkstations.dev';
 }
 
 export async function registerUser(values: z.infer<typeof registerSchema>) {
@@ -40,7 +39,7 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
       data: {
         full_name: name,
       },
-      emailRedirectTo: `${siteUrl}/signin`,
+      emailRedirectTo: `${siteUrl}/login`,
     },
   });
 
@@ -66,9 +65,7 @@ export async function signInUser(values: z.infer<typeof loginSchema>) {
     }
 
     revalidatePath('/', 'layout');
-    // We don't redirect here anymore, the client-side will handle it
-    // to allow for redirecting to the intended page.
-    // redirect('/');
+    return { success: true };
 }
 
 
@@ -91,7 +88,7 @@ export async function signInWithGoogle() {
 
   if (error) {
     console.error('Error signing in with Google:', error);
-    redirect('/signin?error=Could not authenticate with Google');
+    redirect('/login?error=Could not authenticate with Google');
   }
 
   redirect(data.url);
@@ -109,6 +106,7 @@ export async function updateUserProfile(values: z.infer<typeof profileSchema>) {
         return { success: false, error: error.message };
     }
     
+    // Revalidate the account path to show updated info
     revalidatePath('/account');
     return { success: true };
 }

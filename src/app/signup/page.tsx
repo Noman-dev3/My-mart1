@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -13,12 +12,17 @@ import { useToast } from '@/hooks/use-toast';
 import { registerUser, signInWithGoogle } from '@/lib/auth-actions';
 import { Icons } from '@/components/icons';
 import Image from 'next/image';
+import { Checkbox } from '@/components/ui/checkbox';
 import AnimatedAuthText from '@/components/animated-auth-text';
 
 const signupSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
+  firstName: z.string().min(1, { message: 'First name is required' }),
+  lastName: z.string().min(1, { message: 'Last name is required' }),
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  agreeTerms: z.boolean().refine((val) => val === true, {
+    message: 'You must agree to the terms and conditions',
+  }),
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
@@ -29,11 +33,16 @@ export default function SignupPage() {
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { name: '', email: '', password: '' },
+    defaultValues: { firstName: '', lastName: '', email: '', password: '', agreeTerms: false },
   });
 
   const onSubmit = async (data: SignupFormValues) => {
-    const result = await registerUser(data);
+    const result = await registerUser({
+      name: `${data.firstName} ${data.lastName}`,
+      email: data.email,
+      password: data.password,
+    });
+    
     if (result.success) {
       toast({ 
         title: 'Account Created!', 
@@ -55,124 +64,103 @@ export default function SignupPage() {
   );
 
   const AppleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M19.3,4.992c-1.722-1.74-4.22-1.833-5.908-.135-1.74,1.722-1.833,4.22-.135,5.908,1.722,1.74,4.22,1.833,5.908.135,1.74-1.722,1.833-4.22.135-5.908m-6.079,3.424c.038.528-.188,1.267-.533,1.871-.413.71-.962,1.488-1.71,1.488-.71,0-1.125-.638-1.575-1.254-.525-.722-1.074-1.883-1.025-2.887.05-.989.813-2.074,1.6-2.074.675,0,1.213.6,1.65,1.225.388.54.85,1.488,1.593,1.629m5.542.457c-1.65,0-2.812-1.225-2.812-1.225s.087-1.425.95-2.062c.787-.563,1.85-.563,2.287-.037.025.025-1.1,1.213-1.1,2.05,0,.925.962,1.312,1.587,1.012a.69.69,0,0,0,.1-.25Z"/></svg>
+    <svg viewBox="0 0 24 24" fill="currentColor" {...props}><path d="M12 0C9.656 0 7.817.918 6.68 2.375c-1.137 1.458-1.32 3.666-.375 5.75-.956.478-2.022.717-3.2.717C1.925 8.842.859 8.602 0 8.125c.945-2.084.762-4.292-.375-5.75C.817.918 2.656 0 5 0h7zm0 24c2.344 0 4.183-.918 5.32-2.375 1.137-1.458 1.32-3.666-.375-5.75.956-.478.2.022-.717 3.2-.717 1.178 0 2.244.24 3.2.717-.945 2.084-.762 4.292.375 5.75C22.817 23.082 20.978 24 18.634 24H12z"/></svg>
   );
 
 
   return (
-    <main className="w-full min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute inset-0 lg:hidden">
+    <main className="w-full max-w-4xl grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl z-20">
+        <div className="hidden lg:block relative">
             <Image
-              src="https://picsum.photos/seed/auth/800/1200"
-              alt="Background"
-              fill
-              className="z-0 object-cover"
-              data-ai-hint="team meeting"
+                src="https://picsum.photos/seed/signup-ui/800/1200"
+                alt="People in a meeting"
+                width="800"
+                height="1200"
+                data-ai-hint="team meeting"
+                className="h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-black/60 z-10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent p-8 flex flex-col justify-between">
+                <Link href="/" className="w-fit">
+                    <Button variant="ghost" className="rounded-full px-4 text-white/80 hover:text-white hover:bg-white/10 group">
+                        <Icons.logo className="h-5 w-5 mr-2 text-white/80 group-hover:text-white transition-colors"/> My Mart
+                    </Button>
+                </Link>
+                <AnimatedAuthText />
+            </div>
         </div>
 
-       <div className="w-full max-w-4xl grid lg:grid-cols-2 shadow-2xl overflow-hidden rounded-2xl z-20 bg-transparent lg:bg-card">
-          <div className="p-8 sm:p-12 flex flex-col justify-center bg-card/80 backdrop-blur-md lg:bg-card lg:backdrop-blur-none rounded-t-2xl lg:rounded-l-2xl lg:rounded-tr-none">
-            <Link href="/" className="w-fit">
-              <Button variant="outline" className="rounded-full px-4 mb-8 text-muted-foreground group">
-                 <Icons.logo className="h-5 w-5 mr-2 text-primary group-hover:text-primary transition-colors"/> My Mart
-              </Button>
-            </Link>
-
-            <h1 className="text-3xl font-bold font-headline mb-2">Create an account</h1>
-            <p className="text-muted-foreground text-sm mb-8">Sign up and get started with My Mart.</p>
+        <div className="p-8 sm:p-12 flex flex-col justify-center bg-gray-800 rounded-2xl lg:rounded-l-none lg:rounded-r-2xl">
+            <div className="lg:hidden mb-8">
+                 <Link href="/" className="w-fit">
+                    <Button variant="ghost" className="rounded-full px-4 text-white/80 hover:text-white hover:bg-white/10 group">
+                        <Icons.logo className="h-5 w-5 mr-2 text-white/80 group-hover:text-white transition-colors"/> My Mart
+                    </Button>
+                </Link>
+            </div>
+            <h1 className="text-3xl font-bold font-headline mb-2 text-white">Create an Account</h1>
+            <p className="text-gray-400 text-sm mb-8">Get started with My Mart today.</p>
             
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="firstName" render={({ field }) => ( <FormItem> <FormLabel className="text-xs text-gray-300">First Name</FormLabel> <FormControl><Input className="auth-input" placeholder="John" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                    <FormField control={form.control} name="lastName" render={({ field }) => ( <FormItem> <FormLabel className="text-xs text-gray-300">Last Name</FormLabel> <FormControl><Input className="auth-input" placeholder="Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                </div>
+                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel className="text-xs text-gray-300">Email</FormLabel> <FormControl><Input className="auth-input" type="email" placeholder="you@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="password" render={({ field }) => ( <FormItem> <FormLabel className="text-xs text-gray-300">Password</FormLabel> <FormControl><Input className="auth-input" type="password" placeholder="••••••••" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                 <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Full Name</FormLabel>
-                      <FormControl>
-                        <Input className="bg-muted/50 border-0 rounded-xl h-12" placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                    control={form.control}
+                    name="agreeTerms"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md py-2">
+                        <FormControl>
+                            <Checkbox checked={field.value} onCheckedChange={field.onChange} className="border-gray-500"/>
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                            <FormLabel className="text-sm text-gray-400 font-normal">
+                            I agree to the <Link href="/terms-of-service" className="text-indigo-400 hover:underline">Terms & Conditions</Link>
+                            </FormLabel>
+                            <FormMessage />
+                        </div>
+                        </FormItem>
+                    )}
                 />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Email</FormLabel>
-                      <FormControl>
-                        <Input className="bg-muted/50 border-0 rounded-xl h-12" type="email" placeholder="you@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs">Password</FormLabel>
-                      <FormControl>
-                        <Input className="bg-muted/50 border-0 rounded-xl h-12" type="password" placeholder="••••••••" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full font-bold mt-4 h-12 rounded-xl" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Creating Account...' : 'Create an account'}
+                <Button type="submit" className="auth-button-primary" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? 'Creating Account...' : 'Create an Account'}
                 </Button>
               </form>
             </Form>
 
              <div className="relative my-8">
                 <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t"></span>
+                    <span className="w-full border-t border-gray-600"></span>
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card/80 lg:bg-card px-2 text-muted-foreground">Or continue with</span>
+                    <span className="bg-gray-800 px-2 text-gray-400">Or continue with</span>
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="h-12 rounded-xl"><AppleIcon className="h-5 w-5 mr-2" /> Apple</Button>
-                 <form action={signInWithGoogle}>
-                  <Button variant="outline" className="h-12 rounded-xl w-full">
-                    <GoogleIcon className="h-5 w-5 mr-2" /> Google
-                  </Button>
+                 <button className="auth-button-secondary">
+                  <AppleIcon className="h-5 w-5" />
+                  Apple
+                </button>
+                <form action={signInWithGoogle}>
+                  <button type="submit" className="auth-button-secondary w-full">
+                    <GoogleIcon className="h-5 w-5" />
+                     Google
+                  </button>
                 </form>
             </div>
 
             <div className="mt-8 text-center text-sm">
-              <p className="text-muted-foreground">
+              <p className="text-gray-400">
                 Already have an account?{" "}
-                <Link href="/login" className="underline text-primary font-semibold hover:text-primary/80">
+                <Link href="/login" className="underline text-indigo-400 font-semibold hover:text-indigo-300">
                   Sign in
                 </Link>
               </p>
             </div>
-          </div>
-          <div className="hidden lg:block relative">
-            <Image
-              src="https://picsum.photos/seed/auth/800/1200"
-              alt="People in a meeting"
-              width="800"
-              height="1200"
-              data-ai-hint="team meeting"
-              className="h-full w-full object-cover"
-            />
-             <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-background/20 to-transparent p-8 flex flex-col justify-end">
-                <AnimatedAuthText />
-             </div>
-          </div>
-        </div>
-        <div className="lg:hidden absolute bottom-8 z-10 text-center px-8">
-            <AnimatedAuthText />
         </div>
     </main>
   );

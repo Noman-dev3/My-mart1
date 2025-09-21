@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -31,7 +30,8 @@ export default function AnimatedAuthText() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.5, ease: 'easeInOut' }}
-          className="text-3xl font-headline font-bold text-white text-shadow"
+          className="text-3xl font-headline font-bold text-white"
+          style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}
         >
           {taglines[index]}
         </motion.p>
