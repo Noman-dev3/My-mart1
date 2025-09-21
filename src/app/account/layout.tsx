@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useContext } from 'react';
 import { AuthContext } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
-import { signOutUser } from '@/lib/auth-actions';
+import { signOutUser } from '@/lib/auth-client-actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, ShoppingCart, LogOut } from 'lucide-react';
 import Header from '@/components/header';
@@ -25,7 +25,6 @@ export default function AccountLayout({
   const handleLogout = async () => {
     await signOutUser();
     router.push('/');
-    router.refresh();
   };
 
   if (loading) {
