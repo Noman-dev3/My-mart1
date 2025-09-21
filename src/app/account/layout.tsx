@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { AuthContext } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { signOutUser } from '@/lib/auth-client-actions';
@@ -22,12 +22,19 @@ export default function AccountLayout({
   const router = useRouter();
   const { user, loading } = useContext(AuthContext);
 
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+
   const handleLogout = async () => {
     await signOutUser();
     router.push('/');
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
         <div className="flex flex-col min-h-screen">
             <Header />
@@ -44,11 +51,6 @@ export default function AccountLayout({
             <Footer />
         </div>
     );
-  }
-
-  if (!user) {
-    router.push('/login');
-    return null;
   }
   
   const userInitial = user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U';
