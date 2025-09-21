@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -22,6 +23,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { signOutUser } from '@/lib/auth-actions';
 import { ShoppingCart } from 'lucide-react';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+
 
 export default function Header() {
   const pathname = usePathname();
@@ -169,6 +172,9 @@ export default function Header() {
               </SheetTrigger>
               <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                 <SheetHeader className="p-4 border-b">
+                   <VisuallyHidden>
+                    <SheetTitle>Mobile Menu</SheetTitle>
+                  </VisuallyHidden>
                   <div className="flex justify-between items-center">
                     <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
                       <Icons.logo className="h-6 w-6 text-primary" />
