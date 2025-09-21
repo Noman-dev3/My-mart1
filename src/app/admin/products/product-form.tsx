@@ -87,7 +87,7 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
         name: '',
         description: '',
         price: undefined,
-        image: 'https://picsum.photos/seed/product/600/600',
+        image: '', // Start with an empty string, placeholder is handled in the backend
         category: 'Electronics',
         brand: '',
         stock_quantity: 0,
@@ -309,10 +309,10 @@ export default function ProductForm({ onSubmit, onCancel, product }: ProductForm
               name="image"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Image URL</FormLabel>
+                  <FormLabel>Image URL (Optional)</FormLabel>
                   <div className="flex gap-2">
                     <FormControl>
-                      <Input placeholder="https://picsum.photos/..." {...field} />
+                      <Input placeholder="Leave empty to use a placeholder" {...field} />
                     </FormControl>
                     <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
                         {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4" />}
