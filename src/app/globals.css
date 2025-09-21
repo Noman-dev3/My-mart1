@@ -96,19 +96,13 @@
 }
 
 @layer utilities {
-    .auth-input-new {
-      @apply w-full h-12 bg-gray-100 dark:bg-gray-700/50 rounded-full px-5 text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 dark:focus:ring-yellow-500 focus:ring-offset-white dark:focus:ring-offset-gray-800 focus:border-transparent;
+    .auth-input {
+      @apply w-full h-12 bg-[#3c3c3c] rounded-lg px-4 text-white placeholder-gray-400 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-400 focus:ring-offset-gray-800;
     }
-
-    .auth-social-button {
-      @apply h-12 w-12 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 transition-colors;
+    .auth-button-primary {
+       @apply w-full h-12 rounded-lg text-white font-bold bg-indigo-600 shadow-lg shadow-indigo-600/30 transition-all duration-300 hover:bg-indigo-700 hover:shadow-indigo-600/50;
     }
-    
-    .auth-input-bonsante {
-      @apply w-full h-12 bg-gray-100/80 rounded-lg px-4 text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 focus:ring-offset-white;
-    }
-    
-    .auth-button-bonsante {
-       @apply w-full h-12 rounded-lg text-white font-bold bg-black shadow-md transition-all duration-300 hover:bg-gray-800 hover:shadow-lg;
+    .auth-button-secondary {
+      @apply w-full h-12 flex items-center justify-center gap-3 rounded-lg bg-[#3c3c3c] border border-gray-600 text-white font-semibold hover:bg-gray-700 transition-colors;
     }
 }

@@ -107,7 +107,6 @@ export async function updateUserProfile(values: z.infer<typeof profileSchema>) {
         return { success: false, error: error.message };
     }
     
-    // Revalidate the account path to show updated info
     revalidatePath('/account');
     return { success: true };
 }
