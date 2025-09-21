@@ -157,7 +157,7 @@ export default function Header() {
             </DropdownMenu>
           ) : (
             <Button asChild variant="ghost" size="icon">
-                <Link href="/login">
+                <Link href="/signin">
                     <User className="h-6 w-6" />
                 </Link>
             </Button>

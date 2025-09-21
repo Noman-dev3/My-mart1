@@ -401,7 +401,7 @@ export default function ProductDetailPage() {
                                 <div className="text-center bg-muted/50 p-4 rounded-md">
                                     <p className="text-sm text-muted-foreground">You must be logged in to write a review.</p>
                                     <Button asChild variant="link" className="p-0 h-auto">
-                                        <Link href={`/login?redirect=/product/${product.id}`}>
+                                        <Link href={`/signin?redirect=/product/${product.id}`}>
                                             Login or Sign Up
                                         </Link>
                                     </Button>
@@ -439,7 +439,7 @@ export default function ProductDetailPage() {
                                 <div className="text-center bg-muted/50 p-4 rounded-md">
                                     <p className="text-sm text-muted-foreground">You must be logged in to ask a question.</p>
                                     <Button asChild variant="link" className="p-0 h-auto">
-                                        <Link href={`/login?redirect=/product/${product.id}`}>
+                                        <Link href={`/signin?redirect=/product/${product.id}`}>
                                             Login or Sign Up
                                         </Link>
                                     </Button>

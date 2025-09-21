@@ -25,7 +25,7 @@ const profileSchema = z.object({
 
 async function getSiteUrl() {
     const settings = await getSettings();
-    return settings?.siteUrl || 'https://6000-firebase-studio-1757434852092.cluster-xpmcxs2fjnhg6xvn446ubtgpio.cloudworkstations.dev';
+    return settings?.siteUrl || 'http://localhost:3000';
 }
 
 export async function registerUser(values: z.infer<typeof registerSchema>) {
@@ -40,7 +40,7 @@ export async function registerUser(values: z.infer<typeof registerSchema>) {
       data: {
         full_name: name,
       },
-      emailRedirectTo: `${siteUrl}/login`,
+      emailRedirectTo: `${siteUrl}/signin`,
     },
   });
 
@@ -89,7 +89,7 @@ export async function signInWithGoogle() {
 
   if (error) {
     console.error('Error signing in with Google:', error);
-    redirect('/login?error=Could not authenticate with Google');
+    redirect('/signin?error=Could not authenticate with Google');
   }
 
   redirect(data.url);

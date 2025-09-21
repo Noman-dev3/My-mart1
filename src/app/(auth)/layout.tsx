@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useContext, useEffect } from 'react';
@@ -33,13 +34,8 @@ export default function AuthLayout({
 
   // Only render the children (the login page) if loading is complete AND there is no user.
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[#F4FBF7] p-4 overflow-hidden">
-        <Image src="https://picsum.photos/seed/shape1/200/200" alt="shape" width={200} height={200} className="absolute -top-10 -left-10 opacity-50" />
-        <Image src="https://picsum.photos/seed/shape2/150/150" alt="shape" width={150} height={150} className="absolute bottom-20 -right-10 opacity-50" />
-        <Image src="https://picsum.photos/seed/shape3/100/100" alt="shape" width={100} height={100} className="absolute top-20 right-40 opacity-40" />
-        <main className="relative z-10 flex items-center justify-center w-full">
-            {children}
-        </main>
+    <div className="flex min-h-screen w-full items-center justify-center p-4">
+      {children}
     </div>
   );
 }
