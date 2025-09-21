@@ -36,6 +36,7 @@ export default function LoginPage() {
     if (result.success) {
       toast({ title: 'Success', description: 'Logged in successfully!' });
       router.push('/');
+      router.refresh(); // This will force a refresh of Server Components
     } else {
       toast({
         title: 'Login Failed',
