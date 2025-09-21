@@ -65,7 +65,6 @@ export async function signInUser(values: z.infer<typeof loginSchema>) {
         return { success: false, error: 'Invalid login credentials.' };
     }
 
-    revalidatePath('/', 'layout');
     return { success: true };
 }
 
@@ -73,7 +72,6 @@ export async function signInUser(values: z.infer<typeof loginSchema>) {
 export async function signOutUser() {
     const supabase = createServerActionClient({ cookies });
     await supabase.auth.signOut();
-    revalidatePath('/', 'layout');
     return { success: true };
 }
 

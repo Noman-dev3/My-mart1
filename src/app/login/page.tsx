@@ -33,16 +33,15 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormValues) => {
     const result = await signInUser(data);
-    if (result.success) {
-      toast({ title: 'Success', description: 'Logged in successfully!' });
-      router.push('/');
-      router.refresh(); // This will force a refresh of Server Components
-    } else {
+    if (!result.success) {
       toast({
         title: 'Login Failed',
         description: result.error || 'An unknown error occurred.',
         variant: 'destructive',
       });
+    } else {
+      // The AuthProvider will handle the redirect and refresh
+      toast({ title: 'Success', description: 'Logged in successfully!' });
     }
   };
   

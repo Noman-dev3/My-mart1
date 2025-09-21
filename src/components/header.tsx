@@ -61,8 +61,7 @@ export default function Header() {
   
   const handleLogout = async () => {
     await signOutUser();
-    router.push('/');
-    router.refresh();
+    // The AuthProvider will handle the redirect and refresh
   };
   
   const userInitial = user?.user_metadata?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U';

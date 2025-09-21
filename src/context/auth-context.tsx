@@ -5,7 +5,7 @@ import React, { createContext, useState, useEffect, ReactNode, useContext } from
 import { User, Session } from '@supabase/supabase-js';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 type AuthContextType = {
@@ -31,15 +31,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        // Refresh server-side components on auth change
-        router.refresh();
+        
+        // This is the key change: force a refresh on auth state changes
+        // to ensure server components re-render with the new session.
+        if (event === 'SIGNED_IN' && pathname.startsWith('/login')) {
+          router.push('/');
+        } else if (event === 'SIGNED_OUT') {
+           router.push('/');
+        } else {
+           router.refresh();
+        }
       }
     );
 
@@ -53,7 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [router, supabase.auth]);
+  }, [router, supabase.auth, pathname]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -61,7 +70,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       title: "Signed Out",
       description: "You have been successfully signed out.",
     });
-    router.push('/');
   };
 
   const value = {
@@ -71,14 +79,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signOut,
     uid: user?.id ?? null,
   };
-
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <AuthContext.Provider value={value}>
