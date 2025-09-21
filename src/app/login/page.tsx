@@ -113,112 +113,115 @@ export default function AuthenticationPage() {
 
   return (
     <div className="bg-white rounded-3xl overflow-hidden w-full max-w-sm">
-      <div className="relative h-56">
-         <AnimatePresence>
-            <motion.div
-                key={imageIndex}
-                className="absolute inset-0"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 1.5, ease: "easeInOut" }}
-            >
-                <Image 
-                    src={loginImages[imageIndex].src}
-                    alt={loginImages[imageIndex].alt}
-                    width={600}
-                    height={400}
-                    className="w-full h-full object-cover"
-                    data-ai-hint={loginImages[imageIndex].hint}
-                    priority
-                />
-            </motion.div>
-        </AnimatePresence>
-        <div className="absolute bottom-0 left-0 w-full h-20 bg-white" style={{ clipPath: 'path("M0,100 C40,0 60,0 100,100 Z")' }}>
+        <div className="relative h-56">
+            <AnimatePresence>
+                <motion.div
+                    key={imageIndex}
+                    className="absolute inset-0"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                >
+                    <Image 
+                        src={loginImages[imageIndex].src}
+                        alt={loginImages[imageIndex].alt}
+                        width={600}
+                        height={400}
+                        className="w-full h-full object-cover"
+                        data-ai-hint={loginImages[imageIndex].hint}
+                        priority
+                    />
+                </motion.div>
+            </AnimatePresence>
+            <div className="absolute bottom-0 left-0 w-full h-12" style={{ transform: 'translateY(1px)' }}>
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full fill-current text-white">
+                    <path d="M0,0 C30,100 70,100 100,0 L100,100 L0,100 Z" />
+                </svg>
+            </div>
         </div>
-      </div>
 
-      <div className="p-8 bg-white relative z-10 -mt-20">
-        <h1 className="text-3xl font-bold text-[#4338CA] mb-6">
-          {isSignUp ? 'Create Account' : 'Hello again!'}
-        </h1>
-        
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {isSignUp && (
-              <div>
-                <label className="text-sm font-medium text-gray-700">Full Name</label>
+        <div className="p-8 bg-white relative z-10">
+            <h1 className="text-3xl font-bold text-[#4338CA] mb-6">
+            {isSignUp ? 'Create Account' : 'Hello again!'}
+            </h1>
+            
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                {isSignUp && (
+                <div>
+                    <label className="text-sm font-medium text-gray-700">Full Name</label>
+                    <input
+                        {...register('fullName')}
+                        type="text"
+                        placeholder="Enter your full name"
+                        className="mt-1 auth-input-new"
+                    />
+                    {getErrorMessage('fullName')}
+                </div>
+                )}
+
+                <div>
+                <label className="text-sm font-medium text-gray-700">Email</label>
                 <input
-                    {...register('fullName')}
-                    type="text"
-                    placeholder="Enter your full name"
+                    {...register('email')}
+                    type="email"
+                    placeholder="Enter your email"
                     className="mt-1 auth-input-new"
                 />
-                {getErrorMessage('fullName')}
-              </div>
-            )}
+                {getErrorMessage('email')}
+                </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700">Email</label>
-              <input
-                  {...register('email')}
-                  type="email"
-                  placeholder="Enter your email"
-                  className="mt-1 auth-input-new"
-              />
-              {getErrorMessage('email')}
+                <div>
+                    <label className="text-sm font-medium text-gray-700">Password</label>
+                    <input
+                        {...register('password')}
+                        type='password'
+                        placeholder="Enter your password"
+                        className="mt-1 auth-input-new"
+                    />
+                    {getErrorMessage('password')}
+                </div>
+
+                <div className="pt-2">
+                <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-12 rounded-lg text-white font-bold bg-gradient-to-r from-[#6366F1] to-[#818CF8] shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/40"
+                >
+                    {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                    {isSignUp ? 'Sign up' : 'Login'}
+                </Button>
+                </div>
+            </form>
+
+            <div className="mt-6 text-center text-sm">
+                {isSignUp ? (
+                    <>
+                        <p className="text-gray-600">
+                            By signing up, you agree to our <Link href="/terms-of-service" className="font-medium text-[#4338CA] hover:underline">Terms</Link>.
+                        </p>
+                        <p className="text-gray-600 mt-2">
+                            Already have an account?{' '}
+                            <button onClick={() => handleModeChange('login')} className="font-medium text-[#4338CA] hover:underline">
+                                Login
+                            </button>
+                        </p>
+                    </>
+                ) : (
+                    <>
+                        <Link href="#" className="font-medium text-gray-600 hover:text-[#4338CA]">
+                            Forgot your password?
+                        </Link>
+                        <p className="text-gray-600 mt-2">
+                            Don&apos;t have an account?{' '}
+                            <button onClick={() => handleModeChange('signup')} className="font-medium text-[#4338CA] hover:underline">
+                            Sign up
+                            </button>
+                        </p>
+                    </>
+                )}
             </div>
-
-            <div>
-                <label className="text-sm font-medium text-gray-700">Password</label>
-                <input
-                    {...register('password')}
-                    type='password'
-                    placeholder="Enter your password"
-                    className="mt-1 auth-input-new"
-                />
-                {getErrorMessage('password')}
-            </div>
-
-            <div className="pt-2">
-              <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full h-12 rounded-lg text-white font-bold bg-gradient-to-r from-[#6366F1] to-[#818CF8] shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/40"
-              >
-                  {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                  {isSignUp ? 'Sign up' : 'Login'}
-              </Button>
-            </div>
-        </form>
-
-        <div className="mt-6 text-center text-sm">
-            {isSignUp ? (
-                <>
-                    <p className="text-gray-600">
-                        By signing up, you agree to our <Link href="/terms-of-service" className="font-medium text-[#4338CA] hover:underline">Terms</Link>.
-                    </p>
-                    <p className="text-gray-600 mt-2">
-                        Already have an account?{' '}
-                        <button onClick={() => handleModeChange('login')} className="font-medium text-[#4338CA] hover:underline">
-                            Login
-                        </button>
-                    </p>
-                </>
-            ) : (
-                <>
-                    <Link href="#" className="font-medium text-gray-600 hover:text-[#4338CA]">
-                        Forgot your password?
-                    </Link>
-                    <p className="text-gray-600 mt-2">
-                        Don&apos;t have an account?{' '}
-                        <button onClick={() => handleModeChange('signup')} className="font-medium text-[#4338CA] hover:underline">
-                        Sign up
-                        </button>
-                    </p>
-                </>
-            )}
         </div>
-      </div>
     </div>
   );
 }
