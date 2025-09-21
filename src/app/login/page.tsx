@@ -134,14 +134,11 @@ export default function AuthenticationPage() {
                 />
             </motion.div>
         </AnimatePresence>
-        <div className="absolute bottom-0 left-0 w-full h-20">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
-                <path fill="#ffffff" d="M0,100 C40,0 60,0 100,100 Z"></path>
-            </svg>
+        <div className="absolute bottom-0 left-0 w-full h-20 bg-white" style={{ clipPath: 'path("M0,100 C40,0 60,0 100,100 Z")' }}>
         </div>
       </div>
 
-      <div className="p-8 bg-white relative z-10">
+      <div className="p-8 bg-white relative z-10 -mt-20">
         <h1 className="text-3xl font-bold text-[#4338CA] mb-6">
           {isSignUp ? 'Create Account' : 'Hello again!'}
         </h1>
