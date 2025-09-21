@@ -112,8 +112,8 @@ export default function AuthenticationPage() {
   };
 
   return (
-    <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-      <div className="relative h-48">
+    <div className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-sm">
+      <div className="relative h-56">
          <AnimatePresence>
             <motion.div
                 key={imageIndex}
@@ -134,15 +134,14 @@ export default function AuthenticationPage() {
                 />
             </motion.div>
         </AnimatePresence>
-        <div 
-          className="absolute bottom-0 left-0 w-full h-16 bg-white"
-          style={{
-            clipPath: 'ellipse(100% 100% at 50% 100%)'
-          }}
-        />
+        <div className="absolute bottom-0 left-0 w-full">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320">
+                <path fill="#ffffff" fillOpacity="1" d="M0,64L1440,224L1440,320L0,320Z"></path>
+            </svg>
+        </div>
       </div>
 
-      <div className="p-8">
+      <div className="p-8 bg-white -mt-20 relative z-10">
         <h1 className="text-3xl font-bold text-[#4338CA] mb-6">
           {isSignUp ? 'Create Account' : 'Hello again!'}
         </h1>
