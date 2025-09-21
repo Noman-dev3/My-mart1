@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Product } from '@/lib/product-actions';
 import { getCategories, getBrands } from '@/lib/product-actions';
 import ProductCard from '@/components/product-card';
@@ -14,30 +14,56 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { ListFilter } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from './ui/separator';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { Input } from './ui/input';
+
+// Debounce function
+function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
+  let timeout: NodeJS.Timeout | null = null;
+
+  const debounced = (...args: Parameters<F>) => {
+    if (timeout !== null) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+    timeout = setTimeout(() => func(...args), waitFor);
+  };
+
+  return debounced;
+}
+
 
 export default function ProductListing({ products }: { products: Product[] }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const searchQuery = searchParams.get('q') || '';
-  const initialCategory = searchParams.get('category');
-
-  const [sortOrder, setSortOrder] = useState('newest');
-  const [priceRange, setPriceRange] = useState([0, 500000]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [selectedRating, setSelectedRating] = useState(0);
-  const [inStockOnly, setInStockOnly] = useState(false);
+  
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [sortOrder, setSortOrder] = useState(searchParams.get('sort') || 'newest');
+  const [priceRange, setPriceRange] = useState([Number(searchParams.get('minPrice')) || 0, Number(searchParams.get('maxPrice')) || 500000]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(searchParams.getAll('category') || []);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(searchParams.getAll('brand') || []);
+  const [selectedRating, setSelectedRating] = useState(Number(searchParams.get('rating')) || 0);
+  const [inStockOnly, setInStockOnly] = useState(searchParams.get('inStock') === 'true');
 
   const [categories, setCategories] = useState<string[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState(500000);
-
+  
+  // Set initial max price from products
   useEffect(() => {
-    if (initialCategory) {
-      setSelectedCategories([initialCategory]);
+    if (products.length > 0) {
+      const max = Math.ceil(products.reduce((acc, p) => p.price > acc ? p.price : acc, 0) / 1000) * 1000;
+      if (max > 0) {
+        setMaxPrice(max);
+        if(!searchParams.get('maxPrice')) {
+          setPriceRange([priceRange[0], max]);
+        }
+      }
     }
-  }, [initialCategory]);
+  }, [products]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch filter options
   useEffect(() => {
     const fetchFilters = async () => {
         const [fetchedCategories, fetchedBrands] = await Promise.all([
@@ -50,13 +76,36 @@ export default function ProductListing({ products }: { products: Product[] }) {
     fetchFilters();
   }, []);
 
-  useEffect(() => {
-    if (products.length > 0) {
-      const max = Math.ceil(products.reduce((acc, p) => p.price > acc ? p.price : acc, 0) / 1000) * 1000;
-      setMaxPrice(max > 0 ? max : 500000);
-      setPriceRange([0, max > 0 ? max : 500000]);
+  const createQueryString = useCallback((params: Record<string, string | number | string[]>) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    for (const [key, value] of Object.entries(params)) {
+        if (Array.isArray(value)) {
+            newSearchParams.delete(key);
+            value.forEach(v => newSearchParams.append(key, v));
+        } else if (value) {
+            newSearchParams.set(key, String(value));
+        } else {
+            newSearchParams.delete(key);
+        }
     }
-  }, [products]);
+    return newSearchParams.toString();
+  }, [searchParams]);
+
+  // Effect to update URL when filters change
+  useEffect(() => {
+    const queryString = createQueryString({
+      q: searchQuery,
+      sort: sortOrder,
+      minPrice: priceRange[0],
+      maxPrice: priceRange[1] === maxPrice ? '' : priceRange[1],
+      category: selectedCategories,
+      brand: selectedBrands,
+      rating: selectedRating,
+      inStock: inStockOnly ? 'true' : '',
+    });
+    router.replace(`${pathname}?${queryString}`, { scroll: false });
+  }, [searchQuery, sortOrder, priceRange, selectedCategories, selectedBrands, selectedRating, inStockOnly, router, pathname, createQueryString, maxPrice]);
+
 
   const filteredAndSortedProducts = useMemo(() => {
     const lowercasedQuery = searchQuery.toLowerCase();
@@ -66,7 +115,7 @@ export default function ProductListing({ products }: { products: Product[] }) {
         if (!searchQuery) return true;
         return (
           p.name.toLowerCase().includes(lowercasedQuery) ||
-          p.description.toLowerCase().includes(lowercasedQuery) ||
+          p.description?.toLowerCase().includes(lowercasedQuery) ||
           p.brand.toLowerCase().includes(lowercasedQuery) ||
           p.category.toLowerCase().includes(lowercasedQuery)
         );
@@ -109,12 +158,17 @@ export default function ProductListing({ products }: { products: Product[] }) {
   const hasActiveFilters = selectedCategories.length > 0 || selectedBrands.length > 0 || priceRange[0] > 0 || priceRange[1] < maxPrice || selectedRating > 0 || inStockOnly;
 
   const clearFilters = () => {
+    setSearchQuery('');
     setPriceRange([0, maxPrice]);
     setSelectedCategories([]);
     setSelectedBrands([]);
     setSelectedRating(0);
     setInStockOnly(false);
+    setSortOrder('newest');
   };
+  
+  const debouncedSearch = useCallback(debounce((value) => setSearchQuery(value), 300), []);
+
 
   const renderFilters = () => (
     <div className="space-y-8">
@@ -200,7 +254,13 @@ export default function ProductListing({ products }: { products: Product[] }) {
 
         <div className="lg:col-span-3">
           <div className="flex flex-col sm:flex-row justify-between items-center border-b pb-4 mb-6 gap-4">
-            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Search products..."
+                defaultValue={searchQuery}
+                onChange={(e) => debouncedSearch(e.target.value)}
+                className="w-full sm:w-auto sm:max-w-xs"
+              />
+            <div className="flex items-center gap-4">
                 <div className="lg:hidden">
                     <Sheet>
                         <SheetTrigger asChild>
@@ -210,8 +270,9 @@ export default function ProductListing({ products }: { products: Product[] }) {
                         </Button>
                         </SheetTrigger>
                         <SheetContent>
-                        <SheetHeader className="mb-6">
+                        <SheetHeader className="mb-6 flex flex-row justify-between items-center">
                             <SheetTitle className="font-headline text-2xl font-bold">Filters</SheetTitle>
+                            {hasActiveFilters && <Button variant="ghost" size="sm" onClick={clearFilters} className="text-primary hover:text-primary">Clear all</Button>}
                         </SheetHeader>
                         <ScrollArea className="h-[calc(100%-80px)] pr-4">
                           {renderFilters()}
@@ -219,23 +280,20 @@ export default function ProductListing({ products }: { products: Product[] }) {
                         </SheetContent>
                     </Sheet>
                 </div>
-                <p className="text-sm text-muted-foreground">{filteredAndSortedProducts.length} products</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="sort" className="text-sm">Sort by</Label>
-              <Select value={sortOrder} onValueChange={setSortOrder}>
-                <SelectTrigger id="sort" className="w-[180px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest</SelectItem>
-                  <SelectItem value="popularity">Popularity</SelectItem>
-                  <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                  <SelectItem value="price-desc">Price: High to Low</SelectItem>
-                </SelectContent>
-              </Select>
+                 <Select value={sortOrder} onValueChange={setSortOrder}>
+                    <SelectTrigger id="sort" className="w-[180px]">
+                    <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                    <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="popularity">Popularity</SelectItem>
+                    <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                    <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
           </div>
+           <p className="text-sm text-muted-foreground mb-4">{filteredAndSortedProducts.length} of {products.length} products displayed</p>
           
           {filteredAndSortedProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -246,7 +304,7 @@ export default function ProductListing({ products }: { products: Product[] }) {
           ) : (
             <div className="text-center py-20">
               <h3 className="font-headline text-2xl font-semibold">No Products Found</h3>
-              <p className="text-muted-foreground mt-2">Try adjusting your filters or clearing them to see all products.</p>
+              <p className="text-muted-foreground mt-2">Try adjusting your search or filters.</p>
               <Button onClick={clearFilters} className="mt-4">Clear Filters</Button>
             </div>
           )}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -62,6 +63,7 @@ function CustomersPageContent() {
         }));
         
         const customerData = orders.reduce((acc, order) => {
+            if (!order.customer.email) return acc;
             const email = order.customer.email;
             if (!acc[email]) {
                 acc[email] = {
@@ -112,7 +114,8 @@ function CustomersPageContent() {
                     <div className="text-xs text-muted-foreground">{row.original.email}</div>
                 </div>
             </div>
-        )
+        ),
+        accessorFn: (row) => `${row.name} ${row.email}`,
     },
     {
         accessorKey: "lastOrder",

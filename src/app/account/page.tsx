@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,9 +11,13 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Activity } from 'lucide-react';
+import { Loader2, Activity, ShoppingCart, MessageSquare, User } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { updateUserProfile } from '@/lib/auth-actions';
+import { getOrdersByUser } from '@/lib/order-actions';
+import type { Order } from '@/lib/order-actions';
+import { formatDistanceToNow } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const profileSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -22,9 +26,18 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
+type ActivityLogItem = {
+    icon: React.ElementType;
+    action: string;
+    time: string;
+    date: Date;
+};
+
 export default function ProfilePage() {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
+  const [activityLog, setActivityLog] = useState<ActivityLogItem[]>([]);
+  const [isLoadingActivity, setIsLoadingActivity] = useState(true);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -33,6 +46,34 @@ export default function ProfilePage() {
       email: user?.email || '',
     },
   });
+  
+  useEffect(() => {
+    if (user?.email) {
+      setIsLoadingActivity(true);
+      getOrdersByUser(user.email).then(orders => {
+          const orderActivities: ActivityLogItem[] = orders.map(order => ({
+              icon: ShoppingCart,
+              action: `Placed order #${order.id.slice(0, 8)}...`,
+              time: formatDistanceToNow(new Date(order.date), { addSuffix: true }),
+              date: new Date(order.date),
+          }));
+
+          // In a real app, you would fetch question/review activity as well.
+          // For now, we'll simulate some other activities.
+          const otherActivities: ActivityLogItem[] = [
+               { icon: User, action: 'Updated profile information', time: '1 week ago', date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)},
+               { icon: MessageSquare, action: 'Asked a question on "Wireless Headphones"', time: '2 weeks ago', date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
+          ];
+
+          const combinedLog = [...orderActivities, ...otherActivities].sort((a,b) => b.date.getTime() - a.date.getTime());
+          setActivityLog(combinedLog);
+      }).finally(() => {
+          setIsLoadingActivity(false);
+      });
+    } else {
+        setIsLoadingActivity(false);
+    }
+  }, [user]);
 
   async function onSubmit(data: ProfileFormValues) {
     const result = await updateUserProfile({ fullName: data.fullName });
@@ -50,13 +91,20 @@ export default function ProfilePage() {
       });
     }
   }
-  
-  // Placeholder for recent activity
-  const activityLog = [
-    { action: 'Placed order #A4B2C1D9', time: '2 days ago' },
-    { action: 'Updated profile information', time: '1 week ago' },
-    { action: 'Asked a question on "Wireless Headphones"', time: '2 weeks ago' },
-  ];
+
+  const ActivitySkeleton = () => (
+      <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-start gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/4" />
+                  </div>
+              </div>
+          ))}
+      </div>
+  );
 
   return (
     <div className="space-y-8">
@@ -109,17 +157,22 @@ export default function ProfilePage() {
       <div>
         <h3 className="text-lg font-headline font-semibold mb-4">Recent Activity</h3>
          <div className="space-y-4">
-             {activityLog.map((activity, index) => (
-                <div key={index} className="flex items-start gap-4">
-                    <div className="bg-muted rounded-full p-2 mt-1">
-                        <Activity className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div>
-                        <p className="text-sm">{activity.action}</p>
-                        <p className="text-xs text-muted-foreground">{activity.time}</p>
-                    </div>
-                </div>
-             ))}
+             {isLoadingActivity ? <ActivitySkeleton /> :
+              activityLog.length > 0 ? (
+                activityLog.map((activity, index) => (
+                  <div key={index} className="flex items-start gap-4">
+                      <div className="bg-muted rounded-full p-2 mt-1">
+                          <activity.icon className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div>
+                          <p className="text-sm">{activity.action}</p>
+                          <p className="text-xs text-muted-foreground">{activity.time}</p>
+                      </div>
+                  </div>
+                ))
+             ) : (
+                <p className="text-sm text-muted-foreground">No recent activity to display.</p>
+             )}
           </div>
       </div>
     </div>
