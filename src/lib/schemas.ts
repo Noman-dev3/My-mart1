@@ -22,3 +22,8 @@ export const productFormSchema = z.object({
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
+// This is the shape of the data that will be sent to the database.
+// It is slightly different from the form values because of the specifications field.
+export type ProductDbValues = Omit<ProductFormValues, 'specifications'> & {
+    specifications?: Record<string, string>;
+};
