@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useForm } from 'react-hook-form';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { registerUser, signInUser } from '@/lib/auth-actions';
 import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const signupSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
@@ -26,10 +26,24 @@ const loginSchema = z.object({
 type SignupFormValues = z.infer<typeof signupSchema>;
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+const loginImages = [
+    { src: "https://picsum.photos/seed/pancakes/600/400", alt: "Pancakes with strawberries", hint: "pancakes breakfast" },
+    { src: "https://picsum.photos/seed/coffee/600/400", alt: "Artisan coffee", hint: "coffee shop" },
+    { src: "https://picsum.photos/seed/croissant/600/400", alt: "Freshly baked croissant", hint: "bakery pastry" }
+];
+
 export default function AuthenticationPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+        setImageIndex(prev => (prev + 1) % loginImages.length);
+    }, 5000); // Change image every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   const currentSchema = isSignUp ? signupSchema : loginSchema;
   
@@ -100,14 +114,26 @@ export default function AuthenticationPage() {
   return (
     <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
       <div className="relative h-48">
-        <Image 
-          src="https://picsum.photos/seed/pancakes/600/400"
-          alt="Pancakes with strawberries"
-          width={600}
-          height={400}
-          className="w-full h-full object-cover"
-          data-ai-hint="pancakes breakfast"
-        />
+         <AnimatePresence>
+            <motion.div
+                key={imageIndex}
+                className="absolute inset-0"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.5, ease: "easeInOut" }}
+            >
+                <Image 
+                    src={loginImages[imageIndex].src}
+                    alt={loginImages[imageIndex].alt}
+                    width={600}
+                    height={400}
+                    className="w-full h-full object-cover"
+                    data-ai-hint={loginImages[imageIndex].hint}
+                    priority
+                />
+            </motion.div>
+        </AnimatePresence>
         <div 
           className="absolute bottom-0 left-0 w-full h-16 bg-white"
           style={{
