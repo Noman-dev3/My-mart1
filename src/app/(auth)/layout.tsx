@@ -27,6 +27,7 @@ export default function AuthLayout({
     );
   }
 
+  // This container now ensures its content is centered vertically and horizontally.
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-[#2C2C2C] p-4">
         {children}
