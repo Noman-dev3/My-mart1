@@ -8,73 +8,42 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useContext, useState } from 'react';
-import { AuthContext } from '@/context/auth-context';
-import { Loader2 } from 'lucide-react';
-import { placeBakeryOrder } from '@/lib/order-actions';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { ShoppingCart } from 'lucide-react';
+import type { CartItem } from '@/context/cart-context';
 
 type BakeryProductCardProps = {
   product: Product;
+  onAddToCart: (item: CartItem) => void;
 };
 
-export default function BakeryProductCard({ product }: BakeryProductCardProps) {
+export default function BakeryProductCard({ product, onAddToCart }: BakeryProductCardProps) {
   const { toast } = useToast();
-  const router = useRouter();
-  const { user, loading: userLoading } = useContext(AuthContext);
   const [customization, setCustomization] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleOrderNow = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!user) {
-      toast({
-        title: 'Login Required',
-        description: 'You must be logged in to place a custom order.',
-        variant: 'destructive',
-      });
-      router.push('/login?redirect=/bakery');
-      return;
-    }
-    
+  const handleAddToCart = () => {
     if (!customization.trim()) {
       toast({
         title: 'Customization is empty',
-        description: 'Please describe your custom order.',
+        description: 'Please describe what you would like on your bakery item.',
         variant: 'destructive',
       });
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-        await placeBakeryOrder({
-            product,
-            customization,
-            user: {
-                id: user.id,
-                email: user.email || '',
-                name: user.user_metadata.full_name || 'Valued Customer'
-            }
-        });
+    const itemWithCustomization = {
+      ...product,
+      quantity: 1, // Default quantity
+      customization: customization,
+    };
+    
+    onAddToCart(itemWithCustomization);
 
-        toast({
-            title: 'Order Placed!',
-            description: `Your custom order for "${product.name}" has been sent. We will contact you for confirmation.`
-        });
-        setCustomization('');
-
-    } catch (error) {
-        console.error("Bakery order failed:", error);
-        toast({
-            title: 'Order Failed',
-            description: 'There was a problem placing your custom order. Please try again.',
-            variant: 'destructive'
-        });
-    } finally {
-        setIsSubmitting(false);
-    }
+    toast({
+        title: 'Added to Cart!',
+        description: `Your custom "${product.name}" has been added to your cart.`
+    });
+    setCustomization('');
   };
   
   return (
@@ -89,7 +58,7 @@ export default function BakeryProductCard({ product }: BakeryProductCardProps) {
           data-ai-hint="bakery item"
         />
       </CardHeader>
-      <form onSubmit={handleOrderNow} className="flex flex-col flex-grow">
+      <div className="flex flex-col flex-grow">
         <CardContent className="p-4 flex-grow">
           <h3 className="text-lg font-headline font-semibold mt-1 leading-tight">
             {product.name}
@@ -109,16 +78,16 @@ export default function BakeryProductCard({ product }: BakeryProductCardProps) {
             />
           </div>
         </CardContent>
-        <CardFooter className="p-4 pt-0 flex-col items-stretch gap-2">
+        <CardFooter className="p-4 pt-0 flex flex-col items-stretch gap-2">
             <div className="text-center text-sm text-muted-foreground mb-2">
-                Price starts from <span className="font-bold text-primary">PKR {product.price.toFixed(2)}</span>
+                Base Price: <span className="font-bold text-primary">PKR {product.price.toFixed(2)}</span>
             </div>
-          <Button type="submit" className="w-full font-bold" disabled={isSubmitting || userLoading}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-            Order Now
+          <Button type="button" className="w-full font-bold" onClick={handleAddToCart}>
+            <ShoppingCart className="mr-2 h-4 w-4"/>
+            Add to Cart
           </Button>
         </CardFooter>
-      </form>
+      </div>
     </Card>
   );
 }

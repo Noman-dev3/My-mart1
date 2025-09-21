@@ -8,11 +8,15 @@ import { type Product } from '@/lib/product-actions';
 import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 import { Loader2 } from 'lucide-react';
 import BakeryProductCard from '@/components/bakery-product-card';
+import { CartContext } from '@/context/cart-context';
+import { useContext } from 'react';
 
 export default function BakeryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createSupabaseBrowserClient();
+  const { addToCart } = useContext(CartContext);
+
 
   useEffect(() => {
     const fetchBakeryProducts = async () => {
@@ -39,7 +43,7 @@ export default function BakeryPage() {
       <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-12">
             <h1 className="text-5xl font-bold font-headline">The Bakery</h1>
-            <p className="text-lg text-muted-foreground mt-2">Freshly made custom orders. Please allow 24-48 hours for preparation.</p>
+            <p className="text-lg text-muted-foreground mt-2">Freshly made custom orders. Add to cart and specify your customization notes at checkout.</p>
         </div>
 
         {isLoading ? (
@@ -49,7 +53,7 @@ export default function BakeryPage() {
         ) : products.length > 0 ? (
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
               {products.map((product) => (
-                <BakeryProductCard key={product.id} product={product} />
+                <BakeryProductCard key={product.id} product={product} onAddToCart={addToCart} />
               ))}
             </div>
         ) : (

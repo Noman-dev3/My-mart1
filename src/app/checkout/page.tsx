@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CartContext } from '@/context/cart-context';
+import { AuthContext } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +20,7 @@ import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { placeOrder, type PaymentMethod } from '@/lib/order-actions';
 import { CreditCard, Truck } from 'lucide-react';
+import { useEffect } from 'react';
 
 const checkoutSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -32,6 +34,7 @@ type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart } = useContext(CartContext);
+  const { user } = useContext(AuthContext);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -45,6 +48,19 @@ export default function CheckoutPage() {
       paymentMethod: 'COD',
     },
   });
+
+  // Pre-fill form if user is logged in
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        name: user.user_metadata.full_name || '',
+        email: user.email || '',
+        address: '', // Address is not stored on user object
+        phone: '', // Phone is not stored on user object
+        paymentMethod: 'COD',
+      });
+    }
+  }, [user, form]);
 
   const paymentMethod = form.watch('paymentMethod');
 
@@ -65,6 +81,7 @@ export default function CheckoutPage() {
         price: item.price,
         quantity: item.quantity,
         image: item.image,
+        customization: (item as any).customization,
       }));
 
       const newOrder = await placeOrder({
@@ -241,10 +258,15 @@ export default function CheckoutPage() {
               {cartItems.map(item => (
                 <div key={item.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <Image src={item.image} alt={item.name} width={64} height={64} className="rounded-md" />
+                        <div className="relative w-16 h-16 rounded-md overflow-hidden">
+                          <Image src={item.image} alt={item.name} fill className="object-cover" />
+                        </div>
                         <div>
                             <p className="font-semibold">{item.name}</p>
                             <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                            {(item as any).customization && (
+                              <p className="text-xs text-primary bg-primary/10 p-1 rounded-sm mt-1">Custom: {(item as any).customization}</p>
+                            )}
                         </div>
                     </div>
                     <p className="font-medium">PKR {(item.price * item.quantity).toFixed(2)}</p>

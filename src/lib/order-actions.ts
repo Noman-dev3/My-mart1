@@ -6,6 +6,7 @@ import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import type { Product } from './product-actions';
+import { User } from '@supabase/supabase-js';
 
 // A simpler version of CartItem for Server Actions, containing only primitive types.
 export type OrderItem = {
@@ -14,18 +15,23 @@ export type OrderItem = {
     price: number;
     quantity: number;
     image: string;
+    customization?: string;
 }
 
 export type PaymentMethod = 'COD' | 'Online' | 'In-Store' | 'Pay on Collection';
 
+export type CustomerInfo = {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+    uid?: string; // Add UID to link orders to Supabase auth users
+};
+
+
 export type Order = {
     id: string;
-    customer: {
-        name: string;
-        email: string;
-        phone: string;
-        address: string;
-    };
+    customer: CustomerInfo;
     items: OrderItem[];
     total: number;
     status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Bakery Order';
@@ -92,15 +98,23 @@ async function sendAdminNotification(order: Order) {
 }
 
 export async function placeOrder(data: {
-  customer: { name: string; email: string; phone: string; address: string; };
+  customer: Omit<CustomerInfo, 'uid'>; // uid will be fetched from session
   items: OrderItem[];
   total: number;
   paymentMethod: PaymentMethod;
 }): Promise<Order> {
   const supabase = createServerActionClient({ cookies });
 
+  // Get current user to link the order
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const customerData: CustomerInfo = {
+    ...data.customer,
+    uid: user?.id, // Attach user ID if logged in
+  };
+
   const newOrderData = {
-    customer: data.customer,
+    customer: customerData,
     items: data.items,
     total: data.total,
     status: data.paymentMethod === 'COD' ? 'Processing' : 'Pending',
@@ -139,6 +153,7 @@ export async function placeOrder(data: {
 
   revalidatePath('/admin/orders');
   revalidatePath('/admin');
+  revalidatePath('/account');
   
   return savedOrder as Order;
 }
@@ -159,20 +174,8 @@ export async function getOrderById(orderId: string): Promise<Order | null> {
     return data as Order;
 }
 
-export async function getOrdersByUser(userEmail: string): Promise<Order[]> {
-    const supabase = createServerActionClient({ cookies });
-    const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('customer->>email', userEmail)
-        .order('date', { ascending: false });
-
-    if (error) {
-        console.error('Error fetching orders by user', error);
-        return [];
-    }
-    return data as Order[];
-}
+// This function is no longer needed as we fetch from the client component
+// export async function getOrdersByUser(userEmail: string): Promise<Order[]> { ... }
 
 
 export async function updateOrderStatus(orderId: string, status: Order['status']) {
@@ -191,6 +194,7 @@ export async function updateOrderStatus(orderId: string, status: Order['status']
     
     revalidatePath('/admin/orders');
     revalidatePath(`/order-confirmation/${orderId}`);
+    revalidatePath('/account');
     return data as Order;
 }
 
@@ -245,17 +249,13 @@ export async function createStoreOrder(data: {
 export async function placeBakeryOrder(data: {
   product: Product;
   customization: string;
-  user: {
-    id: string;
-    email: string;
-    name: string;
-  };
+  user: User;
 }) {
   const supabase = createServerActionClient({ cookies });
 
   const { product, customization, user } = data;
 
-  const orderItem: OrderItem & { customization?: string } = {
+  const orderItem: OrderItem = {
     id: product.id,
     name: `${product.name} (Custom)`,
     price: product.price, // Price is for reference, as it's not charged here.
@@ -266,7 +266,8 @@ export async function placeBakeryOrder(data: {
 
   const newOrderData = {
     customer: {
-      name: user.name,
+      uid: user.id,
+      name: user.user_metadata.full_name || 'Valued Customer',
       email: user.email,
       phone: '', // Can be enhanced later
       address: 'Bakery Order',

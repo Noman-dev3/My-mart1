@@ -3,7 +3,6 @@
 
 import { useEffect, useState, useContext } from 'react';
 import { type Order } from '@/lib/order-actions';
-import { getOrdersByUser } from '@/lib/order-actions';
 import { AuthContext } from '@/context/auth-context';
 import {
   Table,
@@ -18,28 +17,37 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 export default function MyOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useContext(AuthContext);
+  const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
-    if (user?.email) {
+    if (user?.id) {
       setIsLoading(true);
-      getOrdersByUser(user.email)
-        .then(setOrders)
-        .finally(() => setIsLoading(false));
-    }
-  }, [user]);
+      
+      const fetchOrders = async () => {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('customer->>uid', user.id)
+          .order('date', { ascending: false });
 
-  const OrdersSkeleton = () => (
-    <div className="space-y-4">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-    </div>
-  )
+        if (error) {
+          console.error('Error fetching user orders:', error);
+        } else {
+          setOrders(data as Order[]);
+        }
+        setIsLoading(false);
+      }
+      
+      fetchOrders();
+    }
+  }, [user, supabase]);
+
 
   return (
     <div className="space-y-6">

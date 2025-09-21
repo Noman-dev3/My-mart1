@@ -18,6 +18,7 @@ import { getOrdersByUser } from '@/lib/order-actions';
 import type { Order } from '@/lib/order-actions';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 
 const profileSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -38,6 +39,7 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [activityLog, setActivityLog] = useState<ActivityLogItem[]>([]);
   const [isLoadingActivity, setIsLoadingActivity] = useState(true);
+  const supabase = createSupabaseBrowserClient();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -48,32 +50,55 @@ export default function ProfilePage() {
   });
   
   useEffect(() => {
-    if (user?.email) {
+    if (user?.id) {
       setIsLoadingActivity(true);
-      getOrdersByUser(user.email).then(orders => {
-          const orderActivities: ActivityLogItem[] = orders.map(order => ({
-              icon: ShoppingCart,
-              action: `Placed order #${order.id.slice(0, 8)}...`,
-              time: formatDistanceToNow(new Date(order.date), { addSuffix: true }),
-              date: new Date(order.date),
-          }));
+      
+      const fetchActivities = async () => {
+        // Fetch orders
+        const { data: orders } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('customer->>uid', user.id);
 
-          // In a real app, you would fetch question/review activity as well.
-          // For now, we'll simulate some other activities.
-          const otherActivities: ActivityLogItem[] = [
-               { icon: User, action: 'Updated profile information', time: '1 week ago', date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)},
-               { icon: MessageSquare, action: 'Asked a question on "Wireless Headphones"', time: '2 weeks ago', date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
-          ];
+        const orderActivities: ActivityLogItem[] = (orders || []).map(order => ({
+            icon: ShoppingCart,
+            action: `Placed order #${order.id.slice(0, 8)}...`,
+            time: formatDistanceToNow(new Date(order.date), { addSuffix: true }),
+            date: new Date(order.date),
+        }));
 
-          const combinedLog = [...orderActivities, ...otherActivities].sort((a,b) => b.date.getTime() - a.date.getTime());
-          setActivityLog(combinedLog);
-      }).finally(() => {
-          setIsLoadingActivity(false);
-      });
+        // Fetch products with questions from this user
+        const { data: productsWithQuestions } = await supabase
+          .from('products')
+          .select('name, questions');
+        
+        const questionActivities: ActivityLogItem[] = [];
+        (productsWithQuestions || []).forEach(product => {
+            if (product.questions) {
+                const userQuestions = product.questions.filter((q: any) => q.authorId === user.id);
+                userQuestions.forEach((q: any) => {
+                    questionActivities.push({
+                        icon: MessageSquare,
+                        action: `Asked a question on "${product.name}"`,
+                        time: formatDistanceToNow(new Date(q.date), { addSuffix: true }),
+                        date: new Date(q.date),
+                    });
+                });
+            }
+        });
+
+        // Combine and sort all activities
+        const combinedLog = [...orderActivities, ...questionActivities].sort((a,b) => b.date.getTime() - a.date.getTime());
+        setActivityLog(combinedLog);
+        setIsLoadingActivity(false);
+      }
+      
+      fetchActivities();
+
     } else {
         setIsLoadingActivity(false);
     }
-  }, [user]);
+  }, [user, supabase]);
 
   async function onSubmit(data: ProfileFormValues) {
     const result = await updateUserProfile({ fullName: data.fullName });
