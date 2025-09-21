@@ -133,7 +133,9 @@ export async function placeOrder(data: {
   }
 
   // Send notification *after* order is successfully saved and we have an ID
-  await sendAdminNotification(savedOrder as Order);
+  if (savedOrder) {
+    await sendAdminNotification(savedOrder as Order);
+  }
 
   revalidatePath('/admin/orders');
   revalidatePath('/admin');
@@ -209,7 +211,7 @@ export async function createStoreOrder(data: {
     },
     items: data.items,
     total: data.total,
-    status: 'Delivered', // In-store sales are immediately completed
+    status: 'Delivered' as const, // In-store sales are immediately completed
     paymentMethod: 'In-Store' as PaymentMethod,
     date: new Date().toISOString(),
   };
@@ -224,8 +226,8 @@ export async function createStoreOrder(data: {
   // Update stock quantities for in-store sales
   for (const item of data.items) {
      const { error: stockError } = await supabase.rpc('decrement_stock', {
-        p_product_id: item.id,
-        p_quantity: item.quantity
+        product_id: item.id,
+        quantity_to_decrement: item.quantity
      });
      if (stockError) {
         console.error(`POS: Failed to decrement stock for product ${item.id}:`, stockError);
@@ -253,12 +255,13 @@ export async function placeBakeryOrder(data: {
 
   const { product, customization, user } = data;
 
-  const orderItem: OrderItem = {
+  const orderItem: OrderItem & { customization?: string } = {
     id: product.id,
     name: `${product.name} (Custom)`,
     price: product.price, // Price is for reference, as it's not charged here.
     quantity: 1,
     image: product.image,
+    customization: customization
   };
 
   const newOrderData = {
@@ -268,14 +271,14 @@ export async function placeBakeryOrder(data: {
       phone: '', // Can be enhanced later
       address: 'Bakery Order',
     },
-    items: [{...orderItem, customization}], // Add customization to the item
+    items: [orderItem], // Add customization to the item
     total: product.price, // For reference
-    status: 'Bakery Order', // A new status to filter in admin panel
-    paymentMethod: 'Pay on Collection',
+    status: 'Bakery Order' as const, // A new status to filter in admin panel
+    paymentMethod: 'Pay on Collection' as PaymentMethod,
     date: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from('orders').insert(newOrderData);
+  const { data: savedOrder, error } = await supabase.from('orders').insert(newOrderData).select().single();
 
   if (error) {
     console.error("Error placing bakery order:", error);
@@ -283,7 +286,9 @@ export async function placeBakeryOrder(data: {
   }
 
   // Notify admin
-  await sendAdminNotification(newOrderData as unknown as Order);
+  if (savedOrder) {
+    await sendAdminNotification(savedOrder as Order);
+  }
   
   revalidatePath('/admin/orders');
   revalidatePath('/account/orders');
