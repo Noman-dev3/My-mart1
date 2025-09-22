@@ -1,6 +1,7 @@
+
 'use client';
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -9,7 +10,7 @@ const loginSchema = z.object({
 });
 
 export async function signInUser(values: z.infer<typeof loginSchema>) {
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
   const { email, password } = loginSchema.parse(values);
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -25,7 +26,7 @@ export async function signInUser(values: z.infer<typeof loginSchema>) {
 }
 
 export async function signOutUser() {
-  const supabase = createClientComponentClient();
+  const supabase = createSupabaseBrowserClient();
   await supabase.auth.signOut();
   return { success: true };
 }
