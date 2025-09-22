@@ -69,7 +69,7 @@ function StoreManagerPageContent() {
   const [isProductNotFoundDialogOpen, setIsProductNotFoundDialogOpen] = useState(false);
   const [notFoundBarcode, setNotFoundBarcode] = useState('');
 
-  const [isAddProductFormOpen, setIsAddProductFormOpen] = useState false;
+  const [isAddProductFormOpen, setIsAddProductFormOpen] = useState(false);
   const [newProductToCreate, setNewProductToCreate] = useState<Partial<Product> | undefined>(undefined);
   
   const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
