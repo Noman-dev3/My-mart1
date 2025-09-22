@@ -8,20 +8,32 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { useState, useContext } from 'react';
+import { Send, User, Loader2 } from 'lucide-react';
 import type { CartItem } from '@/context/cart-context';
+import { placeBakeryOrder } from '@/lib/order-actions';
+import { AuthContext } from '@/context/auth-context';
+import Link from 'next/link';
 
 type BakeryProductCardProps = {
   product: Product;
-  onAddToCart: (item: CartItem) => void;
 };
 
-export default function BakeryProductCard({ product, onAddToCart }: BakeryProductCardProps) {
+export default function BakeryProductCard({ product }: BakeryProductCardProps) {
   const { toast } = useToast();
+  const { user, loading: userLoading } = useContext(AuthContext);
   const [customization, setCustomization] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAddToCart = () => {
+  const handleSubmitOrder = async () => {
+    if (!user) {
+      toast({
+        title: 'Login Required',
+        description: 'You must be logged in to place a custom order.',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (!customization.trim()) {
       toast({
         title: 'Customization is empty',
@@ -30,20 +42,30 @@ export default function BakeryProductCard({ product, onAddToCart }: BakeryProduc
       });
       return;
     }
-
-    const itemWithCustomization = {
-      ...product,
-      quantity: 1, // Default quantity
-      customization: customization,
-    };
     
-    onAddToCart(itemWithCustomization);
+    setIsSubmitting(true);
+    try {
+        await placeBakeryOrder({
+            product,
+            customization,
+            user,
+        });
 
-    toast({
-        title: 'Added to Cart!',
-        description: `Your custom "${product.name}" has been added to your cart.`
-    });
-    setCustomization('');
+        toast({
+            title: 'Custom Order Submitted!',
+            description: `Your request for a custom "${product.name}" has been sent. We will contact you shortly to confirm details and payment.`
+        });
+        setCustomization('');
+    } catch (error) {
+        console.error("Bakery order error:", error);
+        toast({
+            title: 'Submission Failed',
+            description: 'There was a problem submitting your custom order. Please try again.',
+            variant: 'destructive',
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
   
   return (
@@ -82,10 +104,20 @@ export default function BakeryProductCard({ product, onAddToCart }: BakeryProduc
             <div className="text-center text-sm text-muted-foreground mb-2">
                 Base Price: <span className="font-bold text-primary">PKR {product.price.toFixed(2)}</span>
             </div>
-          <Button type="button" className="w-full font-bold" onClick={handleAddToCart}>
-            <ShoppingCart className="mr-2 h-4 w-4"/>
-            Add to Cart
-          </Button>
+            {userLoading ? <Button disabled className="w-full"><Loader2 className="animate-spin" /></Button> : 
+             user ? (
+                 <Button type="button" className="w-full font-bold" onClick={handleSubmitOrder} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
+                    Submit Custom Order
+                </Button>
+            ) : (
+                <Button asChild className="w-full font-bold">
+                    <Link href="/login">
+                        <User className="mr-2 h-4 w-4" />
+                        Login to Order
+                    </Link>
+                </Button>
+            )}
         </CardFooter>
       </div>
     </Card>

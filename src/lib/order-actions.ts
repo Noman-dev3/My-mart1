@@ -174,10 +174,6 @@ export async function getOrderById(orderId: string): Promise<Order | null> {
     return data as Order;
 }
 
-// This function is no longer needed as we fetch from the client component
-// export async function getOrdersByUser(userEmail: string): Promise<Order[]> { ... }
-
-
 export async function updateOrderStatus(orderId: string, status: Order['status']) {
     const supabase = createServerActionClient({ cookies });
     const { data, error } = await supabase
@@ -268,7 +264,7 @@ export async function placeBakeryOrder(data: {
     customer: {
       uid: user.id,
       name: user.user_metadata.full_name || 'Valued Customer',
-      email: user.email,
+      email: user.email || '',
       phone: '', // Can be enhanced later
       address: 'Bakery Order',
     },
