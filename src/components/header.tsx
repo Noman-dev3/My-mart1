@@ -1,5 +1,4 @@
 'use client';
-
 import Link from 'next/link';
 import { Search, Menu, User, Moon, Sun, X, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -32,7 +31,6 @@ import { signOutUser } from '@/lib/auth-client-actions'; // Updated import
 import { ShoppingCart } from 'lucide-react';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useToast } from '@/hooks/use-toast';
-
 const navLinks = [
   { label: 'Home', href: '/' },
   { label: 'About', href: '/about' },
@@ -40,7 +38,6 @@ const navLinks = [
   { label: 'Services', href: '/faq' },
   { label: 'Contact', href: '/contact' },
 ];
-
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
@@ -49,19 +46,23 @@ export default function Header() {
   const { user, loading } = useContext(AuthContext);
   const { setTheme } = useTheme();
   const { toast } = useToast();
-
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+  const [isScrolled, setIsScrolled] = useState(false);
   useEffect(() => {
     // Sync search input with URL params on navigation
     setSearchQuery(searchParams.get('q') || '');
   }, [searchParams]);
-
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
   };
-
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const current = new URLSearchParams(Array.from(searchParams.entries()));
@@ -74,7 +75,6 @@ export default function Header() {
     const query = search ? `?${search}` : '';
     router.push(`${pathname}${query}`);
   };
-
   const handleLogout = async () => {
     await signOutUser();
     toast({
@@ -83,21 +83,18 @@ export default function Header() {
     });
     router.push('/');
   };
-
   const userInitial =
     user?.user_metadata?.full_name?.charAt(0) ||
     user?.email?.charAt(0) ||
     'U';
-
   const isActiveLink = (href: string) => {
     if (href === '/') {
       return pathname === '/';
     }
     return pathname.startsWith(href);
   };
-
   return (
-    <header className="sticky top-0 z-40 border-b border-emerald-50 bg-[radial-gradient(circle_at_top,_#ffffff,_#f4ffe5)]/90 backdrop-blur-xl">
+    <header className={`sticky top-0 z-40 transition-all duration-300 ${isScrolled ? 'border-b border-emerald-50 bg-[radial-gradient(circle_at_top,_#ffffff,_#f4ffe5)]/90 backdrop-blur-xl shadow-md' : 'bg-transparent border-transparent'}`}>
       <div className="container mx-auto flex h-20 items-center gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3">
           <Sheet
@@ -182,8 +179,7 @@ export default function Header() {
             </span>
           </Link>
         </div>
-
-        <nav className="hidden flex-1 items-center justify-center rounded-full border border-emerald-100 bg-white/70 px-6 py-2 text-sm font-medium text-gray-600 shadow-sm lg:flex">
+        <nav className={`hidden flex-1 items-center justify-center rounded-full border border-emerald-100 px-6 py-2 text-sm font-medium text-gray-600 shadow-sm lg:flex transition-all duration-300 ${isScrolled ? 'bg-white/70' : 'bg-transparent shadow-none'}`}>
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -199,7 +195,6 @@ export default function Header() {
             </Link>
           ))}
         </nav>
-
         <div className="ml-auto flex items-center gap-2">
           {showSearch && (
             <form
@@ -216,9 +211,7 @@ export default function Header() {
               />
             </form>
           )}
-
           <CartSheet />
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -239,7 +232,6 @@ export default function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
           {loading ? null : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -293,7 +285,6 @@ export default function Header() {
               </Button>
             </div>
           )}
-
         </div>
       </div>
     </header>
