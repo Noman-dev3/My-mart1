@@ -1,0 +1,25 @@
+
+@media print {
+    /* Hide everything except the invoice container */
+    body * {
+        visibility: hidden;
+    }
+    
+    .invoice-container, .invoice-container * {
+        visibility: visible;
+    }
+    
+    /* Position the invoice container at the top left corner */
+    .invoice-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    
+    /* Remove default page margins */
+    @page {
+        size: 80mm auto; /* Standard thermal printer width */
+        margin: 0;
+    }
+}

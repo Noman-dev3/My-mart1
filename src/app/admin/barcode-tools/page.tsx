@@ -1,0 +1,454 @@
+
+'use client';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { BrowserMultiFormatReader, type IScannerControls } from '@zxing/browser';
+import { NotFoundException, ChecksumException, FormatException } from '@zxing/library';
+import QRCode from 'qrcode.react';
+import JsBarcode from 'jsbarcode';
+import { Button } from '@/components/ui/button';
+import { Camera, QrCode, Scan, Upload, AlertCircle, Download, Printer, Barcode, PlusCircle, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import RoleGate from '@/components/admin/role-gate';
+
+function BarcodeToolsPageContent() {
+  return (
+    <div className="space-y-6">
+        <div>
+            <h1 className="text-3xl font-bold font-headline">Barcode & QR Code Suite</h1>
+            <p className="text-muted-foreground">A collection of tools for scanning and generating codes.</p>
+        </div>
+
+        <Tabs defaultValue="scanner" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="scanner"><Scan className="mr-2 h-4 w-4"/>Scanner</TabsTrigger>
+                <TabsTrigger value="qr_generator"><QrCode className="mr-2 h-4 w-4"/>QR Code Generator</TabsTrigger>
+                <TabsTrigger value="barcode_generator"><Barcode className="mr-2 h-4 w-4"/>Barcode Generator</TabsTrigger>
+            </TabsList>
+            <TabsContent value="scanner">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Barcode Scanner</CardTitle>
+                        <CardDescription>Scan barcodes using your device camera or an image file.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ScannerComponent />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent value="qr_generator">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>QR Code Generator</CardTitle>
+                        <CardDescription>Create a QR code from any text or URL.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <QrGeneratorComponent />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+             <TabsContent value="barcode_generator">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Barcode Generator</CardTitle>
+                        <CardDescription>Create and print multiple Code 128 barcodes at once.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <BarcodeGeneratorComponent />
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
+    </div>
+  );
+}
+
+export default function BarcodeToolsPage() {
+    return (
+        <RoleGate role="INVENTORY_MANAGER">
+            <BarcodeToolsPageContent />
+        </RoleGate>
+    )
+}
+
+
+// --- Scanner Component ---
+
+function ScannerComponent() {
+  const [scannedResult, setScannedResult] = useState('');
+  const [error, setError] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDevice, setSelectedDevice] = useState('');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const codeReader = useRef(new BrowserMultiFormatReader());
+  const controlsRef = useRef<IScannerControls | null>(null);
+
+
+  const stopScan = useCallback(() => {
+    if (controlsRef.current) {
+        controlsRef.current.stop();
+        controlsRef.current = null;
+    }
+    setIsScanning(false);
+  }, []);
+
+  const startScan = useCallback(async (deviceId: string) => {
+    if (!videoRef.current) return;
+    setError('');
+    setScannedResult('');
+    setIsScanning(true);
+
+    try {
+      const controls = await codeReader.current.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
+        if (result) {
+          setScannedResult(result.getText());
+          stopScan();
+        }
+        if (err && !(err instanceof NotFoundException || err instanceof ChecksumException || err instanceof FormatException)) {
+           console.error("Scanning error:", err);
+           setError('An unexpected error occurred during scanning.');
+           stopScan();
+        }
+      });
+      controlsRef.current = controls;
+    } catch (err: any) {
+      console.error("Camera access error:", err);
+      if (err.name === 'NotAllowedError') {
+        setError('Camera access was denied. Please enable it in your browser settings.');
+      } else {
+        setError('Could not access camera. Please ensure it is not in use by another application.');
+      }
+      setIsScanning(false);
+    }
+  }, [stopScan]);
+
+
+  useEffect(() => {
+    navigator.mediaDevices.enumerateDevices()
+      .then(videoInputDevices => {
+        const videoDevices = videoInputDevices.filter(device => device.kind === 'videoinput');
+        setDevices(videoDevices);
+        if (videoDevices.length > 0) {
+          setSelectedDevice(videoDevices[0].deviceId);
+        }
+      });
+
+    return () => {
+      stopScan();
+    };
+  }, [stopScan]);
+
+  const handleFileScan = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setError('');
+      setScannedResult('');
+      setIsScanning(true);
+      const localCodeReader = new BrowserMultiFormatReader();
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+
+        img.onload = async () => {
+          try {
+            const result = await localCodeReader.decode(img);
+            setScannedResult(result.getText());
+          } catch (err) {
+            console.error("File scan error:", err);
+            setError('Could not decode barcode from the image. Please try a clearer image.');
+          } finally {
+            setIsScanning(false);
+          }
+        };
+
+        img.onerror = () => {
+          setError('Failed to load the selected image file.');
+          setIsScanning(false);
+        };
+      };
+
+      reader.onerror = () => {
+        setError('Failed to read the file.');
+        setIsScanning(false);
+      };
+
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="relative aspect-video bg-muted rounded-lg overflow-hidden border-2 border-dashed border-border flex items-center justify-center">
+        <video ref={videoRef} className={`w-full h-full object-cover ${isScanning ? '' : 'hidden'}`} />
+        {!isScanning && (
+            <div className="text-center text-muted-foreground p-4 flex flex-col items-center gap-2">
+                <Camera className="h-10 w-10" />
+                <p>Camera is off. Press "Start Scan" to begin.</p>
+            </div>
+        )}
+        {isScanning && <div className="absolute inset-0 border-4 border-primary/50 animate-pulse rounded-lg" />}
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+        <div className="flex flex-col sm:flex-row gap-2">
+            <select
+                value={selectedDevice}
+                onChange={(e) => setSelectedDevice(e.target.value)}
+                disabled={isScanning || devices.length === 0}
+                className="w-full flex-grow bg-background border border-input rounded-md px-3 py-2 text-sm h-10 ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+                {devices.length > 0 ? devices.map(device => (
+                    <option key={device.deviceId} value={device.deviceId}>{device.label || `Camera ${devices.indexOf(device) + 1}`}</option>
+                )) : <option>No cameras found</option>}
+            </select>
+            <Button
+                onClick={() => isScanning ? stopScan() : startScan(selectedDevice)}
+                disabled={!selectedDevice}
+                 variant={isScanning ? 'destructive' : 'default'}
+                className="w-full sm:w-auto"
+            >
+                {isScanning ? 'Stop Scan' : 'Start Scan'}
+            </Button>
+        </div>
+        <div className="flex">
+          <Button asChild variant="outline" className="w-full">
+              <Label className="cursor-pointer">
+                  <Upload className="mr-2 h-4 w-4" /> Scan from Image
+                  <Input type="file" accept="image/*" onChange={handleFileScan} className="hidden" />
+              </Label>
+          </Button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-destructive/10 border border-destructive text-destructive-foreground p-3 rounded-md flex items-start gap-3 text-sm">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p>{error}</p>
+        </div>
+      )}
+
+      {scannedResult && (
+        <div className="bg-muted/50 p-4 rounded-lg">
+          <h3 className="text-lg font-bold text-primary">Scan Result</h3>
+          <p className="font-mono text-foreground bg-background p-3 rounded-md break-words my-2">{scannedResult}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- QR Code Generator Component ---
+
+function QrGeneratorComponent() {
+  const [inputText, setInputText] = useState('https://cloud.google.com/firebase');
+  const qrRef = useRef<HTMLDivElement>(null);
+
+  const handleDownload = () => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (canvas) {
+      const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+      let downloadLink = document.createElement("a");
+      downloadLink.href = pngUrl;
+      downloadLink.download = "qrcode.png";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  };
+
+  const handlePrint = () => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    if (canvas) {
+      const dataUrl = canvas.toDataURL('image/png');
+      const printWindow = window.open('', '', 'width=400,height=400');
+      printWindow?.document.write(`
+        <html>
+          <head><title>Print QR Code</title></head>
+          <body style="text-align:center; margin-top: 50px;">
+            <img src="${dataUrl}" style="max-width: 80%;" />
+          </body>
+        </html>
+      `);
+      printWindow?.document.close();
+      printWindow?.focus();
+      printWindow?.print();
+      printWindow?.close();
+    }
+  };
+  
+  return (
+    <div className="flex flex-col items-center gap-6">
+      <div className="w-full">
+        <Label htmlFor="qr-input" className="block mb-2 text-sm font-medium">
+          Enter URL or Text
+        </Label>
+        <Textarea
+          id="qr-input"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          rows={3}
+          className="w-full"
+          placeholder="e.g., https://google.com or your message here"
+        />
+      </div>
+      
+      {inputText && (
+        <div className="bg-white p-6 rounded-lg shadow-inner inline-block" ref={qrRef}>
+            <QRCode
+              value={inputText}
+              size={256}
+              level={"H"}
+              includeMargin={true}
+            />
+        </div>
+      )}
+
+      <div className="flex gap-4 w-full max-w-sm">
+        <Button onClick={handleDownload} variant="outline" disabled={!inputText} className="w-full">
+            <Download className="mr-2 h-4 w-4"/> Download
+        </Button>
+        <Button onClick={handlePrint} disabled={!inputText} className="w-full">
+            <Printer className="mr-2 h-4 w-4"/> Print
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// --- Barcode Generator Component ---
+
+function BarcodeGeneratorComponent() {
+  const [barcodes, setBarcodes] = useState(['123456789012']);
+
+  const handleBarcodeChange = (index: number, value: string) => {
+    const newBarcodes = [...barcodes];
+    newBarcodes[index] = value;
+    setBarcodes(newBarcodes);
+  };
+
+  const addBarcode = () => {
+    setBarcodes([...barcodes, '']);
+  };
+
+  const removeBarcode = (index: number) => {
+    const newBarcodes = barcodes.filter((_, i) => i !== index);
+    setBarcodes(newBarcodes);
+  };
+
+  const handlePrint = () => {
+    const barcodesToPrint = barcodes.filter(bc => bc.trim() !== '');
+    if (barcodesToPrint.length === 0) return;
+
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) return;
+
+    let content = '<html><head><title>Print Barcodes</title></head><body style="padding: 20px; text-align: center;">';
+    barcodesToPrint.forEach(barcodeValue => {
+        const svgId = `barcode-${Math.random().toString(36).substring(7)}`;
+        content += `<div style="margin-bottom: 20px;"><svg id="${svgId}"></svg></div>`;
+    });
+    content += '</body></html>';
+    
+    printWindow.document.write(content);
+    printWindow.document.close();
+
+    barcodesToPrint.forEach((barcodeValue, index) => {
+        const svgId = printWindow.document.getElementsByTagName('svg')[index].id;
+        const svgElement = printWindow.document.getElementById(svgId);
+        if (svgElement) {
+            try {
+                JsBarcode(svgElement, barcodeValue, {
+                    format: "CODE128",
+                    lineColor: "#000",
+                    width: 2,
+                    height: 80,
+                    displayValue: true,
+                    fontOptions: "bold",
+                    fontSize: 16,
+                });
+            } catch (e) {
+                JsBarcode(svgElement, "INVALID DATA", { displayValue: true, lineColor: "#d9534f" });
+            }
+        }
+    });
+
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-6">
+      <div className="w-full max-w-md space-y-4">
+        <Label className="block text-sm font-medium">Enter Data for Barcodes</Label>
+        {barcodes.map((barcode, index) => (
+          <div key={index} className="flex gap-2 items-center">
+            <Input
+              value={barcode}
+              onChange={(e) => handleBarcodeChange(index, e.target.value)}
+              className="w-full font-mono text-lg h-12 text-center"
+              placeholder="e.g., 123456789012"
+            />
+            <Button variant="destructive" size="icon" onClick={() => removeBarcode(index)} disabled={barcodes.length <= 1}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        <Button variant="outline" onClick={addBarcode} className="w-full">
+          <PlusCircle className="mr-2 h-4 w-4" /> Add Barcode
+        </Button>
+      </div>
+      
+      <div className="w-full space-y-4 max-h-96 overflow-y-auto rounded-lg bg-muted/50 p-4">
+        {barcodes.map((barcode, index) =>
+          barcode.trim() && (
+            <div key={index} className="bg-white p-4 rounded-lg shadow-inner flex justify-center">
+              <BarcodeSvg value={barcode} />
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="w-full max-w-sm">
+        <Button onClick={handlePrint} disabled={barcodes.every(bc => bc.trim() === '')} className="w-full">
+          <Printer className="mr-2 h-4 w-4" /> Print All
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const BarcodeSvg = ({ value }: { value: string }) => {
+  const ref = useRef<SVGSVGElement>(null);
+
+  useEffect(() => {
+    if (ref.current && value) {
+      try {
+        JsBarcode(ref.current, value, {
+          format: "CODE128",
+          lineColor: "#000",
+          width: 2,
+          height: 80,
+          displayValue: true,
+          fontOptions: "bold",
+          fontSize: 16
+        });
+      } catch (e) {
+        console.error("Barcode generation error", e);
+        JsBarcode(ref.current, "INVALID DATA", { displayValue: true, lineColor: "#d9534f" });
+      }
+    }
+  }, [value]);
+
+  return <svg ref={ref}></svg>;
+};
+
+    

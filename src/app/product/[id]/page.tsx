@@ -1,0 +1,625 @@
+
+'use client';
+
+import { useParams } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { ArrowRight, MessageSquare, ShoppingCart, Info, Loader2, HelpCircle, Barcode, Printer, Star } from 'lucide-react';
+import Header from '@/components/header';
+import Footer from '@/components/footer';
+import { getProductById, type Product, askProductQuestion, addProductReview } from '@/lib/product-actions';
+import ProductRating from '@/components/product-rating';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import ProductCard from '@/components/product-card';
+import { useState, useEffect, useContext, useRef } from 'react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { CartContext } from '@/context/cart-context';
+import { AuthContext } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import { getProductRecommendations } from '@/ai/flows/product-recommendations';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form, FormControl, FormField, FormItem, FormMessage, FormLabel } from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import { createSupabaseBrowserClient } from '@/lib/supabase-client';
+import JsBarcode from 'jsbarcode';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+
+const questionFormSchema = z.object({
+  text: z.string().min(10, "Question must be at least 10 characters.").max(500, "Question must be at most 500 characters."),
+});
+type QuestionFormValues = z.infer<typeof questionFormSchema>;
+
+const reviewFormSchema = z.object({
+  rating: z.number().min(1, "Please select a rating."),
+  comment: z.string().min(10, "Review must be at least 10 characters.").max(1000, "Review must be at most 1000 characters."),
+});
+type ReviewFormValues = z.infer<typeof reviewFormSchema>;
+
+export default function ProductDetailPage() {
+  const { id } = useParams();
+  const [product, setProduct] = useState<Product | undefined>(undefined);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
+  const barcodeRef = useRef<SVGSVGElement>(null);
+
+
+  const { addToCart } = useContext(CartContext);
+  const { user, loading: userLoading } = useContext(AuthContext);
+  const { toast } = useToast();
+
+  const [recommendedProducts, setRecommendedProducts] = useState<Product[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const supabase = createSupabaseBrowserClient();
+
+  useEffect(() => {
+    if (product && product.barcode && barcodeRef.current) {
+      try {
+        JsBarcode(barcodeRef.current, product.barcode, {
+            format: "CODE128",
+            lineColor: "#000",
+            width:2,
+            height:40,
+            displayValue: true
+        });
+      } catch (e) {
+        console.error("Error generating barcode:", e);
+      }
+    }
+  }, [product]);
+  
+  const handlePrintBarcode = () => {
+    const svgElement = barcodeRef.current;
+    if (svgElement) {
+        const printWindow = window.open('', '', 'width=400,height=200');
+        printWindow?.document.write('<html><head><title>Print Barcode</title></head><body style="text-align:center; margin-top: 20px;">');
+        printWindow?.document.write(svgElement.outerHTML);
+        printWindow?.document.write('</body></html>');
+        printWindow?.document.close();
+        printWindow?.focus();
+        printWindow?.print();
+        printWindow?.close();
+    }
+  };
+
+  useEffect(() => {
+    if (!id) return;
+    
+    const fetchProduct = async () => {
+        setIsLoadingProduct(true);
+        const { data, error } = await getProductById(id as string);
+        if (error) {
+            setProduct(undefined);
+            console.error(error);
+        } else {
+            setProduct(data as Product);
+        }
+        setIsLoadingProduct(false);
+    }
+    fetchProduct();
+
+    const channel = supabase
+      .channel(`product-${id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products', filter: `id=eq.${id}` }, (payload) => {
+        setProduct(payload.new as Product);
+      })
+      .subscribe();
+      
+    return () => {
+        supabase.removeChannel(channel);
+    }
+
+  }, [id, supabase]);
+
+
+  useEffect(() => {
+    const fetchAllProducts = async () => {
+        const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+        if (error) {
+            console.error("Failed to listen to all products:", error);
+        } else {
+            setAllProducts(data as Product[]);
+        }
+    };
+    fetchAllProducts();
+  }, [supabase]);
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (!product || allProducts.length === 0) return;
+      setIsLoadingRecommendations(true);
+      try {
+        const { recommendedProductIds } = await getProductRecommendations({ productId: product.id });
+        const recommendations = allProducts.filter(p => recommendedProductIds.includes(p.id) && p.id !== product.id);
+        setRecommendedProducts(recommendations.slice(0,3));
+      } catch (error) {
+        console.error("Failed to get AI recommendations:", error);
+        // Fallback to category-based recommendations on error
+        const categoryProducts = allProducts
+            .filter((p) => p.category === product.category && p.id !== product.id)
+            .slice(0, 3);
+        setRecommendedProducts(categoryProducts);
+      } finally {
+        setIsLoadingRecommendations(false);
+      }
+    };
+
+    fetchRecommendations();
+  }, [product, allProducts]);
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.15, delayChildren: 0.2 },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: { duration: 0.6, ease: 'easeOut' },
+    },
+  };
+
+  const imageVariants = {
+    hidden: { scale: 0.9, opacity: 0 },
+    visible: {
+      scale: 1,
+      opacity: 1,
+      transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
+    },
+  };
+  
+  const handleAddToCart = () => {
+    if (product) {
+      addToCart(product);
+      toast({
+        title: "Added to cart",
+        description: `${product.name} has been added to your cart.`,
+      });
+    }
+  };
+  
+  const handleQuestionSubmitted = () => {
+    toast({
+        title: "Question Submitted!",
+        description: "Your question has been sent and will be answered shortly."
+    });
+  }
+
+  const handleReviewSubmitted = () => {
+    toast({
+      title: "Review Submitted!",
+      description: "Thank you for your feedback."
+    });
+  }
+
+
+  if (isLoadingProduct) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-grow flex items-center justify-center text-center">
+          <div>
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+            <h1 className="text-3xl font-bold font-headline mt-4">Loading Product...</h1>
+            <p className="text-muted-foreground mt-2">Please wait a moment.</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!product) {
+      return (
+         <div className="flex flex-col min-h-screen">
+            <Header />
+            <main className="flex-grow flex items-center justify-center text-center">
+            <div>
+                <h1 className="text-3xl font-bold font-headline mt-4">Product Not Found</h1>
+                <p className="text-muted-foreground mt-2">We couldn't find the product you're looking for.</p>
+                <Button asChild className="mt-4">
+                    <Link href="/products">Go to Products</Link>
+                </Button>
+            </div>
+            </main>
+            <Footer />
+        </div>
+      )
+  }
+  
+  const inStock = product.stock_quantity > 0;
+
+  const RecommendationsSkeleton = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {[...Array(3)].map((_, i) => (
+        <motion.div key={i} variants={itemVariants}>
+          <div className="flex flex-col space-y-3">
+            <Skeleton className="h-[300px] w-full rounded-xl" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-[250px]" />
+              <Skeleton className="h-4 w-[200px]" />
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+
+  const answeredQuestions = product.questions?.filter(q => q.answer).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()) || [];
+
+  return (
+    <div className="flex flex-col min-h-screen bg-background">
+      <Header />
+      <main className="flex-grow py-12 sm:py-16">
+        <motion.div
+          className="container mx-auto px-4 sm:px-6 lg:px-8"
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <motion.div className="relative" variants={imageVariants}>
+              <div className="aspect-square relative w-full overflow-hidden rounded-lg shadow-lg">
+                <Image
+                  src={product.image}
+                  alt={product.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  priority
+                  data-ai-hint="product image"
+                />
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="secondary" size="icon" className="absolute bottom-4 right-4 h-12 w-12 rounded-full shadow-lg">
+                            <Barcode className="h-6 w-6"/>
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Product Barcode</DialogTitle>
+                            <DialogDescription>
+                                This barcode can be scanned with a hardware scanner or the in-store POS system.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex justify-center p-4 bg-white rounded-md">
+                           <svg ref={barcodeRef}></svg>
+                        </div>
+                        <DialogFooter>
+                            <Button onClick={handlePrintBarcode}><Printer className="mr-2 h-4 w-4"/> Print</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+              </div>
+              {!inStock && (
+                <motion.div
+                  className="absolute top-4 left-4 bg-destructive text-destructive-foreground text-sm font-bold px-3 py-1.5 rounded-full"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.5, type: 'spring', stiffness: 120 }}
+                >
+                  Out of Stock
+                </motion.div>
+              )}
+            </motion.div>
+
+            <div className="flex flex-col justify-center">
+              <motion.p className="text-sm text-primary font-semibold" variants={itemVariants}>
+                {product.category}
+              </motion.p>
+              <motion.h1 className="font-headline text-4xl md:text-5xl font-bold mt-2" variants={itemVariants}>
+                {product.name}
+              </motion.h1>
+              <motion.div className="mt-4 flex items-center gap-4" variants={itemVariants}>
+                <ProductRating rating={product.rating} totalReviews={product.reviews} />
+                <Separator orientation="vertical" className="h-4" />
+                <span className="text-sm text-muted-foreground">{product.brand}</span>
+              </motion.div>
+              <motion.p className="mt-6 text-lg text-muted-foreground" variants={itemVariants}>
+                {product.description}
+              </motion.p>
+
+              <motion.div className="mt-8 flex flex-wrap items-center gap-6" variants={itemVariants}>
+                <p className="text-4xl font-bold font-headline text-primary">PKR {product.price.toFixed(2)}</p>
+                <Button size="lg" disabled={!inStock} className="font-bold" onClick={handleAddToCart}>
+                  <ShoppingCart className="mr-2 h-5 w-5" />
+                  Add to Cart
+                </Button>
+              </motion.div>
+
+              <motion.div className="mt-10" variants={itemVariants}>
+                <Accordion type="single" collapsible className="w-full" defaultValue="specifications">
+                  <AccordionItem value="specifications">
+                    <AccordionTrigger>
+                      <div className="flex items-center gap-2 font-headline text-lg">
+                        <Info className="h-5 w-5" /> Product Specifications
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <ul className="space-y-2 text-muted-foreground mt-2">
+                        {product.specifications && Object.entries(product.specifications).map(([key, value]) => (
+                          <li key={key} className="flex justify-between">
+                            <span className="font-medium text-foreground">{key}:</span>
+                            <span>{String(value)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="reviews">
+                    <AccordionTrigger>
+                      <div className="flex items-center gap-2 font-headline text-lg">
+                        <MessageSquare className="h-5 w-5" /> Customer Reviews
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-6 mt-2">
+                        {product.reviews_data?.map((review, index) => (
+                           <div key={index} className="flex items-start gap-4">
+                             <Avatar>
+                               <AvatarFallback>{review.author.charAt(0)}</AvatarFallback>
+                             </Avatar>
+                             <div className="flex-1">
+                               <div className="flex items-center gap-2">
+                                 <p className="font-semibold">{review.author}</p>
+                                 <p className="text-xs text-muted-foreground">{new Date(review.date).toLocaleDateString()}</p>
+                               </div>
+                               <ProductRating rating={review.rating} className="mt-1" />
+                               <p className="text-muted-foreground mt-2 text-sm">{review.comment}</p>
+                             </div>
+                           </div>
+                        ))}
+                         {(!product.reviews_data || product.reviews_data.length === 0) && (
+                            <p className="text-sm text-muted-foreground">No reviews yet.</p>
+                         )}
+                      </div>
+                      <Separator className="my-6"/>
+                        {!userLoading && (
+                            user ? (
+                                <ReviewForm productId={product.id} user={user} onReviewSubmitted={handleReviewSubmitted} />
+                            ) : (
+                                <div className="text-center bg-muted/50 p-4 rounded-md">
+                                    <p className="text-sm text-muted-foreground">You must be logged in to write a review.</p>
+                                    <Button asChild variant="link" className="p-0 h-auto">
+                                        <Link href={`/login?redirect=/product/${product.id}`}>
+                                            Login or Sign Up
+                                        </Link>
+                                    </Button>
+                                </div>
+                            )
+                        )}
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="qa">
+                    <AccordionTrigger>
+                    <div className="flex items-center gap-2 font-headline text-lg">
+                        <HelpCircle className="h-5 w-5" /> Questions &amp; Answers
+                    </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        {answeredQuestions.length > 0 ? (
+                            <div className="space-y-6 mt-2">
+                                {answeredQuestions.map((qa) => (
+                                    <div key={qa.id}>
+                                        <p className="font-semibold text-foreground">Q: {qa.text}</p>
+                                        <p className="text-muted-foreground mt-1 ml-4">A: {qa.answer}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground mt-2">No answered questions yet. Be the first to ask!</p>
+                        )}
+                        
+                        <Separator className="my-6"/>
+
+                        {!userLoading && (
+                            user ? (
+                                <QuestionForm productId={product.id} productName={product.name} user={user} onQuestionSubmitted={handleQuestionSubmitted}/>
+                            ) : (
+                                <div className="text-center bg-muted/50 p-4 rounded-md">
+                                    <p className="text-sm text-muted-foreground">You must be logged in to ask a question.</p>
+                                    <Button asChild variant="link" className="p-0 h-auto">
+                                        <Link href={`/login?redirect=/product/${product.id}`}>
+                                            Login or Sign Up
+                                        </Link>
+                                    </Button>
+                                </div>
+                            )
+                        )}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </motion.div>
+            </div>
+          </div>
+
+          <motion.section className="mt-24" variants={containerVariants}>
+            <motion.h2 className="text-center font-headline text-3xl md:text-4xl font-bold mb-10" variants={itemVariants}>
+              You Might Also Like
+            </motion.h2>
+            {isLoadingRecommendations ? (
+              <RecommendationsSkeleton />
+            ) : recommendedProducts.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {recommendedProducts.map((relatedProduct) => (
+                  <motion.div key={relatedProduct.id} variants={itemVariants}>
+                    <ProductCard product={relatedProduct} />
+                  </motion.div>
+                ))}
+              </div>
+            ) : null}
+          </motion.section>
+        </motion.div>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function QuestionForm({ productId, productName, user, onQuestionSubmitted }: { productId: string, productName: string, user: any, onQuestionSubmitted: () => void }) {
+    const form = useForm<QuestionFormValues>({
+        resolver: zodResolver(questionFormSchema),
+        defaultValues: { text: "" }
+    });
+
+    const { toast } = useToast();
+
+    const onSubmit = async (values: QuestionFormValues) => {
+        const result = await askProductQuestion({
+            productId,
+            text: values.text,
+            author: user.user_metadata.full_name || user.email,
+            authorId: user.id,
+        });
+
+        if (result.success) {
+            form.reset();
+            onQuestionSubmitted();
+        } else {
+            toast({
+                title: "Submission Failed",
+                description: result.error,
+                variant: 'destructive'
+            });
+            form.setError("text", { type: "server", message: result.error });
+        }
+    }
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <h4 className="font-headline font-semibold">Ask a New Question</h4>
+                <FormField
+                    control={form.control}
+                    name="text"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormControl>
+                                <Textarea placeholder={`Ask a question about the ${productName}...`} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? <Loader2 className="animate-spin mr-2"/> : null}
+                    Submit Question
+                </Button>
+            </form>
+        </Form>
+    );
+}
+
+function ReviewForm({ productId, user, onReviewSubmitted }: { productId: string, user: any, onReviewSubmitted: () => void }) {
+    const form = useForm<ReviewFormValues>({
+        resolver: zodResolver(reviewFormSchema),
+        defaultValues: { rating: 0, comment: "" }
+    });
+
+    const { toast } = useToast();
+
+    const onSubmit = async (values: ReviewFormValues) => {
+        const result = await addProductReview({
+            productId,
+            rating: values.rating,
+            comment: values.comment,
+            author: user.user_metadata.full_name || user.email,
+            authorId: user.id,
+        });
+
+        if (result.success) {
+            form.reset();
+            onReviewSubmitted();
+        } else {
+            toast({
+                title: "Submission Failed",
+                description: result.error,
+                variant: 'destructive'
+            });
+        }
+    }
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <h4 className="font-headline font-semibold">Write a Review</h4>
+                 <FormField
+                    control={form.control}
+                    name="rating"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Your Rating</FormLabel>
+                            <FormControl>
+                                <StarRatingInput value={field.value} onChange={field.onChange} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="comment"
+                    render={({ field }) => (
+                        <FormItem>
+                           <FormLabel>Your Review</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Share your thoughts on the product..." {...field} rows={4} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? <Loader2 className="animate-spin mr-2"/> : null}
+                    Submit Review
+                </Button>
+            </form>
+        </Form>
+    );
+}
+
+const StarRatingInput = ({ value, onChange }: { value: number, onChange: (value: number) => void}) => {
+    const [hoverValue, setHoverValue] = useState(0);
+
+    return (
+        <div className="flex items-center gap-1">
+            {[1,2,3,4,5].map(star => (
+                <button
+                    type="button"
+                    key={star}
+                    onMouseEnter={() => setHoverValue(star)}
+                    onMouseLeave={() => setHoverValue(0)}
+                    onClick={() => onChange(star)}
+                    className="p-1"
+                >
+                    <Star
+                        className={cn(
+                            'h-6 w-6 transition-colors',
+                            star <= (hoverValue || value) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'
+                        )}
+                    />
+                </button>
+            ))}
+        </div>
+    )
+}

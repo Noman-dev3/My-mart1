@@ -1,0 +1,26 @@
+diff --git a/node_modules/@supabase/auth-helpers-nextjs/dist/lib/helpers.js b/node_modules/@supabase/auth-helpers-nextjs/dist/lib/helpers.js
+index 289622d..e087c53 100644
+--- a/node_modules/@supabase/auth-helpers-nextjs/dist/lib/helpers.js
++++ b/node_modules/@supabase/auth-helpers-nextjs/dist/lib/helpers.js
+@@ -124,7 +124,7 @@
+     return {
+         async getItem(key) {
+             try {
+-                const cookies = await getCookies();
++                const cookies = getCookies();
+                 const cookie = cookies.get(key);
+                 return cookie?.value ?? null;
+             }
+diff --git a/node_modules/@supabase/auth-helpers-nextjs/dist/lib/helpers.mjs b/node_modules/@supabase/auth-helpers-nextjs/dist/lib/helpers.mjs
+index 4554869..3cfc40c 100644
+--- a/node_modules/@supabase/auth-helpers-nextjs/dist/lib/helpers.mjs
++++ b/node_modules/@supabase/auth-helpers-nextjs/dist/lib/helpers.mjs
+@@ -124,7 +124,7 @@
+     return {
+         async getItem(key) {
+             try {
+-                const cookies = await getCookies();
++                const cookies = getCookies();
+                 const cookie = cookies.get(key);
+                 return cookie?.value ?? null;
+             }
